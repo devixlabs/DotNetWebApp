@@ -13,11 +13,15 @@ You're an expert .NET/C# engineer with deep knowledge of:
 This is a .NET 8 Web API project with Entity Framework Core for data access and is an SPA (Single Page Application) using Blazor Server.
 
 ## Key Commands
-- Build: `dotnet build`
-- Run: `dotnet run`
-- Test: `dotnet test` (if tests exist)
-- Add Migration: `dotnet ef migrations add <MigrationName>`
-- Update Database: `dotnet ef database update`
+- Build: `./dotnet-build.sh build`
+- Run: `./dotnet-build.sh run`
+- Test: `./dotnet-build.sh test` (if tests exist)
+- Add Migration: `./dotnet-build.sh ef migrations add <MigrationName>`
+- Update Database: `./dotnet-build.sh ef database update`
+
+## Build Commands
+- The dotnet-build.sh script is located in the project root and handles global.json SDK version conflicts
+- Use `./dotnet-build.sh <command>` instead of `dotnet <command>` for all dotnet CLI operations
 
 ## Project Structure
 - Controllers/ - API controllers
