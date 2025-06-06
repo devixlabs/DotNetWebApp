@@ -1,0 +1,319 @@
+<div class="settings-section">
+    <div class="settings-categories">
+        <div class="settings-category">
+            <h4>🎨 Appearance</h4>
+            <div class="setting-item">
+                <label for="theme-select">Theme</label>
+                <select id="theme-select" @onchange="OnThemeChange">
+                    <option value="light" selected="@(selectedTheme == "light")">Light</option>
+                    <option value="dark" selected="@(selectedTheme == "dark")">Dark</option>
+                    <option value="auto" selected="@(selectedTheme == "auto")">Auto</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" @bind="showNotifications" />
+                    Show notifications
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-category">
+            <h4>🔧 Application</h4>
+            <div class="setting-item">
+                <label for="items-per-page">Items per page</label>
+                <input type="number" id="items-per-page" @bind="itemsPerPage" min="5" max="100" />
+            </div>
+            
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" @bind="autoSave" />
+                    Auto-save changes
+                </label>
+            </div>
+            
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" @bind="enableDebugMode" />
+                    Enable debug mode
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-category">
+            <h4>🔒 Security</h4>
+            <div class="setting-item">
+                <button class="btn btn-outline" @onclick="ChangePassword">
+                    🔑 Change Password
+                </button>
+            </div>
+            
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" @bind="twoFactorAuth" />
+                    Two-factor authentication
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-category">
+            <h4>📊 Data</h4>
+            <div class="setting-item">
+                <button class="btn btn-primary" @onclick="ExportData">
+                    📤 Export Data
+                </button>
+            </div>
+            
+            <div class="setting-item">
+                <button class="btn btn-warning" @onclick="ClearCache">
+                    🗑️ Clear Cache
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-footer">
+        <button class="btn btn-success" @onclick="SaveSettings" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span>💾 Saving...</span>
+            }
+            else
+            {
+                <span>💾 Save Settings</span>
+            }
+        </button>
+        
+        <button class="btn btn-outline" @onclick="ResetSettings">
+            🔄 Reset to Defaults
+        </button>
+    </div>
+
+    @if (showSaveMessage)
+    {
+        <div class="save-message">
+            ✅ Settings saved successfully!
+        </div>
+    }
+</div>
+
+<style>
+    .settings-section {
+        padding: 20px;
+        max-width: 800px;
+    }
+
+    .settings-categories {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .settings-category {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .settings-category h4 {
+        margin: 0 0 20px 0;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 10px;
+    }
+
+    .setting-item {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .setting-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .setting-item label {
+        font-weight: 500;
+        min-width: 150px;
+        color: #555;
+    }
+
+    .setting-item select,
+    .setting-item input[type="number"] {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        min-width: 120px;
+    }
+
+    .setting-item input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+        background: #1e7e34;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .btn-warning:hover {
+        background: #e0a800;
+    }
+
+    .btn-outline {
+        background: white;
+        border: 1px solid #007bff;
+        color: #007bff;
+    }
+
+    .btn-outline:hover {
+        background: #007bff;
+        color: white;
+    }
+
+    .settings-footer {
+        display: flex;
+        gap: 15px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .save-message {
+        margin-top: 15px;
+        padding: 10px 15px;
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 4px;
+        animation: slideIn 0.3s ease-out;
+    }
+</style>
+
+@code {
+    private string selectedTheme = "light";
+    private bool showNotifications = true;
+    private int itemsPerPage = 20;
+    private bool autoSave = false;
+    private bool enableDebugMode = false;
+    private bool twoFactorAuth = false;
+    private bool isSaving = false;
+    private bool showSaveMessage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load settings from local storage or API
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        // In a real app, load from localStorage or API
+        await Task.Delay(100);
+    }
+
+    private async Task OnThemeChange(ChangeEventArgs e)
+    {
+        selectedTheme = e.Value?.ToString() ?? "light";
+        await Task.Delay(100); // Simulate applying theme
+    }
+
+    private async Task ChangePassword()
+    {
+        // In a real app, open password change modal
+        await Task.Delay(100);
+        Console.WriteLine("Change password clicked");
+    }
+
+    private async Task ExportData()
+    {
+        // In a real app, trigger data export
+        await Task.Delay(100);
+        Console.WriteLine("Export data clicked");
+    }
+
+    private async Task ClearCache()
+    {
+        // In a real app, clear application cache
+        await Task.Delay(100);
+        Console.WriteLine("Clear cache clicked");
+    }
+
+    private async Task SaveSettings()
+    {
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Simulate API call to save settings
+            await Task.Delay(1000);
+            
+            // In a real app, save to API or localStorage
+            // await SettingsService.SaveAsync(new Settings { ... });
+            
+            showSaveMessage = true;
+            StateHasChanged();
+            
+            // Hide message after 3 seconds
+            await Task.Delay(3000);
+            showSaveMessage = false;
+            StateHasChanged();
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetSettings()
+    {
+        selectedTheme = "light";
+        showNotifications = true;
+        itemsPerPage = 20;
+        autoSave = false;
+        enableDebugMode = false;
+        twoFactorAuth = false;
+        
+        await Task.Delay(100);
+        StateHasChanged();
+    }
+}

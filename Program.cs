@@ -8,6 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<HttpClient>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient();
+    // For Blazor Server, we'll set the base address dynamically
+    // This will be updated in the component based on the current request
+    return httpClient;
+});
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -21,6 +32,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 
 var summaries = new[]
 {
@@ -42,6 +55,8 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast")
 .WithOpenApi();
 app.MapControllers();
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

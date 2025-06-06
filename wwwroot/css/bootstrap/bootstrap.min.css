@@ -1,0 +1,19 @@
+/* Minimal Bootstrap CSS - replace with full Bootstrap if needed */
+.container-fluid { width: 100%; padding: 0 15px; }
+.navbar { padding: 0.5rem 1rem; }
+.navbar-dark { background-color: #343a40; }
+.navbar-brand { font-size: 1.25rem; font-weight: bold; color: #fff; text-decoration: none; }
+.navbar-toggler { border: 1px solid transparent; padding: 0.25rem 0.75rem; }
+.nav-link { color: #fff; text-decoration: none; padding: 0.5rem 1rem; }
+.nav-link:hover { color: #ccc; }
+.alert { padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; }
+.alert-secondary { color: #383d41; background-color: #e2e3e5; border-color: #d6d8db; }
+.btn { padding: 0.375rem 0.75rem; margin-bottom: 0; font-size: 1rem; line-height: 1.5; text-align: center; text-decoration: none; vertical-align: middle; cursor: pointer; border: 1px solid transparent; border-radius: 0.25rem; }
+.mt-4 { margin-top: 1.5rem; }
+.px-3 { padding-left: 1rem; padding-right: 1rem; }
+.px-4 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.me-2 { margin-right: 0.5rem; }
+.flex-column { flex-direction: column; }
+.collapse { display: none; }
+.d-flex { display: flex; }
+.text-nowrap { white-space: nowrap; }

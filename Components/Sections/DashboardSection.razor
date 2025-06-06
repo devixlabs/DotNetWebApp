@@ -1,0 +1,128 @@
+<div class="dashboard-section">
+    <div class="dashboard-grid">
+        <div class="dashboard-card">
+            <h4>📊 Total Products</h4>
+            <p class="dashboard-number">@totalProducts</p>
+        </div>
+        
+        <div class="dashboard-card">
+            <h4>💰 Revenue</h4>
+            <p class="dashboard-number">$@revenue.ToString("N2")</p>
+        </div>
+        
+        <div class="dashboard-card">
+            <h4>👥 Active Users</h4>
+            <p class="dashboard-number">@activeUsers</p>
+        </div>
+        
+        <div class="dashboard-card">
+            <h4>📈 Growth</h4>
+            <p class="dashboard-number">+@growthPercent%</p>
+        </div>
+    </div>
+
+    <div class="dashboard-chart">
+        <h4>Recent Activity</h4>
+        <div class="activity-list">
+            <div class="activity-item">
+                <span class="activity-time">2 min ago</span>
+                <span class="activity-text">New product added</span>
+            </div>
+            <div class="activity-item">
+                <span class="activity-time">15 min ago</span>
+                <span class="activity-text">User registered</span>
+            </div>
+            <div class="activity-item">
+                <span class="activity-time">1 hour ago</span>
+                <span class="activity-text">Order completed</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-section {
+        padding: 20px;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .dashboard-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .dashboard-card h4 {
+        margin: 0 0 10px 0;
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .dashboard-number {
+        font-size: 28px;
+        font-weight: bold;
+        color: #007bff;
+        margin: 0;
+    }
+
+    .dashboard-chart {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .dashboard-chart h4 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .activity-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .activity-time {
+        color: #6c757d;
+        font-size: 12px;
+    }
+
+    .activity-text {
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    private int totalProducts = 127;
+    private decimal revenue = 45789.50m;
+    private int activeUsers = 1250;
+    private int growthPercent = 15;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate loading dashboard data
+        await Task.Delay(100);
+        
+        // In a real app, you would load actual data here
+        // totalProducts = await DataService.GetProductCountAsync();
+        // revenue = await DataService.GetRevenueAsync();
+        // etc.
+    }
+}
