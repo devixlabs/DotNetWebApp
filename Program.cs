@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DotNetWebApp.Data;
+using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<HttpClient>(sp =>
 {
