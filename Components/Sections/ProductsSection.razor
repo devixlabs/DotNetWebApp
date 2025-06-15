@@ -4,58 +4,53 @@
     <div class="products-header">
         <h4>Products Management</h4>
         <div class="products-actions">
-            <button class="btn btn-primary" @onclick="OnRefresh" disabled="@IsLoading">
-                @if (IsLoading)
-                {
-                    <span>🔄 Loading...</span>
-                }
-                else
-                {
-                    <span>🔄 Refresh</span>
-                }
-            </button>
-            <button class="btn btn-success" @onclick="AddNewProduct">
-                ➕ Add Product
-            </button>
+            <RadzenButton Click="OnRefresh" IsBusy="@IsLoading" Text="@(IsLoading ? "Loading..." : "Refresh")" 
+                         Icon="refresh" ButtonStyle="ButtonStyle.Primary" />
+            <RadzenButton Click="AddNewProduct" Text="Add Product" Icon="add" 
+                         ButtonStyle="ButtonStyle.Success" />
         </div>
     </div>
 
-    @if (IsLoading && (Products == null || Products.Count == 0))
+    @if (Products == null || Products.Count == 0)
     {
-        <div class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Loading products...</p>
-        </div>
-    }
-    else if (Products == null || Products.Count == 0)
-    {
-        <div class="empty-state">
-            <p>No products found.</p>
-            <button class="btn btn-primary" @onclick="OnRefresh">Load Products</button>
-        </div>
+        @if (IsLoading)
+        {
+            <div class="loading-state">
+                <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                <p>Loading products...</p>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <p>No products found.</p>
+                <RadzenButton Click="OnRefresh" Text="Load Products" ButtonStyle="ButtonStyle.Primary" />
+            </div>
+        }
     }
     else
     {
-        <div class="products-grid">
-            @foreach (var product in Products)
-            {
-                <div class="product-card">
-                    <div class="product-header">
-                        <h5>@product.Name</h5>
-                        <span class="product-price">$@product.Price.ToString("N2")</span>
-                    </div>
-                    <p class="product-description">@product.Description</p>
-                    <div class="product-actions">
-                        <button class="btn btn-sm btn-outline" @onclick="() => EditProduct(product.Id)">
-                            ✏️ Edit
-                        </button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteProduct(product.Id)">
-                            🗑️ Delete
-                        </button>
-                    </div>
-                </div>
-            }
-        </div>
+        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowSorting="true" PageSize="5" AllowPaging="true" 
+                       ShowPagingSummary="true" Data="@Products" TItem="SpaApp.Product" ColumnWidth="200px">
+            <Columns>
+                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Id" Title="ID" Width="80px" />
+                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Name" Title="Product Name" />
+                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Price" Title="Price" FormatString="{0:C}">
+                    <Template Context="product">
+                        <strong style="color: #28a745;">@($"{product.Price:C}")</strong>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SpaApp.Product" Context="product" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="200px">
+                    <Template Context="product">
+                        <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="edit" class="m-1" Click="@(args => EditProduct(product.Id))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" class="m-1" Click="@(args => DeleteProduct(product.Id))" />
+                    </Template>
+                    <HeaderTemplate>
+                        <span>Actions</span>
+                    </HeaderTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     }
 </div>
 
@@ -70,12 +65,12 @@
         align-items: center;
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .products-header h4 {
         margin: 0;
-        color: #333;
+        color: white;
     }
 
     .products-actions {
@@ -83,126 +78,15 @@
         gap: 10px;
     }
 
-    .btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
-    }
-
-    .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: white;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-        background: #0056b3;
-    }
-
-    .btn-success {
-        background: #28a745;
-        color: white;
-    }
-
-    .btn-success:hover {
-        background: #1e7e34;
-    }
-
-    .btn-danger {
-        background: #dc3545;
-        color: white;
-    }
-
-    .btn-danger:hover {
-        background: #c82333;
-    }
-
-    .btn-outline {
-        background: white;
-        border: 1px solid #007bff;
-        color: #007bff;
-    }
-
-    .btn-outline:hover {
-        background: #007bff;
-        color: white;
-    }
-
-    .btn-sm {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
-
     .loading-state, .empty-state {
         text-align: center;
         padding: 40px;
-        color: #6c757d;
+        color: rgba(255, 255, 255, 0.7);
     }
 
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #007bff;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-
-    .products-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-    }
-
-    .product-card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    }
-
-    .product-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-
-    .product-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-
-    .product-header h5 {
-        margin: 0;
-        color: #333;
-    }
-
-    .product-price {
-        font-weight: bold;
-        color: #28a745;
-        font-size: 18px;
-    }
-
-    .product-description {
-        color: #6c757d;
-        margin: 10px 0;
-        line-height: 1.4;
-    }
-
-    .product-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 15px;
+    .loading-state p, .empty-state p {
+        margin-top: 20px;
+        color: rgba(255, 255, 255, 0.7);
     }
 </style>
 
