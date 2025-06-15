@@ -20,6 +20,11 @@ namespace DotNetWebApp.Controllers
             return await _context.Products.ToListAsync();
         }
 
+        [HttpGet("count")]
+        public async Task<ActionResult<int>> GetProductCount() {
+            return await _context.Products.CountAsync();
+        }
+
         [HttpPost]
         public async Task<ActionResult<Product>> AddProduct(Product product) {
             _context.Products.Add(product);

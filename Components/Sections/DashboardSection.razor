@@ -2,7 +2,14 @@
     <div class="dashboard-grid">
         <div class="dashboard-card">
             <h4>📊 Total Products</h4>
-            <p class="dashboard-number">@totalProducts</p>
+            @if (isLoading)
+            {
+                <p class="dashboard-number">Loading...</p>
+            }
+            else
+            {
+                <p class="dashboard-number">@totalProducts</p>
+            }
         </div>
         
         <div class="dashboard-card">
@@ -109,20 +116,41 @@
     }
 </style>
 
+@inject HttpClient Http
+
 @code {
-    private int totalProducts = 127;
+    private int totalProducts = 0;
     private decimal revenue = 45789.50m;
     private int activeUsers = 1250;
     private int growthPercent = 15;
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate loading dashboard data
-        await Task.Delay(100);
-        
-        // In a real app, you would load actual data here
-        // totalProducts = await DataService.GetProductCountAsync();
-        // revenue = await DataService.GetRevenueAsync();
-        // etc.
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Set base address for API calls
+            Http.BaseAddress = new Uri($"{NavigationManager.BaseUri}");
+            
+            // Fetch real product count from API
+            totalProducts = await Http.GetFromJsonAsync<int>("api/products/count");
+            
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Fall back to mock data if API call fails
+            totalProducts = 0;
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 }
+
+@inject NavigationManager NavigationManager
