@@ -13,3 +13,20 @@ dotnet ef database update
 dotnet build
 dotnet run
 ```
+
+# Build
+
+## Docker
+
+### Build the image
+```bash
+docker build -t dotnetwebapp:latest .
+```
+
+### Run the container
+```bash
+docker run -d \
+  -p 8080:80 \
+  --name dotnetwebapp \
+  dotnetwebapp:latest
+```
