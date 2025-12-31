@@ -23,6 +23,11 @@ This is a .NET 8 Web API project with Entity Framework Core for data access and 
 - The dotnet-build.sh script is located in the project root and handles global.json SDK version conflicts
 - Use `./dotnet-build.sh <command>` instead of `dotnet <command>` for all dotnet CLI operations
 
+## SDK Version Management
+The project uses `dotnet-build.sh` wrapper script to handle SDK version conflicts between Windows and WSL environments. Different developers may have different .NET SDK versions installed (e.g., from Snap, apt-get, or native installers). The wrapper temporarily bypasses `global.json` version enforcement during local development, allowing flexibility while keeping the version specification in place for CI/CD servers.
+
+**For Windows + WSL developers**: Install any supported .NET 8.x version locally. The wrapper script handles compatibility. CI/CD and production use the exact version specified in `global.json`.
+
 ## Project Structure
 - Controllers/ - API controllers
 - Models/ - Data models and DTOs
@@ -57,7 +62,9 @@ This is a .NET 8 Web API project with Entity Framework Core for data access and 
 - Product model defined inline in SpaApp.razor (should be moved to Models/ folder)
 
 ## Development Notes
-- WSL/Linux environment with Snap-installed .NET 8.0.407
-- Global.json in parent directory specifies 8.0.410 (conflicts resolved by dotnet-build.sh)
-- Use ./dotnet-build.sh for all CLI operations to avoid SDK version conflicts
+- Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)
+- global.json specifies .NET 8.0.410 as the target version
+- Always use `./dotnet-build.sh` for all dotnet CLI operations to handle cross-platform SDK version differences
+- The wrapper script temporarily hides global.json during execution, allowing local development flexibility
 - All build errors have been resolved and application compiles successfully
+- Makefile uses the wrapper script for consistency
