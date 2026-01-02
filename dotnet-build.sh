@@ -17,6 +17,12 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
+# Check if dotnet-ef is installed
+if ! command -v dotnet-ef &> /dev/null; then
+    echo "Error: dotnet-ef CLI not found in PATH" >&2
+    exit 1
+fi
+
 # Search for global.json up the directory tree
 GLOBAL_JSON_PATH=""
 for dir in . .. ../..; do

@@ -2,7 +2,10 @@ DOTNET = ./dotnet-build.sh
 IMAGE_NAME = dotnetwebapp
 TAG = latest
 
-.PHONY: check build test docker-build
+.PHONY: clean check build migrate test docker-build run
+
+clean:
+	$(DOTNET) clean
 
 check:
 	shellcheck dotnet-build.sh
@@ -12,8 +15,15 @@ check:
 build:
 	$(DOTNET) build --configuration Release
 
+migrate:
+	$(DOTNET) ef database update
+
 test:
 	$(DOTNET) test --configuration Release --no-build
 
 docker-build:
 	docker build -t $(IMAGE_NAME):$(TAG) .
+
+run:
+	$(DOTNET) run
+

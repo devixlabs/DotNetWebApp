@@ -4,23 +4,31 @@
 
 # Setup
 ```
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
-# Running
-```
-dotnet build
-dotnet run
+dotnet tool install --global dotnet-ef --version 8.*
+make check
+make migrate
 ```
 
 # Build
+```
+make build
+```
 
 ## Docker
 
 ### Build the image
 ```bash
-docker build -t dotnetwebapp:latest .
+make docker-build
+```
+
+# Testing
+```
+make test
+```
+
+# Running
+```
+make run
 ```
 
 ### Run the container
@@ -29,4 +37,9 @@ docker run -d \
   -p 8080:80 \
   --name dotnetwebapp \
   dotnetwebapp:latest
+```
+
+# Database migrations
+```
+make migrate
 ```

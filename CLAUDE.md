@@ -13,15 +13,20 @@ You're an expert .NET/C# engineer with deep knowledge of:
 This is a .NET 8 Web API project with Entity Framework Core for data access and is an SPA (Single Page Application) using Blazor Server.
 
 ## Key Commands
-- Build: `./dotnet-build.sh build`
-- Run: `./dotnet-build.sh run`
-- Test: `./dotnet-build.sh test` (if tests exist)
+- Check/Setup: `make check` (restore and build)
+- Build: `make build`
+- Run: `make run`
+- Test: `make test`
+- Apply Migrations: `make migrate`
 - Add Migration: `./dotnet-build.sh ef migrations add <MigrationName>`
-- Update Database: `./dotnet-build.sh ef database update`
+- Docker Build: `make docker-build`
+- Clean: `make clean`
 
 ## Build Commands
+- The project uses a Makefile with the following targets: `check`, `build`, `run`, `test`, `migrate`, `docker-build`, `clean`
 - The dotnet-build.sh script is located in the project root and handles global.json SDK version conflicts
-- Use `./dotnet-build.sh <command>` instead of `dotnet <command>` for all dotnet CLI operations
+- Use `make <target>` for standard operations
+- Use `./dotnet-build.sh <command>` directly only for advanced dotnet CLI operations not covered by Makefile targets
 
 ## SDK Version Management
 The project uses `dotnet-build.sh` wrapper script to handle SDK version conflicts between Windows and WSL environments. Different developers may have different .NET SDK versions installed (e.g., from Snap, apt-get, or native installers). The wrapper temporarily bypasses `global.json` version enforcement during local development, allowing flexibility while keeping the version specification in place for CI/CD servers.
@@ -42,8 +47,8 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 
 ## Current State
 - Basic product API with CRUD operations
-- Entity Framework configured with Products model
-- Initial migration created and applied
+- Entity Framework configured with Products model using .NET 8 with wildcard package versions (`8.*`)
+- Initial migration checked in and ready to apply with `make migrate`
 - Blazor Server SPA configured with basic layout and navigation
 - API endpoints accessible via /swagger/index.html
 - Main SPA application at /app route with three sections:
@@ -52,6 +57,7 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
   - Settings: Application configuration interface
 - Client-side navigation with no page reloads between sections
 - HttpClient configured for API communication
+- Makefile provides convenient targets for all common operations
 
 ## Architecture Notes
 - Hybrid architecture: Web API backend + Blazor Server frontend
@@ -64,7 +70,10 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 ## Development Notes
 - Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)
 - global.json specifies .NET 8.0.410 as the target version
-- Always use `./dotnet-build.sh` for all dotnet CLI operations to handle cross-platform SDK version differences
-- The wrapper script temporarily hides global.json during execution, allowing local development flexibility
+- New developer setup: `make check` then `make migrate` to apply database migrations
+- For new migrations, use: `./dotnet-build.sh ef migrations add <MigrationName>`
+- The dotnet-build.sh wrapper script temporarily hides global.json during execution, allowing local development flexibility while supporting CI/CD servers with strict version requirements
+- dotnet-build.sh validates that both `dotnet` and `dotnet-ef` CLIs are installed before execution
 - All build errors have been resolved and application compiles successfully
-- Makefile uses the wrapper script for consistency
+- Makefile uses the wrapper script for consistency across all dotnet operations
+- Package versions use wildcards (`8.*`) to support flexibility across different developer environments while maintaining .NET 8 compatibility
