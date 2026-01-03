@@ -1,9 +1,17 @@
 # DotNetWebApp
 
-.NET version 8 application manually created with the help of ChatGPT4. Make sure to have a local SQL Server database installed.
+.NET version 8 application manually created with the help of ChatGPT4.
 
 # Setup
+
+## 1. Install SQL Server
+Run the setup script to install SQL Server (Docker or native Linux):
+```bash
+./setup.sh
 ```
+
+## 2. Setup .NET tools and build
+```bash
 dotnet tool install --global dotnet-ef --version 8.*
 make check
 make migrate
@@ -27,6 +35,13 @@ make test
 ```
 
 # Running
+
+For active development (with hot reload):
+```
+make dev
+```
+
+For production-like testing (without hot reload):
 ```
 make run
 ```

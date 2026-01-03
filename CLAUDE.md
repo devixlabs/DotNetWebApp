@@ -15,7 +15,8 @@ This is a .NET 8 Web API project with Entity Framework Core for data access and 
 ## Key Commands
 - Check/Setup: `make check` (restore and build)
 - Build: `make build`
-- Run: `make run`
+- Run (dev): `make dev` (with hot reload - use for active development)
+- Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test`
 - Apply Migrations: `make migrate`
 - Add Migration: `./dotnet-build.sh ef migrations add <MigrationName>`
@@ -23,7 +24,7 @@ This is a .NET 8 Web API project with Entity Framework Core for data access and 
 - Clean: `make clean`
 
 ## Build Commands
-- The project uses a Makefile with the following targets: `check`, `build`, `run`, `test`, `migrate`, `docker-build`, `clean`
+- The project uses a Makefile with the following targets: `check`, `build`, `dev`, `run`, `test`, `migrate`, `docker-build`, `clean`
 - The dotnet-build.sh script is located in the project root and handles global.json SDK version conflicts
 - Use `make <target>` for standard operations
 - Use `./dotnet-build.sh <command>` directly only for advanced dotnet CLI operations not covered by Makefile targets
@@ -67,10 +68,16 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 - CSS animations defined in wwwroot/css/app.css (pulse, spin, slideIn)
 - Product model defined inline in SpaApp.razor (should be moved to Models/ folder)
 
+## Secrets Management
+- Project uses **User Secrets** for local development (see SECRETS.md for details)
+- Connection strings stored in `~/.microsoft/usersecrets/`, never in git
+- `setup.sh` script automatically configures User Secrets when setting up SQL Server
+- Manual management: `dotnet user-secrets list`, `dotnet user-secrets set`, etc.
+
 ## Development Notes
 - Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)
 - global.json specifies .NET 8.0.410 as the target version
-- New developer setup: `make check` then `make migrate` to apply database migrations
+- New developer setup: Run `./setup.sh` to install SQL Server and configure secrets, then `make check` and `make migrate`
 - For new migrations, use: `./dotnet-build.sh ef migrations add <MigrationName>`
 - The dotnet-build.sh wrapper script temporarily hides global.json during execution, allowing local development flexibility while supporting CI/CD servers with strict version requirements
 - dotnet-build.sh validates that both `dotnet` and `dotnet-ef` CLIs are installed before execution
