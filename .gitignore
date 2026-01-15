@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # Claude Code
 .claude/
+
+# Project and App Specific
+.env.local
+
