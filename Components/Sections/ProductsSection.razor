@@ -42,8 +42,10 @@
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="SpaApp.Product" Context="product" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="200px">
                     <Template Context="product">
-                        <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="edit" class="m-1" Click="@(args => EditProduct(product.Id))" />
-                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" class="m-1" Click="@(args => DeleteProduct(product.Id))" />
+                        <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="6px">
+                            <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="edit" Click="@(args => EditProduct(product.Id))" />
+                            <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Click="@(args => DeleteProduct(product.Id))" />
+                        </RadzenStack>
                     </Template>
                     <HeaderTemplate>
                         <span>Actions</span>
