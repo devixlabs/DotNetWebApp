@@ -10,6 +10,14 @@ Run the setup script to install SQL Server (Docker or native Linux):
 ./setup.sh
 ```
 
+## Database (Docker)
+If you chose Docker in `./setup.sh`, use these commands to manage the SQL Server container:
+```bash
+make db-start
+make db-stop
+make db-logs
+```
+
 ## 2. Setup .NET tools and build
 ```bash
 dotnet tool install --global dotnet-ef --version 8.*

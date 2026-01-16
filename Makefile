@@ -2,7 +2,7 @@ DOTNET = ./dotnet-build.sh
 IMAGE_NAME = dotnetwebapp
 TAG = latest
 
-.PHONY: clean check build migrate test docker-build run dev
+.PHONY: clean check build migrate test docker-build run dev db-start db-stop db-logs
 
 clean:
 	$(DOTNET) clean
@@ -33,3 +33,16 @@ run:
 dev:
 	$(DOTNET) watch
 
+# Start the SQL Server Docker container used for local dev
+db-start:
+	@docker ps -a --format '{{.Names}}' | grep -q '^sqlserver-dev$$' && \
+		docker start sqlserver-dev || \
+		( echo "sqlserver-dev container not found. Run ./setup.sh and choose Docker." && exit 1 )
+
+# Stop the SQL Server Docker container
+db-stop:
+	@docker stop sqlserver-dev
+
+# Tail logs for the SQL Server Docker container
+db-logs:
+	@docker logs -f sqlserver-dev
