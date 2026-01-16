@@ -1,8 +1,11 @@
-using Microsoft.EntityFrameworkCore;
 using DotNetWebApp.Data;
+using DotNetWebApp.Data.Plugins;
+using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +20,9 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddRadzenComponents();
 builder.Services.Configure<AppCustomizationOptions>(
     builder.Configuration.GetSection("AppCustomization"));
+builder.Services.Configure<TenantSchemaOptions>(
+    builder.Configuration.GetSection("TenantSchema"));
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
     var navigationManager = sp.GetRequiredService<NavigationManager>();
@@ -25,6 +31,9 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
+builder.Services.AddScoped<ICustomerModelPlugin, DefaultProductModelPlugin>();
+builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
