@@ -1,219 +1,79 @@
 @page "/app"
-@inject HttpClient Http
-@inject IJSRuntime JSRuntime
+@page "/app/{Section?}"
 @inject NavigationManager Navigation
+@inject ISpaSectionService SpaSections
+@inject IProductService ProductService
 
 <PageTitle>DotNet SPA</PageTitle>
 
-<div class="spa-container">
-    <div class="spa-sidebar">
-        <h3>Navigation</h3>
-        <nav class="spa-nav">
-            <button class="spa-nav-btn @(activeSection == "dashboard" ? "active" : "")" 
-                    @onclick="@(() => LoadSection("dashboard"))">
-                📊 Dashboard
-            </button>
-            <button class="spa-nav-btn @(activeSection == "products" ? "active" : "")" 
-                    @onclick="@(() => LoadSection("products"))">
-                📦 Products
-            </button>
-            <button class="spa-nav-btn @(activeSection == "settings" ? "active" : "")" 
-                    @onclick="@(() => LoadSection("settings"))">
-                ⚙️ Settings
-            </button>
-        </nav>
-    </div>
+<RadzenRow Gap="20px" Style="min-height: calc(100vh - 140px);">
+    <RadzenColumn Size="12">
+        <RadzenStack Gap="20px">
+            <SectionHeader Title="@SpaSections.GetInfo(activeSection).Title" IsLoading="@IsLoading" />
 
-    <div class="spa-main">
-        <div class="spa-header">
-            <h1>@GetSectionTitle()</h1>
-            @if (isLoading)
-            {
-                <div class="loading-indicator">
-                    <span>Loading...</span>
-                </div>
-            }
-        </div>
-
-        <div class="spa-content">
-            @if (activeSection == "dashboard")
+            @if (activeSection == SpaSection.Dashboard)
             {
                 <DashboardSection />
             }
-            else if (activeSection == "products")
+            else if (activeSection == SpaSection.Products)
             {
-                <ProductsSection Products="@products" IsLoading="@isLoading" OnRefresh="@LoadProducts" />
+                <ProductsSection Products="@products" IsLoading="@IsLoading" OnRefresh="@LoadProducts" />
             }
-            else if (activeSection == "settings")
+            else if (activeSection == SpaSection.Settings)
             {
                 <SettingsSection />
             }
-        </div>
-    </div>
-</div>
-
-<style>
-    .spa-container {
-        display: flex;
-        height: calc(100vh - 100px);
-        gap: 20px;
-    }
-
-    .spa-sidebar {
-        width: 250px;
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 8px;
-    }
-
-    .spa-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 20px;
-    }
-
-    .spa-nav-btn {
-        background: white;
-        border: 1px solid #dee2e6;
-        padding: 12px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        text-align: left;
-        transition: all 0.2s;
-    }
-
-    .spa-nav-btn:hover {
-        background: #e9ecef;
-        border-color: #007bff;
-    }
-
-    .spa-nav-btn.active {
-        background: #007bff;
-        color: white;
-        border-color: #007bff;
-    }
-
-    .spa-main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .spa-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .spa-content {
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .loading-indicator {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #6c757d;
-    }
-
-    .loading-indicator span {
-        animation: pulse 1.5s ease-in-out infinite;
-    }
-</style>
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
 
 @code {
-    private string activeSection = "dashboard";
-    private bool isLoading = false;
-    private List<Product>? products;
+    private SpaSection activeSection = SpaSection.Dashboard;
+    private AsyncUiState? loadingState;
+    private IReadOnlyList<Product>? products;
 
-    protected override async Task OnInitializedAsync()
+    private bool IsLoading => loadingState?.IsBusy == true;
+
+    [Parameter] public string? Section { get; set; }
+
+    protected override void OnInitialized()
     {
-        // Set the HttpClient base address for API calls
-        Http.BaseAddress = new Uri(Navigation.BaseUri);
-        await LoadSection(activeSection);
+        loadingState = new AsyncUiState(() => InvokeAsync(StateHasChanged));
+        activeSection = SpaSections.DefaultSection;
     }
 
-    private async Task LoadSection(string section)
+    protected override async Task OnParametersSetAsync()
     {
-        if (activeSection == section && !isLoading) return;
+        var requestedSection = SpaSections.FromRouteSegment(Section) ?? SpaSections.DefaultSection;
+        await LoadSection(requestedSection);
+    }
+
+    private async Task LoadSection(SpaSection section)
+    {
+        if (activeSection == section && !IsLoading)
+        {
+            return;
+        }
 
         activeSection = section;
-        isLoading = true;
-        StateHasChanged();
 
-        try
+        await loadingState!.RunAsync(async () =>
         {
-            // Simulate navigation and data loading
-            await JSRuntime.InvokeVoidAsync("history.replaceState", null, "", $"/app#{section}");
+            SpaSections.NavigateTo(section);
 
-            if (section == "products")
+            if (section == SpaSection.Products)
             {
                 await LoadProducts();
             }
             else
             {
-                // Simulate loading delay for other sections
                 await Task.Delay(500);
             }
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+        });
     }
 
     private async Task LoadProducts()
     {
-        try
-        {
-            isLoading = true;
-            StateHasChanged();
-
-            // Load products from API
-            var response = await Http.GetAsync("/api/products");
-            if (response.IsSuccessStatusCode)
-            {
-                products = await response.Content.ReadFromJsonAsync<List<Product>>();
-            }
-            else
-            {
-                products = new List<Product>(); // Handle error case
-            }
-        }
-        catch (Exception)
-        {
-            // Handle error - could log this
-            products = new List<Product>();
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private string GetSectionTitle()
-    {
-        return activeSection switch
-        {
-            "dashboard" => "Dashboard",
-            "products" => "Products Management",
-            "settings" => "Application Settings",
-            _ => "Dashboard"
-        };
-    }
-
-    public class Product
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-        public decimal Price { get; set; }
-        public string Description { get; set; } = "";
+        products = await ProductService.GetProductsAsync();
     }
 }

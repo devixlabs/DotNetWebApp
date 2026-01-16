@@ -1,34 +1,30 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">DotNetWebApp</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+@inject ISpaSectionService SpaSections
+@inject IOptions<AppCustomizationOptions> AppOptions
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                🏠 Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="app">
-                🚀 Application
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText" Multiple="false">
+    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Home" Icon="home" Path="/" />
+    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Application" Icon="apps" Expanded="true">
+        @foreach (var item in SpaSections.Sections)
+        {
+            <RadzenPanelMenuItem Text="@item.NavLabel" Icon="@GetSectionIcon(item.Section)" Path="@GetSectionPath(item)" />
+        }
+    </RadzenPanelMenuItem>
+</RadzenPanelMenu>
 
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    private static string GetSectionIcon(SpaSection section)
     {
-        collapseNavMenu = !collapseNavMenu;
+        return section switch
+        {
+            SpaSection.Dashboard => "dashboard",
+            SpaSection.Products => "inventory_2",
+            SpaSection.Settings => "settings",
+            _ => "apps"
+        };
+    }
+
+    private static string GetSectionPath(SpaSectionInfo section)
+    {
+        return section.Section == SpaSection.Dashboard ? "app" : $"app/{section.RouteSegment}";
     }
 }

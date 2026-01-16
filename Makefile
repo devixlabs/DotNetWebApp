@@ -33,7 +33,7 @@ run:
 
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 dev:
-	$(DOTNET) watch
+	$(DOTNET) watch run --project DotNetWebApp.csproj --launch-profile https
 
 # Start the SQL Server Docker container used for local dev
 db-start:

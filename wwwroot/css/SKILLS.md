@@ -1,18 +1,14 @@
-# CSS & UI Styling Guide
+# CSS & Radzen UI Styling Guide
 
-This guide covers CSS, Bootstrap, and Radzen Blazor theme integration for the DotNetWebApp project. Read this BEFORE making CSS or visual styling changes.
+This guide covers Radzen Blazor theme integration and custom CSS for the DotNetWebApp project. Read this before making CSS or visual styling changes.
 
 ---
 
-## Critical Context: Theme Conflicts
+## Project UI Stack
 
-### The Problem
-This project uses **Bootstrap defaults** (light theme) with **Radzen Blazor components**. Mismatched themes cause invisible text and UI elements:
-- Light text on light backgrounds = invisible
-- Dark backgrounds with dark text = invisible
+This project uses **Radzen Blazor components and themes only**. Bootstrap is not included.
 
-### The Solution
-**Always maintain theme consistency across all CSS files and component configurations.**
+**Goal**: Keep styling consistent with the active Radzen theme and avoid hardcoded colors on layout containers.
 
 ---
 
@@ -20,281 +16,153 @@ This project uses **Bootstrap defaults** (light theme) with **Radzen Blazor comp
 
 ```
 wwwroot/css/
-├── app.css                          # Custom application styles (THIS FILE)
-└── bootstrap/
-    └── bootstrap.min.css           # Minimal Bootstrap CSS (INCOMPLETE)
+└── app.css                          # Custom application styles (THIS FILE)
 ```
 
 ### app.css (Custom Styles)
 **Location**: `/wwwroot/css/app.css`
 
 **Purpose**: All custom application styling including:
-- Layout structure (`.page`, `.sidebar`, `.top-row`)
-- Navigation styling (`.nav-item`, `.navbar-brand`)
-- Bootstrap component supplements (`.navbar-toggler-icon`, `.navbar-dark .navbar-toggler`)
+- Radzen layout wrappers (`.app-layout`, `.app-header`, `.app-sidebar`, `.app-body`)
+- Page-level spacing (`.body-content`)
+- Any custom component tweaks
 - CSS animations (`@keyframes pulse`, `spin`, `slideIn`)
 
-**Key Rule**: Never add hardcoded `background-color` or `color` to layout containers (`.top-row`, `.page`, etc.) that might conflict with theme classes.
-
-### bootstrap.min.css (Minimal Bootstrap)
-**Location**: `/wwwroot/css/bootstrap/bootstrap.min.css`
-
-**Status**: Intentionally minimal - only includes basic utility classes.
-
-**What's MISSING** (must be added to `app.css` if needed):
-- `.navbar-toggler-icon` - hamburger menu icon SVG
-- `.navbar-dark` variants - dark navbar button/link styling
-- Full button styles
-- Form controls
-- Grid system
-- Most Bootstrap components
-
-**First line comment**: `/* Minimal Bootstrap CSS - replace with full Bootstrap if needed */`
+**Rule**: Avoid hardcoded background or text colors on layout containers unless the Radzen theme is explicitly updated to match.
 
 ---
 
 ## Radzen Blazor Theme Configuration
 
 ### Theme Files
-**Location**: `Pages/_Layout.cshtml` (lines 10-11)
+**Location**: `Pages/_Layout.cshtml`
 
-**Current Configuration** (Light Theme):
+**Current Configuration** (Material Light):
 ```html
 <link href="_content/Radzen.Blazor/css/material-base.css" rel="stylesheet" />
 <link href="_content/Radzen.Blazor/css/material.css" rel="stylesheet" />
 ```
 
 ### Theme Options
-
-**Light Theme** (current):
-```html
-<link href="_content/Radzen.Blazor/css/material-base.css" rel="stylesheet" />
-<link href="_content/Radzen.Blazor/css/material.css" rel="stylesheet" />
-```
-- ✓ Compatible with Bootstrap defaults (white background, dark text)
-- ✓ Good for projects using standard light mode
-
-**Dark Theme** (causes conflicts):
-```html
-<link href="_content/Radzen.Blazor/css/material-dark-base.css" rel="stylesheet" />
-<link href="_content/Radzen.Blazor/css/material-dark.css" rel="stylesheet" />
-```
-- ✗ Light text on Bootstrap's light background = invisible
-- ✗ Requires dark background throughout application
-- ⚠️ Only use if entire app is dark-themed
-
-### Other Radzen Themes
 Radzen offers multiple theme families:
 - `material` / `material-dark`
 - `default` / `default-dark`
 - `humanistic` / `humanistic-dark`
 - `software` / `software-dark`
 
-**Rule**: Choose theme based on your Bootstrap/global background color.
+**Rule**: If you switch to a dark theme, ensure layout backgrounds and custom colors remain readable.
 
 ---
 
-## Bootstrap Integration
+## Layout & Navigation Components
 
-### Default Bootstrap Behavior
-- **Background**: White (`#fff`)
-- **Text**: Dark (`#212529`)
-- **Links**: Blue (`#0d6efd`)
+### Layout Structure
 
-### Minimal Bootstrap CSS Included
-Our `bootstrap.min.css` only includes:
-```css
-.container-fluid, .navbar, .navbar-dark, .navbar-brand, .navbar-toggler,
-.nav-link, .alert, .alert-secondary, .btn, .mt-4, .px-3, .px-4, .me-2,
-.flex-column, .collapse, .d-flex, .text-nowrap
+```
+Shared/
+  MainLayout.razor        <- RadzenLayout, RadzenHeader, RadzenSidebar, RadzenBody, RadzenComponents
+  NavMenu.razor           <- RadzenPanelMenu
+Components/Sections/
+  ProductsSection.razor   <- Product management UI with RadzenDataGrid
+  SettingsSection.razor   <- Settings UI with RadzenStack, RadzenCard, etc.
 ```
 
-### Bootstrap Components That Need Custom CSS
+### Key Containers
+- `.app-layout` - Layout wrapper
+- `.app-header` - Header row
+- `.app-sidebar` - Sidebar container
+- `.app-body` - Main content area
+- `.body-content` - Content width constraint
 
-#### 1. Navbar Toggler (Hamburger Menu)
-**Problem**: Minimal Bootstrap CSS lacks `.navbar-toggler-icon` styling.
+### Important: RadzenComponents Directive
+**Location**: End of `MainLayout.razor`
 
-**Solution** (in `app.css`):
-```css
-.navbar-toggler-icon {
-    display: inline-block;
-    width: 1.5em;
-    height: 1.5em;
-    vertical-align: middle;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 100%;
-}
+```razor
+<RadzenComponents />
 ```
 
-**Key Points**:
-- Uses SVG data URI for hamburger icon (three horizontal lines)
-- Stroke color is `rgba(255, 255, 255, 0.85)` for dark navbars
-- Change stroke color if using light navbar theme
+This directive is **required** for Radzen features like toast notifications, dialogs, and context menus. Always ensure it's present in the main layout.
 
-#### 2. Dark Navbar Styling
-**Problem**: `.navbar-dark` class doesn't style the toggler button in minimal Bootstrap.
+---
 
-**Solution** (in `app.css`):
-```css
-.navbar-dark .navbar-toggler {
-    color: rgba(255, 255, 255, 0.85);
-    border-color: rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.08);
-}
+## Radzen Component Property Syntax
 
-.navbar-dark .navbar-toggler:hover,
-.navbar-dark .navbar-toggler:focus {
-    border-color: rgba(255, 255, 255, 0.75);
-    background-color: rgba(255, 255, 255, 0.15);
-}
+### Critical: Enum Properties Require @ Prefix
+
+**WRONG** (will cause compile error):
+```razor
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="Center" />
+<RadzenPanelMenu DisplayStyle="MenuItemDisplayStyle.IconAndText" />
 ```
 
-**Key Points**:
-- Default state: visible border (50% opacity) and subtle background (8% opacity)
-- Hover/focus state: brighter border (75% opacity) and more prominent background (15% opacity)
-- Ensures button is always visible, not just on interaction
+**CORRECT** (proper Razor syntax):
+```razor
+<RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" />
+<RadzenPanelMenu DisplayStyle="@MenuItemDisplayStyle.IconAndText" />
+```
+
+### Common Radzen Enums in This Project
+- `MenuItemDisplayStyle` - `Icon`, `Text`, `IconAndText`
+- `Orientation` - `Horizontal`, `Vertical`
+- `AlignItems` - `Start`, `Center`, `End`, `Stretch`
+- `ButtonStyle` - `Primary`, `Secondary`, `Danger`, `Warning`, `Success`, `Light`
+- `TextStyle` - `Subtitle1`, `Subtitle2`, `Body1`, `Body2`, etc.
 
 ---
 
 ## Common CSS Issues & Solutions
 
-### Issue 1: Invisible Text After Theme Change
-**Symptoms**: Text appears very light gray or invisible.
+### Issue: Compile Error "Name does not exist in current context"
+**Cause**: Radzen enum property missing `@` prefix (e.g., `DisplayStyle="MenuItemDisplayStyle.IconAndText"`).
 
-**Causes**:
-- Radzen dark theme (light text) with Bootstrap light background
-- Hardcoded `background-color` in CSS overriding theme colors
-- `.top-row` or container divs with fixed colors
+**Solution**: Always prefix enum expressions with `@`:
+- ✅ `DisplayStyle="@MenuItemDisplayStyle.IconAndText"`
+- ✅ `AlignItems="@AlignItems.Center"`
+- ✅ `Orientation="@Orientation.Horizontal"`
 
-**Solution**:
-1. Check `Pages/_Layout.cshtml` for Radzen theme files
-2. Verify theme matches your Bootstrap background (light or dark)
-3. Remove hardcoded `background-color` from layout containers in `app.css`
-4. Let theme classes and component styles handle colors
-
-### Issue 2: Invisible Navbar Toggler Button
-**Symptoms**: Button shows as empty box or light gray box.
-
-**Causes**:
-- Missing `.navbar-toggler-icon` SVG background-image
-- Wrong stroke color in SVG (dark stroke on dark background)
-- Missing border or background styling
+### Issue: Invisible Text After Theme Change
+**Cause**: Theme switch without updating custom colors.
 
 **Solution**:
-1. Add `.navbar-toggler-icon` styling with SVG (see Bootstrap Components section)
-2. Add `.navbar-dark .navbar-toggler` styling for visibility
-3. Ensure stroke color contrasts with navbar background
+1. Verify the theme links in `Pages/_Layout.cshtml`
+2. Remove or adjust hardcoded colors in `wwwroot/css/app.css`
+3. Let Radzen theme variables drive component colors
 
-### Issue 3: CSS Changes Not Appearing
-**Causes**:
-- Browser CSS cache
-- `.cshtml` files require server restart (not hot-reloadable)
-- Old CSS still served
+### Issue: Styles Not Updating
+**Cause**: Browser cache or non-hot-reloaded files.
 
 **Solutions**:
-- **For `.css` files**: Hard refresh browser (`Ctrl+Shift+R` or `Cmd+Shift+R`)
-- **For `.cshtml` files**: Stop server (`Ctrl+C`) and restart with `make dev` or `make run`
-- **Clear browser cache**: DevTools > Network tab > "Disable cache" checkbox
-
-### Issue 4: Layout Containers Forcing Wrong Colors
-**Symptoms**: Theme changes don't affect certain sections.
-
-**Causes**:
-- Hardcoded `background-color` or `color` in CSS
-- Example: `.top-row { background-color: #f7f7f7; }`
-
-**Solution**:
-- Remove hardcoded colors from layout containers
-- Let Bootstrap classes (`.navbar-dark`, `.bg-*`) and Radzen themes control colors
-- Only add colors to specific components, not layout wrappers
-
----
-
-## Blazor Component Styling
-
-### Where Styles Are Applied
-
-```
-Pages/
-  _Layout.cshtml          <- Loads CSS files, sets <head>
-Shared/
-  MainLayout.razor        <- Uses .page, .sidebar, .top-row
-  NavMenu.razor           <- Uses .navbar-dark, .navbar-toggler
-Components/Pages/
-  Home.razor              <- Inherits MainLayout styles
-  SpaApp.razor            <- Inherits MainLayout styles
-```
-
-### CSS Class Hierarchy
-1. **Radzen theme** (loaded first in `_Layout.cshtml`)
-2. **Bootstrap** (loaded second)
-3. **Custom app.css** (loaded last, overrides above)
-
-**Rule**: Specific selectors in `app.css` override generic Radzen/Bootstrap styles.
-
-### Component-Specific Styling
-
-**NavMenu.razor** uses:
-- `.top-row` - header bar in sidebar
-- `.navbar-dark` - dark theme navbar
-- `.navbar-toggler` - hamburger menu button
-- `.navbar-brand` - app name/logo
-- `.nav-item`, `.nav-link` - navigation links
-
-**MainLayout.razor** uses:
-- `.page` - root container
-- `.sidebar` - left navigation panel
-- `.top-row` - top bar in main content area
+- **For `.css` files**: Hard refresh (`Ctrl+Shift+R` or `Cmd+Shift+R`)
+- **For `.cshtml` files**: Restart server (`make dev` or `make run`)
 
 ---
 
 ## Hot Reload Behavior
 
 ### What Hot Reloads (No Server Restart Needed)
-- ✓ `.css` files in `wwwroot/css/`
-- ✓ `.razor` component files
-- ✓ C# code in components
-- ✓ JavaScript files in `wwwroot/js/`
+- `.css` files in `wwwroot/css/`
+- `.razor` component files
+- C# code in components
+- JavaScript files in `wwwroot/js/`
 
 ### What Requires Server Restart
-- ✗ `.cshtml` files (Razor pages, `_Layout.cshtml`, `_Host.cshtml`)
-- ✗ `Program.cs` configuration
-- ✗ Service registrations
+- `.cshtml` files (Razor pages, `_Layout.cshtml`, `_Host.cshtml`)
+- `Program.cs` configuration
+- Service registrations
 
 **Development Command**: `make dev` (uses `dotnet watch` for hot reload)
-
-**Production-like Command**: `make run` (no hot reload)
 
 ---
 
 ## CSS Best Practices for This Project
 
-### 1. Theme Consistency
-- Keep Radzen theme aligned with Bootstrap background expectations
-- Test UI changes with both light and dark themes if supporting both
-- Never mix light theme text colors with dark theme backgrounds
-
-### 2. Color Usage
-- Avoid hardcoded hex colors in layout containers
-- Use `rgba()` with opacity for overlays and subtle backgrounds
-- Use CSS custom properties (`--variable-name`) for repeated colors
-
-### 3. Component Styling
-- Check minimal Bootstrap CSS first before adding styles
-- Add missing Bootstrap component styles to `app.css`
-- Document why custom styles are needed (comment in CSS)
-
-### 4. Browser Compatibility
-- Test navbar toggler on mobile viewport (< 768px)
-- Use vendor prefixes for animations if needed
-- Test hard refresh behavior after CSS changes
-
-### 5. Maintenance
-- Keep comment at top of `bootstrap.min.css`: `/* Minimal Bootstrap CSS - replace with full Bootstrap if needed */`
-- Group related styles in `app.css` with section comments
-- Document theme conflicts and resolutions in this file
+1. Prefer Radzen components over raw HTML elements when possible.
+2. Use Radzen theme classes and component properties before custom CSS.
+3. Keep layout containers neutral; let the theme define colors.
+4. Group related styles in `app.css` with section comments when needed.
+5. **Always use `@` prefix for enum properties** in Radzen components (see Radzen Component Property Syntax section above).
+6. For component-specific styles, use scoped `<style>` blocks within the `.razor` component file.
+7. For shared layout styles, add to `wwwroot/css/app.css`.
 
 ---
 
@@ -302,85 +170,21 @@ Components/Pages/
 
 After making CSS changes, verify:
 
-- [ ] Text is visible on all backgrounds (light and dark areas)
-- [ ] Navbar toggler button shows hamburger icon
-- [ ] Navbar toggler button visible in default state (not just hover)
-- [ ] Hover states provide visual feedback
+- [ ] Text is visible on all backgrounds
+- [ ] Sidebar and header align correctly at mobile sizes
+- [ ] Radzen components render with expected theme colors
 - [ ] Hard refresh browser to clear CSS cache
-- [ ] Test on mobile viewport (< 768px) if navbar-related
-- [ ] Check browser console for CSS errors or warnings
-- [ ] Verify no theme conflicts (light text on light bg, etc.)
 
 ---
 
-## Quick Reference: Current Configuration
+## Section Components Reference
 
-### Active Theme
-- **Radzen**: Material Light (`material-base.css`, `material.css`)
-- **Bootstrap**: Default light theme (white background, dark text)
-- **Compatibility**: ✓ Matched
+This project includes several key section components for the SPA:
 
-### Custom CSS Location
-- **File**: `/wwwroot/css/app.css`
-- **Purpose**: Layout, navigation, Bootstrap supplements, animations
+- `Components/Sections/ProductsSection.razor` - Product management with RadzenDataGrid
+- `Components/Sections/SettingsSection.razor` - Application settings interface
 
-### Bootstrap Supplements in app.css
-- `.navbar-toggler-icon` - Hamburger menu SVG (lines 31-40)
-- `.navbar-dark .navbar-toggler` - Dark navbar button visibility (lines 42-52)
-
-### Key Containers
-- `.page` - Root flex container
-- `.sidebar` - Left nav with gradient background
-- `.top-row` - Top bar (no hardcoded background color)
-
-### Known Limitations
-- Minimal Bootstrap CSS lacks most components
-- Must add component styles to `app.css` as needed
-- `.cshtml` changes require server restart
-
----
-
-## History of Issues & Resolutions
-
-### Jan 2, 2026 - Theme Conflict Resolution
-**Issue**: "Hello, SPA!" text invisible on home page, navbar toggler showing as grey box.
-
-**Root Causes**:
-1. `Pages/_Layout.cshtml` had Radzen dark theme CSS (light text)
-2. Bootstrap defaults use white background
-3. `.top-row` in `app.css` had hardcoded `background-color: #f7f7f7`
-4. Minimal Bootstrap CSS missing `.navbar-toggler-icon` and `.navbar-dark` variants
-
-**Resolutions**:
-1. Changed `_Layout.cshtml` to Radzen light theme (`material.css` instead of `material-dark.css`)
-2. Removed `background-color: #f7f7f7` from `.top-row` in `app.css`
-3. Added `.navbar-toggler-icon` with white SVG hamburger icon to `app.css`
-4. Added `.navbar-dark .navbar-toggler` styling with visible border/background to `app.css`
-
-**Lesson**: Always match Radzen theme to Bootstrap background expectations. Remove hardcoded colors from layout containers.
-
----
-
-## Future Considerations
-
-### If Switching to Full Bootstrap
-1. Replace `wwwroot/css/bootstrap/bootstrap.min.css` with full Bootstrap 5 CSS
-2. Remove Bootstrap supplement styles from `app.css` (navbar-toggler-icon, etc.)
-3. Test for style conflicts between full Bootstrap and Radzen
-4. Update this guide with new configuration
-
-### If Adding Dark Mode Toggle
-1. Create separate Radzen dark theme CSS references
-2. Add JavaScript to swap stylesheets dynamically
-3. Store user preference in localStorage
-4. Update all hardcoded colors to use CSS custom properties
-5. Test navbar toggler SVG stroke color for both themes
-
-### If Adding Custom Radzen Theme
-1. Follow Radzen theme customization guide
-2. Ensure base colors match Bootstrap or override Bootstrap defaults
-3. Test all Radzen components (DataGrid, Dialog, Notification, etc.)
-4. Document theme files in this guide
+These are loaded dynamically by the main SPA page and styled with scoped CSS blocks.
 
 ---
 
@@ -388,6 +192,15 @@ After making CSS changes, verify:
 
 - **Radzen Blazor Docs**: https://blazor.radzen.com/
 - **Radzen Themes**: https://blazor.radzen.com/themes
-- **Bootstrap 5 Docs**: https://getbootstrap.com/docs/5.0/
-- **Blazor CSS Isolation**: https://learn.microsoft.com/en-us/aspnet/core/blazor/components/css-isolation
+- **Radzen Component API**: https://blazor.radzen.com/docs/api/ (see MenuItemDisplayStyle, AlignItems, Orientation, etc.)
 - **Project Root SKILLS.md**: `/SKILLS.md` (Blazor components and JavaScript interop)
+
+---
+
+## Quick Debugging Checklist
+
+When build fails with enum-related errors:
+1. ✅ Check that all enum properties use `@` prefix (e.g., `@MenuItemDisplayStyle.IconAndText`)
+2. ✅ Verify the enum name is correct (e.g., `MenuItemDisplayStyle`, not `MenuDisplayStyle`)
+3. ✅ Run `make build` to validate changes
+4. ✅ For hot-reload issues with `.cshtml` files, restart with `make dev`

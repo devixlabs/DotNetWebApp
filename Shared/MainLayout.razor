@@ -1,19 +1,55 @@
 @inherits LayoutComponentBase
+@inject IOptions<AppCustomizationOptions> AppOptions
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+<RadzenLayout class="app-layout" style="@LayoutStyle">
+    <RadzenHeader class="app-header">
+        <RadzenSidebarToggle Click="@ToggleSidebar" />
+        <div class="app-brand">
+            @if (!string.IsNullOrWhiteSpace(AppOptions.Value.Branding.LogoUrl))
+            {
+                <img src="@AppOptions.Value.Branding.LogoUrl"
+                     alt="@AppOptions.Value.Branding.LogoAlt"
+                     class="app-logo" />
+            }
+            else
+            {
+                <div class="app-logo-text">@AppOptions.Value.Branding.LogoText</div>
+            }
+            <RadzenLabel Text="@AppOptions.Value.AppTitle" class="app-title" />
         </div>
-
-        <article class="content px-4">
+        <RadzenLink Path="@AppOptions.Value.SourceLinkUrl" Target="_blank" Text="@AppOptions.Value.SourceLinkText" class="app-header-link" />
+    </RadzenHeader>
+    <RadzenSidebar class="app-sidebar" @bind-Expanded="sidebarExpanded">
+        <NavMenu />
+    </RadzenSidebar>
+    <RadzenBody class="app-body">
+        <div class="body-content">
             @Body
-        </article>
-    </main>
-</div>
+        </div>
+    </RadzenBody>
+</RadzenLayout>
 
 <RadzenComponents />
+
+@code {
+    private bool sidebarExpanded = true;
+
+    private string LayoutStyle => BuildLayoutStyle();
+
+    private void ToggleSidebar()
+    {
+        sidebarExpanded = !sidebarExpanded;
+    }
+
+    private string BuildLayoutStyle()
+    {
+        var branding = AppOptions.Value.Branding;
+        return $"--app-font-family:{branding.FontFamily};" +
+               $"--app-primary:{branding.PrimaryColor};" +
+               $"--app-accent:{branding.AccentColor};" +
+               $"--app-header-bg:{branding.HeaderBackground};" +
+               $"--app-header-text:{branding.HeaderTextColor};" +
+               $"--app-logo-bg:{branding.LogoBackgroundColor};" +
+               $"--app-logo-text:{branding.LogoTextColor};";
+    }
+}
