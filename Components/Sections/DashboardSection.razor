@@ -1,156 +1,80 @@
-<div class="dashboard-section">
-    <div class="dashboard-grid">
-        <div class="dashboard-card">
-            <h4>📊 Total Products</h4>
-            @if (isLoading)
-            {
-                <p class="dashboard-number">Loading...</p>
-            }
-            else
-            {
-                <p class="dashboard-number">@totalProducts</p>
-            }
-        </div>
-        
-        <div class="dashboard-card">
-            <h4>💰 Revenue</h4>
-            <p class="dashboard-number">$@revenue.ToString("N2")</p>
-        </div>
-        
-        <div class="dashboard-card">
-            <h4>👥 Active Users</h4>
-            <p class="dashboard-number">@activeUsers</p>
-        </div>
-        
-        <div class="dashboard-card">
-            <h4>📈 Growth</h4>
-            <p class="dashboard-number">+@growthPercent%</p>
-        </div>
-    </div>
+<RadzenStack Gap="20px">
+    <RadzenRow Gap="20px">
+        <RadzenColumn Size="12" Medium="6" Large="3">
+            <RadzenCard>
+                <RadzenStack Gap="8px">
+                    <RadzenText Text="Total Products" TextStyle="TextStyle.Subtitle2" />
+                    @if (isLoading)
+                    {
+                        <RadzenText Text="Loading..." TextStyle="TextStyle.H5" />
+                    }
+                    else
+                    {
+                        <RadzenText Text="@summary.TotalProducts.ToString()" TextStyle="TextStyle.H4" />
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
 
-    <div class="dashboard-chart">
-        <h4>Recent Activity</h4>
-        <div class="activity-list">
-            <div class="activity-item">
-                <span class="activity-time">2 min ago</span>
-                <span class="activity-text">New product added</span>
-            </div>
-            <div class="activity-item">
-                <span class="activity-time">15 min ago</span>
-                <span class="activity-text">User registered</span>
-            </div>
-            <div class="activity-item">
-                <span class="activity-time">1 hour ago</span>
-                <span class="activity-text">Order completed</span>
-            </div>
-        </div>
-    </div>
-</div>
+        <RadzenColumn Size="12" Medium="6" Large="3">
+            <RadzenCard>
+                <RadzenStack Gap="8px">
+                    <RadzenText Text="Revenue" TextStyle="TextStyle.Subtitle2" />
+                    <RadzenText Text="@($"${summary.Revenue:N2}")" TextStyle="TextStyle.H4" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
 
-<style>
-    .dashboard-section {
-        padding: 20px;
-    }
+        <RadzenColumn Size="12" Medium="6" Large="3">
+            <RadzenCard>
+                <RadzenStack Gap="8px">
+                    <RadzenText Text="Active Users" TextStyle="TextStyle.Subtitle2" />
+                    <RadzenText Text="@summary.ActiveUsers.ToString()" TextStyle="TextStyle.H4" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
 
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
-    }
+        <RadzenColumn Size="12" Medium="6" Large="3">
+            <RadzenCard>
+                <RadzenStack Gap="8px">
+                    <RadzenText Text="Growth" TextStyle="TextStyle.Subtitle2" />
+                    <RadzenText Text="@($"+{summary.GrowthPercent}%")" TextStyle="TextStyle.H4" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
 
-    .dashboard-card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-    }
+    <RadzenCard>
+        <RadzenStack Gap="12px">
+            <RadzenText Text="Recent Activity" TextStyle="TextStyle.Subtitle2" />
+            <RadzenStack Gap="8px">
+                @foreach (var activity in summary.RecentActivities)
+                {
+                    <RadzenStack Orientation="@Orientation.Horizontal" JustifyContent="@JustifyContent.SpaceBetween" AlignItems="@AlignItems.Center">
+                        <RadzenText Text="@activity.When" TextStyle="TextStyle.Caption" />
+                        <RadzenText Text="@activity.Description" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenStack>
 
-    .dashboard-card h4 {
-        margin: 0 0 10px 0;
-        color: #6c757d;
-        font-size: 14px;
-    }
-
-    .dashboard-number {
-        font-size: 28px;
-        font-weight: bold;
-        color: #007bff;
-        margin: 0;
-    }
-
-    .dashboard-chart {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .dashboard-chart h4 {
-        margin-top: 0;
-        color: #333;
-    }
-
-    .activity-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .activity-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 4px;
-    }
-
-    .activity-time {
-        color: #6c757d;
-        font-size: 12px;
-    }
-
-    .activity-text {
-        font-weight: 500;
-    }
-</style>
-
-@inject HttpClient Http
+@inject IDashboardService DashboardService
 
 @code {
-    private int totalProducts = 0;
-    private decimal revenue = 45789.50m;
-    private int activeUsers = 1250;
-    private int growthPercent = 15;
+    private DashboardSummary summary = new();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardData();
-    }
-
-    private async Task LoadDashboardData()
-    {
         try
         {
-            // Set base address for API calls
-            Http.BaseAddress = new Uri($"{NavigationManager.BaseUri}");
-            
-            // Fetch real product count from API
-            totalProducts = await Http.GetFromJsonAsync<int>("api/products/count");
-            
-            isLoading = false;
-            StateHasChanged();
+            summary = await DashboardService.GetSummaryAsync();
         }
-        catch (Exception)
+        finally
         {
-            // Fall back to mock data if API call fails
-            totalProducts = 0;
             isLoading = false;
-            StateHasChanged();
         }
     }
 }
-
-@inject NavigationManager NavigationManager

@@ -1,6 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+    --app-font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    --app-primary: #0f766e;
+    --app-accent: #14b8a6;
+    --app-header-bg: linear-gradient(120deg, rgba(15,118,110,0.08), rgba(20,184,166,0.2));
+    --app-header-text: #0f172a;
+    --app-logo-bg: rgba(20,184,166,0.2);
+    --app-logo-text: #0f172a;
+    --app-page-bg: #f8fafc;
+}
+
 html, body {
     height: 100%;
     margin: 0;
+    font-family: var(--app-font-family);
+    background: var(--app-page-bg);
 }
 
 .app-layout {
@@ -12,6 +27,34 @@ html, body {
     align-items: center;
     gap: 0.75rem;
     padding: 0 1rem;
+    background: var(--app-header-bg);
+    color: var(--app-header-text);
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.app-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: var(--app-logo-bg);
+}
+
+.app-logo-text {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: var(--app-logo-bg);
+    color: var(--app-logo-text);
 }
 
 .app-title {

@@ -1,4 +1,30 @@
-<RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText">
-    <RadzenPanelMenuItem Text="Home" Icon="home" Path="/" />
-    <RadzenPanelMenuItem Text="Application" Icon="apps" Path="app" />
+@inject ISpaSectionService SpaSections
+@inject IOptions<AppCustomizationOptions> AppOptions
+
+<RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText" Multiple="false">
+    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Home" Icon="home" Path="/" />
+    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Application" Icon="apps" Expanded="true">
+        @foreach (var item in SpaSections.Sections)
+        {
+            <RadzenPanelMenuItem Text="@item.NavLabel" Icon="@GetSectionIcon(item.Section)" Path="@GetSectionPath(item)" />
+        }
+    </RadzenPanelMenuItem>
 </RadzenPanelMenu>
+
+@code {
+    private static string GetSectionIcon(SpaSection section)
+    {
+        return section switch
+        {
+            SpaSection.Dashboard => "dashboard",
+            SpaSection.Products => "inventory_2",
+            SpaSection.Settings => "settings",
+            _ => "apps"
+        };
+    }
+
+    private static string GetSectionPath(SpaSectionInfo section)
+    {
+        return section.Section == SpaSection.Dashboard ? "app" : $"app/{section.RouteSegment}";
+    }
+}

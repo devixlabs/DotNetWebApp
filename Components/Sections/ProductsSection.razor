@@ -1,99 +1,65 @@
 @using DotNetWebApp.Components.Pages
 
-<div class="products-section">
-    <div class="products-header">
-        <h4>Products Management</h4>
-        <div class="products-actions">
-            <RadzenButton Click="OnRefresh" IsBusy="@IsLoading" Text="@(IsLoading ? "Loading..." : "Refresh")" 
-                         Icon="refresh" ButtonStyle="ButtonStyle.Primary" />
-            <RadzenButton Click="AddNewProduct" Text="Add Product" Icon="add" 
-                         ButtonStyle="ButtonStyle.Success" />
-        </div>
-    </div>
+<RadzenCard>
+    <RadzenStack Gap="16px">
+        <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" JustifyContent="@JustifyContent.SpaceBetween">
+            <RadzenText Text="Products Management" TextStyle="TextStyle.Subtitle2" />
+            <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="8px">
+                <RadzenButton Click="OnRefresh" IsBusy="@IsLoading" Text="@(IsLoading ? "Loading..." : "Refresh")"
+                              Icon="refresh" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Click="AddNewProduct" Text="Add Product" Icon="add"
+                              ButtonStyle="ButtonStyle.Success" />
+            </RadzenStack>
+        </RadzenStack>
 
-    @if (Products == null || Products.Count == 0)
-    {
-        @if (IsLoading)
+        @if (Products == null || Products.Count == 0)
         {
-            <div class="loading-state">
-                <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
-                <p>Loading products...</p>
-            </div>
+            @if (IsLoading)
+            {
+                <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                    <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                    <RadzenText Text="Loading products..." TextStyle="TextStyle.Body2" />
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                    <RadzenText Text="No products found." TextStyle="TextStyle.Body2" />
+                    <RadzenButton Click="OnRefresh" Text="Load Products" ButtonStyle="ButtonStyle.Primary" />
+                </RadzenStack>
+            }
         }
         else
         {
-            <div class="empty-state">
-                <p>No products found.</p>
-                <RadzenButton Click="OnRefresh" Text="Load Products" ButtonStyle="ButtonStyle.Primary" />
-            </div>
+            <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowSorting="true" PageSize="5" AllowPaging="true"
+                           ShowPagingSummary="true" Data="@Products" TItem="Product" ColumnWidth="200px">
+                <Columns>
+                    <RadzenDataGridColumn TItem="Product" Property="Id" Title="ID" Width="80px" />
+                    <RadzenDataGridColumn TItem="Product" Property="Name" Title="Product Name" />
+                    <RadzenDataGridColumn TItem="Product" Property="Price" Title="Price" FormatString="{0:C}">
+                        <Template Context="product">
+                            <RadzenText Text="@($"{product.Price:C}")" TextStyle="TextStyle.Body1" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="Product" Context="product" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="200px">
+                        <Template Context="product">
+                            <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="6px">
+                                <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="edit" Click="@(args => EditProduct(product.Id))" />
+                                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Click="@(args => DeleteProduct(product.Id))" />
+                            </RadzenStack>
+                        </Template>
+                        <HeaderTemplate>
+                            <span>Actions</span>
+                        </HeaderTemplate>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
-    }
-    else
-    {
-        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowSorting="true" PageSize="5" AllowPaging="true" 
-                       ShowPagingSummary="true" Data="@Products" TItem="SpaApp.Product" ColumnWidth="200px">
-            <Columns>
-                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Id" Title="ID" Width="80px" />
-                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Name" Title="Product Name" />
-                <RadzenDataGridColumn TItem="SpaApp.Product" Property="Price" Title="Price" FormatString="{0:C}">
-                    <Template Context="product">
-                        <strong style="color: #28a745;">@($"{product.Price:C}")</strong>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="SpaApp.Product" Context="product" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="200px">
-                    <Template Context="product">
-                        <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="6px">
-                            <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="edit" Click="@(args => EditProduct(product.Id))" />
-                            <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Click="@(args => DeleteProduct(product.Id))" />
-                        </RadzenStack>
-                    </Template>
-                    <HeaderTemplate>
-                        <span>Actions</span>
-                    </HeaderTemplate>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
-    }
-</div>
-
-<style>
-    .products-section {
-        padding: 20px;
-    }
-
-    .products-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .products-header h4 {
-        margin: 0;
-        color: white;
-    }
-
-    .products-actions {
-        display: flex;
-        gap: 10px;
-    }
-
-    .loading-state, .empty-state {
-        text-align: center;
-        padding: 40px;
-        color: rgba(255, 255, 255, 0.7);
-    }
-
-    .loading-state p, .empty-state p {
-        margin-top: 20px;
-        color: rgba(255, 255, 255, 0.7);
-    }
-</style>
+    </RadzenStack>
+</RadzenCard>
 
 @code {
-    [Parameter] public List<SpaApp.Product>? Products { get; set; }
+    [Parameter] public IReadOnlyList<Product>? Products { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
 

@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using DotNetWebApp.Data;
+using DotNetWebApp.Models;
+using DotNetWebApp.Services;
+using Microsoft.AspNetCore.Components;
 using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,15 +15,16 @@ builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddRadzenComponents();
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<HttpClient>(sp =>
+builder.Services.Configure<AppCustomizationOptions>(
+    builder.Configuration.GetSection("AppCustomization"));
+builder.Services.AddScoped(sp =>
 {
-    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-    var httpClient = httpClientFactory.CreateClient();
-    // For Blazor Server, we'll set the base address dynamically
-    // This will be updated in the component based on the current request
-    return httpClient;
+    var navigationManager = sp.GetRequiredService<NavigationManager>();
+    return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
 });
+builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

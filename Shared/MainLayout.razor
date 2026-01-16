@@ -1,10 +1,23 @@
 @inherits LayoutComponentBase
+@inject IOptions<AppCustomizationOptions> AppOptions
 
-<RadzenLayout class="app-layout">
+<RadzenLayout class="app-layout" style="@LayoutStyle">
     <RadzenHeader class="app-header">
         <RadzenSidebarToggle Click="@ToggleSidebar" />
-        <RadzenLabel Text="DotNetWebApp" class="app-title" />
-        <RadzenLink Path="https://github.com/devixlabs/DotNetWebApp/" Target="_blank" Text="Source Code" class="app-header-link" />
+        <div class="app-brand">
+            @if (!string.IsNullOrWhiteSpace(AppOptions.Value.Branding.LogoUrl))
+            {
+                <img src="@AppOptions.Value.Branding.LogoUrl"
+                     alt="@AppOptions.Value.Branding.LogoAlt"
+                     class="app-logo" />
+            }
+            else
+            {
+                <div class="app-logo-text">@AppOptions.Value.Branding.LogoText</div>
+            }
+            <RadzenLabel Text="@AppOptions.Value.AppTitle" class="app-title" />
+        </div>
+        <RadzenLink Path="@AppOptions.Value.SourceLinkUrl" Target="_blank" Text="@AppOptions.Value.SourceLinkText" class="app-header-link" />
     </RadzenHeader>
     <RadzenSidebar class="app-sidebar" @bind-Expanded="sidebarExpanded">
         <NavMenu />
@@ -21,8 +34,22 @@
 @code {
     private bool sidebarExpanded = true;
 
+    private string LayoutStyle => BuildLayoutStyle();
+
     private void ToggleSidebar()
     {
         sidebarExpanded = !sidebarExpanded;
+    }
+
+    private string BuildLayoutStyle()
+    {
+        var branding = AppOptions.Value.Branding;
+        return $"--app-font-family:{branding.FontFamily};" +
+               $"--app-primary:{branding.PrimaryColor};" +
+               $"--app-accent:{branding.AccentColor};" +
+               $"--app-header-bg:{branding.HeaderBackground};" +
+               $"--app-header-text:{branding.HeaderTextColor};" +
+               $"--app-logo-bg:{branding.LogoBackgroundColor};" +
+               $"--app-logo-text:{branding.LogoTextColor};";
     }
 }
