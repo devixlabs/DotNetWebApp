@@ -1,6 +1,8 @@
 DOTNET = ./dotnet-build.sh
 IMAGE_NAME = dotnetwebapp
 TAG = latest
+DOTNET_ENVIRONMENT ?= Development
+ASPNETCORE_ENVIRONMENT ?= Development
 
 .PHONY: clean check build migrate test docker-build run dev db-start db-stop db-logs
 
@@ -17,7 +19,7 @@ build:
 	$(DOTNET) build --configuration Release
 
 migrate:
-	$(DOTNET) ef database update
+	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
 test:
 	$(DOTNET) test --configuration Release --no-build

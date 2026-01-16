@@ -117,19 +117,22 @@ elif [ "$choice" = "1" ]; then
     if command -v /opt/mssql/bin/sqlservr &> /dev/null; then
         echo "SQL Server is already installed."
         read -r -p "Reconfigure? (y/n): " reconfig
-        if [ "$reconfig" != "y" ]; then
-            exit 0
-        fi
+    if [ "$reconfig" != "y" ]; then
+        exit 0
     fi
+fi
 
-    echo "Detected: $OS $VER"
+echo "Detected: $OS $VER"
 
-    if [[ "$OS" == "ubuntu" ]]; then
-        # Ubuntu installation
-        echo "Installing for Ubuntu..."
+if [[ "$OS" == "ubuntu" ]]; then
+    # Ubuntu installation
+    echo "Installing for Ubuntu..."
+    echo ""
+    sudo -k
+    sudo -v
 
-        # Import Microsoft GPG key
-        curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+    # Import Microsoft GPG key
+    curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
 
         # Add SQL Server repository based on Ubuntu version
         if [[ "$VER" == "22.04" ]]; then
@@ -183,6 +186,29 @@ elif [ "$choice" = "1" ]; then
 
     echo ""
     echo -e "${GREEN}SQL Server installed and started successfully!${NC}"
+    echo ""
+    read -r -sp "Enter SA password to store in User Secrets (leave blank to skip): " SA_PASSWORD
+    echo ""
+    if [ -n "$SA_PASSWORD" ]; then
+        CONNECTION_STRING="Server=localhost,1433;Database=DotNetWebAppDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+
+        # Navigate to project directory and set user secret
+        cd "$(dirname "$0")" || exit 1
+
+        echo "Configuring connection string in User Secrets..."
+        if command -v dotnet &> /dev/null; then
+            dotnet user-secrets set "ConnectionStrings:DefaultConnection" "$CONNECTION_STRING" 2>/dev/null || {
+                echo "Note: User Secrets will be configured when you first run the project"
+                echo "Connection string stored for setup"
+            }
+            echo -e "${GREEN}Connection string stored in User Secrets${NC}"
+        else
+            echo "Note: dotnet CLI not found in current context"
+        fi
+    else
+        echo "Skipping User Secrets configuration."
+    fi
+
     echo ""
     echo "Install SQL Server command-line tools:"
     echo "  curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"

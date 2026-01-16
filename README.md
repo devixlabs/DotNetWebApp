@@ -24,6 +24,7 @@ dotnet tool install --global dotnet-ef --version 8.*
 make check
 make migrate
 ```
+If you're using native SQL Server (not Docker), ensure your connection string is set via User Secrets or an environment variable before running `make migrate`. See `SECRETS.md`.
 
 # Build
 ```

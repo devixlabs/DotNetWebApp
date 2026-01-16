@@ -69,6 +69,20 @@ export ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=DotN
 
 Note the double underscore `__` to represent the nested `ConnectionStrings:DefaultConnection` key.
 
+## Alternative: direnv (.envrc / .env.local)
+
+.NET does not load `.env` files automatically. If you use `direnv`, make sure your `.envrc` exports the connection string (you can source `.env.local` if you prefer):
+
+```bash
+export ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=DotNetWebAppDb;User Id=sa;Password=YourPassword;TrustServerCertificate=True;"
+```
+
+Then run:
+
+```bash
+direnv allow
+```
+
 ## Production Deployment
 
 For production, use:
