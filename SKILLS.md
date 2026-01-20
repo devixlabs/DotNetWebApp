@@ -323,6 +323,7 @@ If you need custom JS functions:
 
 ### API Calls with HttpClient
 
+<!-- FIXME: Endpoints are now singular (e.g., api/product) and dynamic (api/{EntityName}); update the sample URLs. BaseAddress is already set via DI in Program.cs. -->
 ```csharp
 @inject HttpClient Http
 
@@ -439,6 +440,7 @@ private async Task LoadData()
 
 ## Quick Reference: Current Project Structure
 
+<!-- FIXME: Outdated structure: include GenericEntityPage.razor, DynamicDataGrid.razor, Models/Generated, and ModelGenerator; remove Models/Product.cs. -->
 ```
 Components/
   Pages/
@@ -457,6 +459,7 @@ Models/
 
 ### Adding a New Section
 
+<!-- FIXME: SPA sections are coordinated via SpaSection enum + SpaSectionService/ISpaSectionService; update steps to include those files. -->
 1. Create `Components/Sections/NewSection.razor`
 2. Add parameters if receiving data from parent
 3. Add navigation button in `SpaApp.razor`
