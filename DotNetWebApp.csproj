@@ -16,10 +16,22 @@
     </PackageReference>
     <PackageReference Include="Radzen.Blazor" Version="7.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ModelGenerator\**" />
+    <Content Remove="ModelGenerator\**" />
+    <EmbeddedResource Remove="ModelGenerator\**" />
+    <None Remove="ModelGenerator\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="app.example.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -10,7 +10,11 @@ You're an expert .NET/C# engineer with deep knowledge of:
 - Database migrations and data modeling
 
 ## Project Overview
-This is a .NET 8 Web API project with Entity Framework Core for data access and is an SPA (Single Page Application) using Blazor Server.
+This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a YAML-driven data model/branding configuration.
+
+## Project Goal & Session Notes
+- **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.example.yaml` file for dynamic customization.
+- Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Key Commands
 - Check/Setup: `make check` (restore and build)
@@ -47,26 +51,21 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 - _Imports.razor - Global Blazor using statements
 
 ## Current State
-- Basic product API with CRUD operations
-- Entity Framework configured with Products model using .NET 8 with wildcard package versions (`8.*`)
-- Initial migration checked in and ready to apply with `make migrate`
-- Blazor Server SPA configured with basic layout and navigation
-- API endpoints accessible via /swagger/index.html
-- Main SPA application at /app route with three sections:
-  - Dashboard: Metrics and activity overview
-  - Products: AJAX-loaded product management with CRUD operations
-  - Settings: Application configuration interface
-- Client-side navigation with no page reloads between sections
-- HttpClient configured for API communication
-- Makefile provides convenient targets for all common operations
+- YAML-driven metadata and model definitions live in `app.example.yaml`.
+- `ModelGenerator` produces entities in `Models/Generated` with nullable optional value types.
+- `AppDbContext` discovers generated entities via reflection and pluralizes table names.
+- Generic entity UI (`GenericEntityPage.razor`, `DynamicDataGrid.razor`) and singular controllers (`ProductController`, `CategoryController`) are in place.
+- Nav menu renders a dynamic "Data" section using `AppDictionaryService`.
+- Migration `AddCatalogSchema` adds `Categories` and `Products` columns; run `make migrate` before Product/Category pages.
+- `make check`/`make build` pass; `make migrate` requires SQL Server running and a valid connection string.
 
 ## Architecture Notes
 - Hybrid architecture: Web API backend + Blazor Server frontend
 - SignalR connection for Blazor Server real-time updates
-- Shared data access through Entity Framework
-- SPA uses component-based architecture with section-specific components
+- Shared data access through Entity Framework with dynamic model registration
+- `GenericController<T>` routes match singular entity names; UI uses generic entity pages
+- `ModelGenerator` + `app.example.yaml` define entities; generated files live in `Models/Generated`
 - CSS animations defined in wwwroot/css/app.css (pulse, spin, slideIn)
-- Product model defined inline in SpaApp.razor (should be moved to Models/ folder)
 
 ## Secrets Management
 - Project uses **User Secrets** for local development (see SECRETS.md for details)
@@ -77,10 +76,10 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 ## Development Notes
 - Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)
 - global.json specifies .NET 8.0.410 as the target version
-- New developer setup: Run `./setup.sh` to install SQL Server and configure secrets, then `make check` and `make migrate`
+- New developer setup: Run `./setup.sh`, then `make check`, `make db-start` (if Docker), and `make migrate`
 - For new migrations, use: `./dotnet-build.sh ef migrations add <MigrationName>`
-- The dotnet-build.sh wrapper script temporarily hides global.json during execution, allowing local development flexibility while supporting CI/CD servers with strict version requirements
-- dotnet-build.sh validates that both `dotnet` and `dotnet-ef` CLIs are installed before execution
-- All build errors have been resolved and application compiles successfully
-- Makefile uses the wrapper script for consistency across all dotnet operations
+- `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and temporarily hides global.json during execution
+- `make check` runs `shellcheck setup.sh` and `shellcheck dotnet-build.sh` before restore/build
+- `make migrate` requires SQL Server running and a valid connection string; `dotnet-ef` may warn about version mismatches
+- Makefile uses the wrapper script for consistency across all dotnet operations; do not modify the system .NET runtime
 - Package versions use wildcards (`8.*`) to support flexibility across different developer environments while maintaining .NET 8 compatibility

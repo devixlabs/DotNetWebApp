@@ -1,4 +1,4 @@
-using DotNetWebApp.Models;
+using DotNetWebApp.Models.Generated;
 
 namespace DotNetWebApp.Services;
 

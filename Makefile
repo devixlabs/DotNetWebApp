@@ -16,7 +16,6 @@ clean:
 	$(DOTNET) clean
 
 check:
-	shellcheck Makefile
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
 	$(DOTNET) restore

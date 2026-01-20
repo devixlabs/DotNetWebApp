@@ -17,6 +17,13 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
+# Ensure DOTNET_ROOT is set so global tools can find the runtime.
+if [ -z "$DOTNET_ROOT" ]; then
+    DOTNET_PATH=$(command -v dotnet)
+    DOTNET_ROOT=$(dirname "$(readlink -f "$DOTNET_PATH")")
+    export DOTNET_ROOT
+fi
+
 # Check if dotnet-ef is installed
 if ! command -v dotnet-ef &> /dev/null; then
     echo "Error: dotnet-ef CLI not found in PATH" >&2

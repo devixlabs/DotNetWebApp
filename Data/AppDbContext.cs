@@ -1,26 +1,19 @@
-using DotNetWebApp.Data.Plugins;
 using DotNetWebApp.Data.Tenancy;
-using DotNetWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Reflection;
 
 namespace DotNetWebApp.Data
 {
     public class AppDbContext : DbContext {
-        private readonly IEnumerable<ICustomerModelPlugin> _modelPlugins;
-
         public AppDbContext(
             DbContextOptions<AppDbContext> options,
-            ITenantSchemaAccessor tenantSchemaAccessor,
-            IEnumerable<ICustomerModelPlugin> modelPlugins) : base(options)
+            ITenantSchemaAccessor tenantSchemaAccessor) : base(options)
         {
             Schema = tenantSchemaAccessor.Schema;
-            _modelPlugins = modelPlugins ?? Enumerable.Empty<ICustomerModelPlugin>();
         }
 
         public string Schema { get; }
-
-        public DbSet<Product> Products { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             base.OnModelCreating(modelBuilder);
@@ -30,13 +23,34 @@ namespace DotNetWebApp.Data
                 modelBuilder.HasDefaultSchema(Schema);
             }
 
-            foreach (var plugin in _modelPlugins)
+            // Dynamically register all entities in the Generated namespace
+            var entityTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => t.IsClass && t.Namespace == "DotNetWebApp.Models.Generated");
+
+            foreach (var type in entityTypes)
             {
-                if (plugin.AppliesTo(Schema))
+                modelBuilder.Entity(type)
+                    .ToTable(ToPlural(type.Name));
+            }
+        }
+
+        private static string ToPlural(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+
+            if (name.EndsWith("y", StringComparison.OrdinalIgnoreCase) && name.Length > 1)
+            {
+                var beforeY = name[name.Length - 2];
+                if (!"aeiou".Contains(char.ToLowerInvariant(beforeY)))
                 {
-                    plugin.Configure(modelBuilder);
+                    return name[..^1] + "ies";
                 }
             }
+
+            return name.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? name : $"{name}s";
         }
     }
 }

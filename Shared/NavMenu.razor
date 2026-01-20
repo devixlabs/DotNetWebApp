@@ -1,5 +1,6 @@
 @inject ISpaSectionService SpaSections
 @inject IOptions<AppCustomizationOptions> AppOptions
+@inject IAppDictionaryService AppDictionary
 
 <RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText" Multiple="false">
     <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Home" Icon="home" Path="/" />
@@ -7,6 +8,12 @@
         @foreach (var item in SpaSections.Sections)
         {
             <RadzenPanelMenuItem Text="@item.NavLabel" Icon="@GetSectionIcon(item.Section)" Path="@GetSectionPath(item)" />
+        }
+    </RadzenPanelMenuItem>
+    <RadzenPanelMenuItem Text="Data" Icon="table_chart" Expanded="true">
+        @foreach (var entity in AppDictionary.AppDefinition.DataModel.Entities)
+        {
+            <RadzenPanelMenuItem Text="@entity.Name" Icon="data_object" Path="@entity.Name" />
         }
     </RadzenPanelMenuItem>
 </RadzenPanelMenu>

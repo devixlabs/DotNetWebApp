@@ -1,4 +1,4 @@
-using DotNetWebApp.Models;
+using DotNetWebApp.Models.Generated;
 
 namespace DotNetWebApp.Services;
 
@@ -15,7 +15,7 @@ public sealed class ProductService : IProductService
     {
         try
         {
-            var products = await _httpClient.GetFromJsonAsync<List<Product>>("api/products", cancellationToken);
+            var products = await _httpClient.GetFromJsonAsync<List<Product>>("api/product", cancellationToken);
             return products ?? new List<Product>();
         }
         catch (Exception)
@@ -28,7 +28,7 @@ public sealed class ProductService : IProductService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<int>("api/products/count", cancellationToken);
+            return await _httpClient.GetFromJsonAsync<int>("api/product/count", cancellationToken);
         }
         catch (Exception)
         {

@@ -1,0 +1,44 @@
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.Rendering
+
+@if (DataType == null || Data == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @Grid
+}
+
+@code {
+    [Parameter]
+    public Type? DataType { get; set; }
+
+    [Parameter]
+    public IQueryable? Data { get; set; }
+
+    private RenderFragment Grid => builder =>
+    {
+        if (DataType != null)
+        {
+            var gridType = typeof(RadzenDataGrid<>).MakeGenericType(DataType);
+            builder.OpenComponent(0, gridType);
+            builder.AddAttribute(1, "Data", Data);
+            builder.AddAttribute(2, "AllowFiltering", true);
+            builder.AddAttribute(3, "AllowPaging", true);
+            builder.AddAttribute(4, "AllowSorting", true);
+            builder.AddAttribute(5, "Columns", (RenderFragment)(builder2 =>
+            {
+                foreach (var property in DataType.GetProperties())
+                {
+                    var columnType = typeof(RadzenDataGridColumn<>).MakeGenericType(DataType);
+                    builder2.OpenComponent(0, columnType);
+                    builder2.AddAttribute(1, "Property", property.Name);
+                    builder2.AddAttribute(2, "Title", property.Name);
+                    builder2.CloseComponent();
+                }
+            }));
+            builder.CloseComponent();
+        }
+    };
+}

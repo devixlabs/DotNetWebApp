@@ -1,7 +1,8 @@
 @page "/"
+@inject IAppDictionaryService AppDictionary
 
-<PageTitle>.NET SPA</PageTitle>
+<PageTitle>@AppDictionary.AppDefinition.App.Title</PageTitle>
 
-<h1>Hello, SPA!</h1>
+<h1>Welcome to @AppDictionary.AppDefinition.App.Name!</h1>
 
 Welcome to your new Blazor Server app, built with free Radzen UI components atop a .NET Web API backend.

@@ -1,5 +1,4 @@
 using DotNetWebApp.Data;
-using DotNetWebApp.Data.Plugins;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Services;
@@ -28,12 +27,17 @@ builder.Services.AddScoped(sp =>
     var navigationManager = sp.GetRequiredService<NavigationManager>();
     return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
 });
-builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
-builder.Services.AddScoped<ICustomerModelPlugin, DefaultProductModelPlugin>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
+builder.Services.AddSingleton<IAppDictionaryService>(sp =>
+{
+    var env = sp.GetRequiredService<IHostEnvironment>();
+    var yamlPath = Path.Combine(env.ContentRootPath, "app.example.yaml");
+    return new AppDictionaryService(yamlPath);
+});
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

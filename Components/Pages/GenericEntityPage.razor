@@ -1,0 +1,99 @@
+@page "/{EntityName}"
+@using System.Text.Json
+@using DotNetWebApp.Models.AppDictionary
+@inject IAppDictionaryService AppDictionary
+@inject HttpClient Http
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p role="alert">@errorMessage</p>
+}
+else if (entity != null)
+{
+    <h1>@entity.Name</h1>
+
+    @if (data != null && entityType != null)
+    {
+        <DynamicDataGrid DataType="@entityType" Data="@data" />
+    }
+}
+
+@code {
+    [Parameter]
+    public string? EntityName { get; set; }
+
+    private Entity? entity;
+    private Type? entityType;
+    private IQueryable? data;
+
+    private bool isLoading;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        entity = null;
+        entityType = null;
+        data = null;
+
+        if (string.IsNullOrWhiteSpace(EntityName))
+        {
+            errorMessage = "Entity not specified.";
+            isLoading = false;
+            return;
+        }
+
+        entity = AppDictionary.AppDefinition.DataModel.Entities.FirstOrDefault(e =>
+            e.Name.Equals(EntityName, StringComparison.OrdinalIgnoreCase));
+
+        if (entity == null)
+        {
+            errorMessage = $"Unknown entity '{EntityName}'.";
+            isLoading = false;
+            return;
+        }
+
+        entityType = Type.GetType($"DotNetWebApp.Models.Generated.{entity.Name}, DotNetWebApp");
+        if (entityType == null)
+        {
+            errorMessage = $"No model type found for '{entity.Name}'.";
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var response = await Http.GetAsync($"api/{entity.Name}");
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = $"Failed to load {entity.Name} data (HTTP {(int)response.StatusCode}).";
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var entities = (System.Collections.IEnumerable?)JsonSerializer.Deserialize(
+                json,
+                typeof(List<>).MakeGenericType(entityType),
+                options);
+
+            if (entities != null)
+            {
+                data = entities.AsQueryable();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load {entity.Name} data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
