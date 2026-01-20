@@ -489,3 +489,4 @@ $RECYCLE.BIN/
 # Project and App Specific
 .env.local
 
+app.yaml
