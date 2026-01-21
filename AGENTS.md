@@ -7,7 +7,7 @@
 - `Services/`: Business logic and DI services.
 - `Data/`: `AppDbContext`, tenancy helpers, and EF configuration.
 - `Models/` and `Models/Generated/`: Entity models; generated types come from `ModelGenerator`.
-- `ModelGenerator/`: Reads `app.example.yaml` and produces generated models.
+- `ModelGenerator/`: Reads `app.yaml` and produces generated models.
 - `Migrations/`: EF Core migration files.
 - `wwwroot/`: Static assets (CSS, images, JS).
 
@@ -23,7 +23,7 @@
 
 ## Project Goal & Session Notes
 
-- **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.example.yaml` file for dynamic customization.
+- **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 - **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before Product/Category pages work.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
@@ -47,6 +47,6 @@
 ## Configuration & Safety Notes
 
 - Secrets belong in user secrets or environment variables; see `SECRETS.md`.
-- `app.example.yaml` drives model generation; branding/navigation labels still come from `appsettings.json` via `AppCustomizationOptions`.
+- `app.yaml` drives model generation; branding/navigation labels still come from `appsettings.json` via `AppCustomizationOptions`.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools; do not modify or reinstall the system .NET runtime.
 - Tenant schema switching uses the `X-Customer-Schema` header (defaults to `dbo`).

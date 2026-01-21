@@ -4,13 +4,13 @@
 
 ## Project Goal
 
-**Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.example.yaml` file for dynamic customization.
+**Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 
 Keep `SESSION_SUMMARY.md` up to date; it is the living status document between LLM sessions.
 
 ## Current State
 
-- `app.example.yaml` drives app metadata, theme, and data model shape.
+- `app.yaml` drives app metadata, theme, and data model shape.
 - `ModelGenerator` produces entities in `Models/Generated`, and `AppDbContext` discovers them via reflection with pluralized table names.
 - `GenericController<T>` and `GenericEntityPage.razor` provide dynamic entity endpoints and UI; the Nav menu includes a "Data" section for generated entities.
 - Migration `AddCatalogSchema` adds `Categories` and extends `Products`; run it before using Product/Category pages.

@@ -24,9 +24,9 @@ This is a .NET 8 web application built with a Blazor Server frontend and a Web A
 *   **`Services/`:** Business logic and DI services.
 *   **`Migrations/`:** EF Core migration files.
 
-## Current Direction (App Example YAML)
+## Current Direction (App YAML)
 
-The app is moving toward a single-source config in `app.example.yaml` that drives:
+The app is moving toward a single-source config in `app.yaml` that drives:
 *   app branding + theme
 *   dynamic model generation (`ModelGenerator`)
 *   API and UI entity navigation
@@ -35,7 +35,7 @@ Generated entities live in `Models/Generated` and are wired into `AppDbContext` 
 
 ## Current State / Recent Fixes
 
-*   YAML-driven metadata and model definitions live in `app.example.yaml`.
+*   YAML-driven metadata and model definitions live in `app.yaml`.
 *   `ModelGenerator` creates `Models/Generated`; optional value types are nullable to avoid forced defaults.
 *   `AppDictionaryService` exposes YAML metadata to the UI and navigation.
 *   UI uses Radzen panel menu components and includes a dynamic "Data" section.

@@ -13,7 +13,7 @@ You're an expert .NET/C# engineer with deep knowledge of:
 This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a YAML-driven data model/branding configuration.
 
 ## Project Goal & Session Notes
-- **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.example.yaml` file for dynamic customization.
+- **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Key Commands
@@ -51,7 +51,7 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 - _Imports.razor - Global Blazor using statements
 
 ## Current State
-- YAML-driven metadata and model definitions live in `app.example.yaml`.
+- YAML-driven metadata and model definitions live in `app.yaml`.
 - `ModelGenerator` produces entities in `Models/Generated` with nullable optional value types.
 - `AppDbContext` discovers generated entities via reflection and pluralizes table names.
 - Generic entity UI (`GenericEntityPage.razor`, `DynamicDataGrid.razor`) and singular controllers (`ProductController`, `CategoryController`) are in place.
@@ -64,7 +64,7 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 - SignalR connection for Blazor Server real-time updates
 - Shared data access through Entity Framework with dynamic model registration
 - `GenericController<T>` routes match singular entity names; UI uses generic entity pages
-- `ModelGenerator` + `app.example.yaml` define entities; generated files live in `Models/Generated`
+- `ModelGenerator` + `app.yaml` define entities; generated files live in `Models/Generated`
 - CSS animations defined in wwwroot/css/app.css (pulse, spin, slideIn)
 
 ## Secrets Management

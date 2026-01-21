@@ -10,7 +10,7 @@ This project uses **Radzen Blazor components and themes only**. Bootstrap is not
 
 **Goal**: Keep styling consistent with the active Radzen theme and avoid hardcoded colors on layout containers.
 
-<!-- FIXME: Branding colors and font are now set via CSS variables in MainLayout.razor from app.example.yaml; update guidance to reflect that workflow. -->
+<!-- FIXME: Branding colors and font are now set via CSS variables in MainLayout.razor from app.yaml; update guidance to reflect that workflow. -->
 
 ---
 

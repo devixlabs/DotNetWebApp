@@ -1,10 +1,10 @@
 ### Project State Summary
 
-**Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.example.yaml` file for dynamic customization.
+**Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 
 **Progress:**
-- **YAML-Driven Configuration:** The application loads app metadata, theme, and data model structure from `app.example.yaml`.
-- **Dynamic Model Generation:** `ModelGenerator` reads `app.example.yaml` and generates entity classes in `Models/Generated`. The template makes non-required value types nullable.
+- **YAML-Driven Configuration:** The application loads app metadata, theme, and data model structure from `app.yaml`.
+- **Dynamic Model Generation:** `ModelGenerator` reads `app.yaml` and generates entity classes in `Models/Generated`. The template makes non-required value types nullable.
 - **Dynamic Data Layer:** `AppDbContext` discovers generated entities via reflection and maps them to pluralized table names (e.g., `Product` -> `Products`) to align with existing schema.
 - **Generic API:** `GenericController<T>` powers entity endpoints; controllers are singular (`ProductController`, `CategoryController`) to align API routes with entity names.
 - **Dynamic UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render any entity from the YAML file; `NavMenu.razor` renders dynamic entity navigation using Radzen.
