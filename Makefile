@@ -10,7 +10,7 @@ DOTNET_ENVIRONMENT?=Development
 # shellcheck disable=SC2211,SC2276
 ASPNETCORE_ENVIRONMENT?=Development
 
-.PHONY: clean check build https migrate test docker-build run dev db-start db-stop db-logs db-drop
+.PHONY: clean check build https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop
 
 clean:
 	$(DOTNET) clean
@@ -33,6 +33,24 @@ migrate:
 
 test:
 	$(DOTNET) test --configuration Release --no-build
+
+# Test the complete DDL → YAML → Model generation pipeline
+test-ddl-pipeline: clean
+	@echo "🧹 Cleaned build artifacts"
+	@echo ""
+	@echo "📊 Parsing DDL to YAML..."
+	cd DdlParser && ../dotnet-build.sh run -- ../sample-schema.sql ../app-test.yaml
+	@echo ""
+	@echo "🔧 Generating models from YAML..."
+	cd ModelGenerator && ../dotnet-build.sh run ../app-test.yaml
+	@echo ""
+	@echo "🏗️  Building solution..."
+	$(DOTNET) build
+	@echo ""
+	@echo "✅ DDL pipeline test passed! All stages completed successfully."
+	@echo ""
+	@echo "📝 Next: Run 'make test' to run unit tests"
+	@echo "🚀 Or: Run 'make dev' to start the application"
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .

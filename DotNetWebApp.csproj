@@ -31,6 +31,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="DdlParser\**" />
+    <Content Remove="DdlParser\**" />
+    <EmbeddedResource Remove="DdlParser\**" />
+    <None Remove="DdlParser\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="app.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

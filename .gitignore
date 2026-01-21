@@ -490,3 +490,7 @@ $RECYCLE.BIN/
 .env.local
 
 app.yaml
+
+# Generated test outputs from DDL pipeline
+app-generated.yaml
+app-test.yaml
