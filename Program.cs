@@ -44,6 +44,7 @@ builder.Services.AddSingleton<IAppDictionaryService>(sp =>
     var yamlPath = Path.Combine(env.ContentRootPath, "app.yaml");
     return new AppDictionaryService(yamlPath);
 });
+builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
