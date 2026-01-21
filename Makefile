@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC1089,SC2288
 DOTNET=./dotnet-build.sh
 # shellcheck disable=SC2034
 IMAGE_NAME=dotnetwebapp
@@ -10,14 +10,18 @@ DOTNET_ENVIRONMENT?=Development
 # shellcheck disable=SC2211,SC2276
 ASPNETCORE_ENVIRONMENT?=Development
 
-.PHONY: clean check build migrate test docker-build run dev db-start db-stop db-logs db-drop
+.PHONY: clean check build https migrate test docker-build run dev db-start db-stop db-logs db-drop
 
 clean:
 	$(DOTNET) clean
 
+https:
+	$(DOTNET) dev-certs https
+
 check:
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
+	shellcheck Makefile
 	$(DOTNET) restore
 	$(DOTNET) build --no-restore
 
@@ -43,7 +47,7 @@ dev:
 
 # Start the SQL Server Docker container used for local dev
 db-start:
-	@if docker ps -a --format '{{.Names}}' | grep -q '^sqlserver-dev$$'; then docker start sqlserver-dev; else echo "sqlserver-dev container not found. Run ./setup.sh and choose Docker." >&2; exit 1; fi
+	@docker start sqlserver-dev
 
 # Stop the SQL Server Docker container
 db-stop:
