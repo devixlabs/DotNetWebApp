@@ -9,12 +9,15 @@
 - **Generic API:** `GenericController<T>` powers entity endpoints; controllers are singular (`ProductController`, `CategoryController`) to align API routes with entity names.
 - **Dynamic UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render any entity from the YAML file; `NavMenu.razor` renders dynamic entity navigation using Radzen.
 - **Radzen UI Restored:** Radzen theme CSS is back in `_Layout.cshtml`, and Radzen scaffolding components are present in `MainLayout.razor`.
+- **Branding Source:** `AppCustomizationOptions` still reads from `appsettings.json`; YAML currently drives the data model only.
+- **Tenant Schema:** Schema selection can be overridden via `X-Customer-Schema` header (defaults to `dbo`).
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
 - `make build` is clean. `make migrate` requires SQL Server running and a valid connection string.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally; do not modify the system .NET install.
 - `dotnet-ef` may warn about minor version mismatches with the runtime; do not upgrade system tooling unless requested.
+- `ModelGenerator` is not part of `DotNetWebApp.sln`; run it manually when regenerating models.
 
 **Database State / Migrations:**
 - Added migration `AddCatalogSchema` to create `Categories` and add `CategoryId`, `CreatedAt`, and `Description` to `Products`, plus enforce `Products.Name` length.

@@ -15,6 +15,8 @@ Keep `SESSION_SUMMARY.md` up to date; it is the living status document between L
 - `GenericController<T>` and `GenericEntityPage.razor` provide dynamic entity endpoints and UI; the Nav menu includes a "Data" section for generated entities.
 - Migration `AddCatalogSchema` adds `Categories` and extends `Products`; run it before using Product/Category pages.
 - `make check`/`make build` are clean; `make migrate` requires SQL Server running and a valid connection string.
+- Branding/navigation labels currently come from `appsettings.json` via `AppCustomizationOptions`, not from YAML.
+- Tenant schema switching uses the `X-Customer-Schema` header (defaults to `dbo`).
 
 # Setup
 

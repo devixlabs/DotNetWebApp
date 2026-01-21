@@ -47,5 +47,6 @@
 ## Configuration & Safety Notes
 
 - Secrets belong in user secrets or environment variables; see `SECRETS.md`.
-- `app.example.yaml` drives app branding and model generation; update it alongside related code changes.
+- `app.example.yaml` drives model generation; branding/navigation labels still come from `appsettings.json` via `AppCustomizationOptions`.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools; do not modify or reinstall the system .NET runtime.
+- Tenant schema switching uses the `X-Customer-Schema` header (defaults to `dbo`).
