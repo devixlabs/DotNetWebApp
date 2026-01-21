@@ -35,22 +35,20 @@ test:
 	$(DOTNET) test --configuration Release --no-build
 
 # Test the complete DDL → YAML → Model generation pipeline
-test-ddl-pipeline: clean
-	@echo "🧹 Cleaned build artifacts"
+test-ddl-pipeline: clean test
+	@echo "Starting pipeline test..."
+	@echo " -- Parsing DDL to YAML..."
+	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app-test.yaml
 	@echo ""
-	@echo "📊 Parsing DDL to YAML..."
-	cd DdlParser && ../dotnet-build.sh run -- ../sample-schema.sql ../app-test.yaml
+	@echo " -- Generating models from YAML..."
+	cd ModelGenerator && "../$(DOTNET)" run ../app-test.yaml
 	@echo ""
-	@echo "🔧 Generating models from YAML..."
-	cd ModelGenerator && ../dotnet-build.sh run ../app-test.yaml
-	@echo ""
-	@echo "🏗️  Building solution..."
+	@echo " -- Building project..."
 	$(DOTNET) build
 	@echo ""
-	@echo "✅ DDL pipeline test passed! All stages completed successfully."
+	@echo " -- DDL pipeline test completed!"
 	@echo ""
-	@echo "📝 Next: Run 'make test' to run unit tests"
-	@echo "🚀 Or: Run 'make dev' to start the application"
+	@echo "🚀 Next: Run 'make dev' to start the application"
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
