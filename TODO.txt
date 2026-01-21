@@ -1,0 +1,39 @@
+
+Plan: remove hard-coded Product/Category pieces, make entity flows app.yaml-driven, keep SPA optional example.
+
+1) Add shared entity metadata resolver
+- Introduce a service that maps entity name -> AppDictionary entity + CLR type.
+- Use it for consistent 404/validation without changing behavior yet.
+
+2) Add dynamic API endpoints (non-breaking)
+- Add a controller for `api/entities/{entityName}` + `api/entities/{entityName}/count` + POST using DbContext.Set(Type).
+- Keep Product/Category controllers for now to avoid breaking routes.
+
+3) Add generic API client for entities
+- Create `IEntityApiService` with `GetEntitiesAsync(entityName)` and `GetCountAsync(entityName)`.
+- Use dynamic deserialization to the resolved CLR type.
+
+4) Wire dynamic entity UI path
+- Update `Components/Pages/GenericEntityPage.razor` to use `IEntityApiService` and the new `api/entities/` routes.
+- Verify DDL -> app.yaml -> models -> API -> UI with `make test-ddl-pipeline`.
+
+5) Replace ProductsSection with EntitySection
+- Add `Components/Sections/EntitySection.razor` that renders any entity via metadata + DynamicDataGrid.
+- Update `Components/Pages/SpaApp.razor` to render the selected entity (route segment or explicit query string).
+
+6) Generalize dashboard counts
+- Replace `DashboardSummary.TotalProducts` with a generic summary that does not assume a primary entity.
+- Update `DashboardService` + `Components/Sections/DashboardSection.razor` to use `IEntityApiService`.
+
+7) Make SPA sections data-driven + optional
+- Refactor `SpaSection` enum + `SpaSectionService` to build sections from app.yaml entities (keep Dashboard/Settings as optional static).
+- Add `EnableSpaExample` flag in `AppCustomizationOptions` + `appsettings.json` (default true).
+- Hide the "Application" nav group when disabled; optionally link Home to the entity list.
+
+8) Remove product/category artifacts
+- Delete Product/Category controllers, `IProductService`, `ProductService`, and `ProductsSection`.
+- Remove product-specific labels from `Models/AppCustomizationOptions.cs` and `appsettings.json`.
+
+9) Docs + summary
+- Update `SESSION_SUMMARY.md` and any docs referencing product-specific SPA.
+- Document the dynamic API route and SPA example flag.

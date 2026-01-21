@@ -2,6 +2,12 @@
 
 **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 
+**Current Needs:** Below are the current needs by the developer team (if empty, ask for a task or wait for next prompt):
+ 1. Data Model should be driven by @sample-schema.sql first, then by @app.yaml
+ 2. Some clients using this project will have minimal programming experience, so we will need Claude Code SKILLS.md files throughout the project for each application layer via DDL/Data Pipleline (see @Makefile), e.g. Database, SQL, application yaml/configs, .NET/C# Data/ORM/Entity source code, API/Controller/Service source code, and front-end Blazor and Radzen UI components.
+ 3. All .NET/C# should be in proper modules and follow best practices for maintaining, extending, and unit testing. Refactor as needed to decouple application layers, reduce source code complexity, and make maintainability easier.
+
+
 **Major Accomplishments:**
 
 1. **YAML-Driven Configuration:** Application loads app metadata, theme, and data model from `app.yaml`.
@@ -32,10 +38,9 @@
 
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 
-**Current Task Status:** ✅ **COMPLETE**
-- UI and build stable; dynamic navigation and entity pages working
-- DDL Parser pipeline fully implemented and tested
-- Complete workflow: SQL → YAML → Models → Build → Deploy ready
+**Current Task Status:** 🚧 **IN PROGRESS**
+- Transitioning from product-specific SPA/API to app.yaml-driven entities
+- Added `IEntityMetadataService` to map app.yaml entities to CLR types for reuse in API/UI
 
 **How to Use DDL Parser:**
 ```bash
