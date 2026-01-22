@@ -23,6 +23,8 @@ check:
 	shellcheck dotnet-build.sh
 	shellcheck Makefile
 	$(DOTNET) restore
+	$(DOTNET) restore tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
+	$(DOTNET) restore tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 	$(MAKE) build
 
 build:

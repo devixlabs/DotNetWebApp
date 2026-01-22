@@ -14,10 +14,12 @@ VERIFICATION NOTES (2026-01-21):
 - IEntityMetadataService already exists and maps entity name -> AppDictionary entity + CLR type.
 - Already used for dynamic entity discovery; no changes needed for this task.
 
-2) Add dynamic API endpoints (non-breaking) [READY TO IMPLEMENT]
-- Add a controller for `api/entities/{entityName}` + `api/entities/{entityName}/count` + POST using DbContext.Set(Type).
-- Keep Product/Category controllers for now to avoid breaking routes.
-- IMPLEMENTATION NOTE: Use EntityMetadataService.Find(entityName) to resolve CLR type, then DbContext.Set(type) for queries.
+2) Add dynamic API endpoints (non-breaking) [✅ COMPLETE]
+- Add a controller for `api/entities/{entityName}` + `api/entities/{entityName}/count` + POST using DbContext.Set(Type). [DONE]
+- Keep Product/Category controllers for now to avoid breaking routes. [DONE]
+- IMPLEMENTATION NOTE: Use EntityMetadataService.Find(entityName) to resolve CLR type, then DbContext.Set(type) for queries. [DONE]
+- IMPLEMENTATION DETAILS: Created EntitiesController.cs with reflection-based approach since EF Core 8 lacks non-generic Set(Type) method.
+  Uses reflection to call generic Set<T>(), ToListAsync<T>(), and CountAsync<T>() with runtime types.
 
 3) Add generic API client for entities
 - Create `IEntityApiService` with `GetEntitiesAsync(entityName)` and `GetCountAsync(entityName)`.
