@@ -59,3 +59,9 @@ IMPLEMENTATION SEQUENCE NOTES:
 - Task 8 (Remove artifacts) is final cleanup after all replacements work
 - Task 9 (Docs) should be done after major changes
 - Task 10 (Seed data) is independent and can be done anytime
+
+=== NEXT ===
+a) Look at using dotnet aspnet codegenerator scaffolding for what we have currently or planned for:
+   https://learn.microsoft.com/en-us/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-10.0#arguments
+b) 
+
