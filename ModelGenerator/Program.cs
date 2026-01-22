@@ -29,7 +29,7 @@ namespace ModelGenerator
             var templateContent = File.ReadAllText(templatePath);
             var template = Template.Parse(templateContent);
 
-            var outputDir = "../DotNetWebApp/Models/Generated";
+            var outputDir = "../Models/Generated";
             Directory.CreateDirectory(outputDir);
 
             foreach (var entity in appDefinition.DataModel.Entities)

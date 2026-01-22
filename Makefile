@@ -38,6 +38,8 @@ seed:
 test:
 	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration Release --no-restore
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration Release --no-build --no-restore
+	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration Release --no-restore
+	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration Release --no-build --no-restore
 
 # Test the complete DDL → YAML → Model generation pipeline
 test-ddl-pipeline: clean test

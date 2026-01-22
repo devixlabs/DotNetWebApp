@@ -1,8 +1,3 @@
-Plan:
-- Confirm `sample-seed.sql` stays idempotent with category lookups via subqueries and is executed via `SampleDataSeeder`. [DONE]
-- Document the Docker workflow for installing `mssql-tools`/`sqlcmd` so future devs can invoke the sample seed file without needing external tooling. [DONE]
-- Add focused unit tests for `SampleDataSeeder` so we can run `make test` and catch regressions in the seed step. [DONE]
-- Outline manual verification steps for seeding + docker SQL tooling (used by QA/devs to validate the work). [DONE]
 
 VERIFICATION NOTES (2026-01-21):
 - ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)
@@ -10,9 +5,10 @@ VERIFICATION NOTES (2026-01-21):
 - ✅ Generated models (Product.cs, Category.cs) have correct namespace and EF annotations
 - ✅ AppDbContext reflection-based entity discovery works (models in DotNetWebApp.Models.Generated)
 - ✅ App runs successfully with `make dev`, dynamic menu shows entities
-- ⚠️ QUIRK: ModelGenerator outputs to DotNetWebApp/Models/Generated/ (nested) instead of Models/Generated/
-  Fix: Change line 32 in ModelGenerator/Program.cs from "../DotNetWebApp/Models/Generated" to "../Models/Generated"
-- NOTE: No unit tests currently exist; consider adding test projects for future tasks
+- ✅ FIXED (2026-01-21): ModelGenerator now outputs to correct Models/Generated/ location
+  - Fixed line 32 in ModelGenerator/Program.cs: "../DotNetWebApp/Models/Generated" → "../Models/Generated"
+  - Added ModelGenerator.Tests project with 3 path resolution tests (all passing)
+  - Cleaned up incorrect nested DotNetWebApp/DotNetWebApp/Models/Generated directory
 
 1) Add shared entity metadata resolver [✅ COMPLETE]
 - IEntityMetadataService already exists and maps entity name -> AppDictionary entity + CLR type.
@@ -52,10 +48,6 @@ VERIFICATION NOTES (2026-01-21):
 - Update `SESSION_SUMMARY.md` and any docs referencing product-specific SPA.
 - Document the dynamic API route and SPA example flag.
 
-10) Sample seed data [COMPLETE]
-- Confirmed `sample-seed.sql` guards against duplicate inserts and uses subqueries for FKs.
-- `SampleDataSeeder` runs the SQL via EF (`ExecuteSqlRawAsync`).
-- `make seed` runs `dotnet run -- --seed`, which migrates the schema and invokes the seeder so the sample rows appear automatically.
 
 IMPLEMENTATION SEQUENCE NOTES:
 - Tasks 2-4 form a dependency chain: Endpoints → ApiService → GenericEntityPage wiring
