@@ -39,39 +39,132 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 **For Windows + WSL developers**: Install any supported .NET 8.x version locally. The wrapper script handles compatibility. CI/CD and production use the exact version specified in `global.json`.
 
 ## Project Structure
-- Controllers/ - API controllers
-- Models/ - Data models and DTOs
-- Data/ - DbContext and data access
-- Migrations/ - EF Core migrations
-- Pages/ - Blazor host pages and layouts (_Host.cshtml, _Layout.cshtml)
-- Components/Pages/ - Blazor routable pages (Home.razor, SpaApp.razor)
-- Components/Sections/ - SPA section components (Dashboard, Products, Settings)
-- Shared/ - Shared Blazor components (MainLayout.razor, NavMenu.razor)
-- wwwroot/ - Static files (CSS, favicon, etc.)
-- _Imports.razor - Global Blazor using statements
+```
+DotNetWebApp/
+├── Controllers/                   # API endpoints (GenericController<T>, ProductController, CategoryController)
+├── Components/
+│   ├── Pages/                    # Routable Blazor pages (Home.razor, SpaApp.razor)
+│   └── Sections/                 # SPA components (Dashboard, Products, Categories, etc.)
+├── Data/
+│   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
+│   └── SampleDataSeeder.cs       # Executes sample-seed.sql via EF
+├── Models/
+│   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
+│   ├── AppDictionary/            # YAML model classes (AppDictionary.cs, Entity.cs, Property.cs, etc.)
+│   └── DTOs/                     # Data transfer objects (if any)
+├── Services/
+│   ├── AppDictionaryService.cs   # Loads and caches app.yaml
+│   ├── IEntityMetadataService.cs # Maps YAML entities to CLR types
+│   └── EntityMetadataService.cs  # Implementation
+├── Migrations/                   # EF Core database migrations (AddCatalogSchema, etc.)
+├── Pages/                        # Blazor host pages (_Host.cshtml, _Layout.cshtml)
+├── Shared/                       # Shared Blazor components (MainLayout.razor, NavMenu.razor, GenericEntityPage.razor, DynamicDataGrid.razor)
+├── DdlParser/                    # 🆕 SQL DDL → YAML converter (separate console project)
+│   ├── Program.cs
+│   ├── SqlDdlParser.cs
+│   ├── CreateTableVisitor.cs
+│   ├── TypeMapper.cs
+│   └── YamlGenerator.cs
+├── ModelGenerator/               # YAML → C# entity generator (separate console project)
+├── tests/
+│   └── DotNetWebApp.Tests/       # Unit/integration tests
+├── wwwroot/                      # Static files (CSS, JS, images)
+├── _Imports.razor                # Global Blazor using statements
+├── app.yaml                      # 📋 Source of truth: app metadata, theme, data model
+├── sample-schema.sql             # Sample SQL DDL for testing DDL parser
+├── sample-seed.sql               # Sample seed data (Categories, Products)
+├── Makefile                      # Build automation
+├── dotnet-build.sh               # .NET SDK version wrapper
+├── DotNetWebApp.sln              # Solution file
+└── DotNetWebApp.csproj           # Main project file
+```
 
 ## Current State
-- YAML-driven metadata and model definitions live in `app.yaml`.
-- `ModelGenerator` produces entities in `Models/Generated` with nullable optional value types.
-- `AppDbContext` discovers generated entities via reflection and pluralizes table names.
-- Generic entity UI (`GenericEntityPage.razor`, `DynamicDataGrid.razor`) and singular controllers (`ProductController`, `CategoryController`) are in place.
-- Nav menu renders a dynamic "Data" section using `AppDictionaryService`.
-- Migration `AddCatalogSchema` adds `Categories` and `Products` columns; run `make migrate` before Product/Category pages.
-- `make check`/`make build` pass; `make migrate` requires SQL Server running and a valid connection string.
+
+### ✅ Completed Features
+- **YAML-driven data model:** `app.yaml` defines app metadata, theme, and entities (Product, Category)
+- **Model Generation:** `ModelGenerator` reads `app.yaml` and generates C# entities with nullable value types for optional fields
+- **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` → `Products`)
+- **Generic REST API:** `GenericController<T>` provides CRUD endpoints with singular entity names (e.g., `/api/products`)
+- **Generic CRUD UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render dynamic data grids from YAML definitions
+- **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with links to all entities via `AppDictionaryService`
+- **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → Models/Generated)
+  - Converts SQL Server DDL files to `app.yaml` format
+  - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
+  - Test target: `make test-ddl-pipeline` validates full workflow
+- **Entity Metadata Service:** `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
+- **Seed Data System:** `SampleDataSeeder` executes `sample-seed.sql` via EF migrations
+  - Run with: `make seed`
+  - Guards against duplicate inserts
+- **Database Migrations:** `AddCatalogSchema` migration creates `Categories` and `Products` tables
+- **Tenant Schema Support:** Multi-schema via `X-Customer-Schema` header (defaults to `dbo`)
+- **Unit Tests:** `DotNetWebApp.Tests` covers SampleDataSeeder with SQLite-backed integration tests
+- **Shell Script Validation:** `make check` runs `shellcheck` on setup.sh and dotnet-build.sh
+- **Build Passes:** `make check` and `make build` pass; `make test` passes with Release config
+- **Docker Support:** Makefile includes Docker build and SQL Server container commands
+
+### ⚠️ Current Limitations / WIP
+- Generated models folder (`Models/Generated/`) is empty; needs `make build` or manual `ModelGenerator` run to populate
+- Branding currently mixed between `appsettings.json` and `app.yaml` (could be fully moved to YAML)
+- Composite primary keys not supported in DDL parser (single column PKs only)
+- CHECK and UNIQUE constraints ignored by DDL parser
+- Computed columns ignored by DDL parser
+
+### 🔧 Development Status
+- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-drop`)
+- `dotnet-build.sh` wrapper manages .NET SDK version conflicts across Windows/WSL/Linux
+- `make migrate` requires SQL Server running and valid connection string
+- Session tracking via `SESSION_SUMMARY.md` for LLM continuity between sessions
 
 ## Architecture Notes
-- Hybrid architecture: Web API backend + Blazor Server frontend
-- SignalR connection for Blazor Server real-time updates
-- Shared data access through Entity Framework with dynamic model registration
-- `GenericController<T>` routes match singular entity names; UI uses generic entity pages
-- `ModelGenerator` + `app.yaml` define entities; generated files live in `Models/Generated`
-- CSS animations defined in wwwroot/css/app.css (pulse, spin, slideIn)
+- **Hybrid architecture:** ASP.NET Core Web API backend + Blazor Server SPA frontend
+- **SignalR connection:** Real-time updates between client and server
+- **Entity Framework Core:** Dynamic model registration via reflection; DbContext discovers entities at startup
+- **REST API design:** `GenericController<T>` provides endpoints with singular entity names (e.g., `/api/products`, `/api/categories`)
+- **UI architecture:** Generic Blazor pages (`GenericEntityPage.razor`) with reusable data grid components
+- **YAML-driven generation:** `ModelGenerator` reads `app.yaml` → generates entities → builds database via EF migrations
+- **DDL parser pipeline:** SQL Server DDL → `app.yaml` → C# entities → database schema
+- **Data model:** All entities support IDENTITY primary keys, nullable value types for optional fields, foreign key relationships
+- **Multi-tenancy:** Schema switching via `X-Customer-Schema` HTTP header
+- **CSS:** Global animations (pulse, spin, slideIn) in `wwwroot/css/app.css`
+- **Dependency injection:** Services registered in `Program.cs` (DbContext, AppDictionaryService, EntityMetadataService, SampleDataSeeder)
 
 ## Secrets Management
 - Project uses **User Secrets** for local development (see SECRETS.md for details)
 - Connection strings stored in `~/.microsoft/usersecrets/`, never in git
 - `setup.sh` script automatically configures User Secrets when setting up SQL Server
 - Manual management: `dotnet user-secrets list`, `dotnet user-secrets set`, etc.
+
+## Key Files and Their Purposes
+
+| File | Purpose |
+|------|---------|
+| `app.yaml` | 📋 **Source of truth** for data model, app metadata, and theme configuration |
+| `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
+| `sample-schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make test-ddl-pipeline` |
+| `sample-seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
+| `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
+| `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
+| `Services/IEntityMetadataService.cs` | Maps YAML entity names to CLR types for API/UI |
+| `Controllers/GenericController<T>` | Base controller providing CRUD endpoints for all entities |
+| `Components/Shared/GenericEntityPage.razor` | Reusable page component for rendering any entity's CRUD UI |
+| `Components/Shared/DynamicDataGrid.razor` | Dynamic data grid component that renders columns from YAML definitions |
+| `DdlParser/` | Console project: SQL DDL → `app.yaml` (standalone, not compiled into main app) |
+| `ModelGenerator/` | Console project: YAML → C# entities (run separately when updating models) |
+| `Makefile` | Build automation with targets for check, build, dev, test, migrate, seed, docker |
+| `dotnet-build.sh` | Wrapper script managing .NET SDK version conflicts across environments |
+
+## Recent Development History (git log)
+
+Recent commits show the project has evolved through:
+1. **Foundation (earlier commits):** Initial Blazor Server + API setup, Docker integration, self-signed certs
+2. **Data Model Generation:** Introduction of YAML-driven approach with ModelGenerator
+3. **DDL Parser Pipeline:** SQL DDL → YAML → C# entities workflow (commits: `7691ff2`, `d22ff0e`)
+4. **Entity Metadata Service:** System for mapping YAML entities to CLR types (`5cdab1f`)
+5. **Seed Data Implementation:** Integration of sample data seeding (`0e08572`)
+6. **Unit Tests:** Test suite covering seed logic and integration scenarios (`89f1d3c`)
+
+Latest work focuses on transitioning to a fully YAML-driven architecture with proper service abstraction.
 
 ## Development Notes
 - Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)

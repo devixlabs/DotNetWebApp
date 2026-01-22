@@ -1,8 +1,8 @@
 Plan:
-- Document the Docker workflow for installing `mssql-tools`/`sqlcmd` so future devs can invoke the sample seed file without needing external tooling.
-- Confirm `sample-seed.sql` stays idempotent with category lookups via subqueries and is executed via `SampleDataSeeder`.
-- Add focused unit tests for `SampleDataSeeder` so we can run `make test` and catch regressions in the seed step.
-- Outline manual verification steps for seeding + docker SQL tooling (used by QA/devs to validate the work).
+- Confirm `sample-seed.sql` stays idempotent with category lookups via subqueries and is executed via `SampleDataSeeder`. [DONE]
+- Document the Docker workflow for installing `mssql-tools`/`sqlcmd` so future devs can invoke the sample seed file without needing external tooling. [DONE]
+- Add focused unit tests for `SampleDataSeeder` so we can run `make test` and catch regressions in the seed step. [DONE]
+- Outline manual verification steps for seeding + docker SQL tooling (used by QA/devs to validate the work). [DONE]
 
 VERIFICATION NOTES (2026-01-21):
 - ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)
@@ -52,10 +52,10 @@ VERIFICATION NOTES (2026-01-21):
 - Update `SESSION_SUMMARY.md` and any docs referencing product-specific SPA.
 - Document the dynamic API route and SPA example flag.
 
-10) Sample seed data
-- Confirm `sample-seed.sql` guards against duplicate inserts so it is idempotent.
-- Document the script and add `SampleDataSeeder` so the application can run the SQL via EF (calls `ExecuteSqlRawAsync`).
-- Update `make seed` to run `dotnet run -- --seed`, which migrates the schema and invokes the seeder so the sample rows appear automatically.
+10) Sample seed data [COMPLETE]
+- Confirmed `sample-seed.sql` guards against duplicate inserts and uses subqueries for FKs.
+- `SampleDataSeeder` runs the SQL via EF (`ExecuteSqlRawAsync`).
+- `make seed` runs `dotnet run -- --seed`, which migrates the schema and invokes the seeder so the sample rows appear automatically.
 
 IMPLEMENTATION SEQUENCE NOTES:
 - Tasks 2-4 form a dependency chain: Endpoints → ApiService → GenericEntityPage wiring

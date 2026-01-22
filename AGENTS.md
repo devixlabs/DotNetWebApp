@@ -14,17 +14,18 @@
 ## Build, Test, and Development Commands
 
 - `make check`: Runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build`: Release builds for `DotNetWebApp` and `ModelGenerator`.
+- `make build`: Release builds for `DotNetWebApp` and `ModelGenerator` (not the full solution).
 - `make migrate`: Applies EF Core migrations (SQL Server must be running).
 - `make dev`: Runs with hot reload (`dotnet watch`).
 - `make run`: Runs once without hot reload.
-- `make test`: Runs `dotnet test` in Release (no test projects yet).
+- `make test`: Builds and runs `dotnet test` in Release for `tests/DotNetWebApp.Tests`.
+- `make seed`: Runs the app in seed mode to apply `sample-seed.sql` via EF (`-- --seed`).
 - Docker DB helpers: `make db-start`, `make db-stop`, `make db-logs`, `make db-drop`.
 
 ## Project Goal & Session Notes
 
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
-- **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before Product/Category pages work.
+- **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before Product/Category pages work. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Coding Style & Naming Conventions
@@ -36,7 +37,7 @@
 
 ## Testing Guidelines
 
-- No dedicated test project yet; if adding tests, use a `ProjectName.Tests` project and `*Tests` class naming.
+- Tests live in `tests/` using a `ProjectName.Tests` project and `*Tests` class naming.
 - Run tests via `make test` and include failing/passing notes in PRs.
 
 ## Commit & Pull Request Guidelines
