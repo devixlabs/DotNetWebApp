@@ -1,8 +1,7 @@
 @page "/{EntityName}"
-@using System.Text.Json
 @using DotNetWebApp.Models.AppDictionary
 @inject IAppDictionaryService AppDictionary
-@inject HttpClient Http
+@inject IEntityApiService EntityApi
 
 @if (isLoading)
 {
@@ -68,20 +67,7 @@ else if (entity != null)
 
         try
         {
-            var response = await Http.GetAsync($"api/{entity.Name}");
-            if (!response.IsSuccessStatusCode)
-            {
-                errorMessage = $"Failed to load {entity.Name} data (HTTP {(int)response.StatusCode}).";
-                return;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var entities = (System.Collections.IEnumerable?)JsonSerializer.Deserialize(
-                json,
-                typeof(List<>).MakeGenericType(entityType),
-                options);
-
+            var entities = await EntityApi.GetEntitiesAsync(entity.Name);
             if (entities != null)
             {
                 data = entities.AsQueryable();

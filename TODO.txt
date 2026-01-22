@@ -25,9 +25,12 @@ VERIFICATION NOTES (2026-01-21):
 - Create `IEntityApiService` with `GetEntitiesAsync(entityName)` and `GetCountAsync(entityName)`.
 - Use dynamic deserialization to the resolved CLR type.
 
-4) Wire dynamic entity UI path
-- Update `Components/Pages/GenericEntityPage.razor` to use `IEntityApiService` and the new `api/entities/` routes.
-- Verify DDL -> app.yaml -> models -> API -> UI with `make test-ddl-pipeline`.
+4) Wire dynamic entity UI path [✅ COMPLETE]
+- Update `Components/Pages/GenericEntityPage.razor` to use `IEntityApiService` and the new `api/entities/` routes. [DONE]
+- Verify DDL -> app.yaml -> models -> API -> UI with `make test-ddl-pipeline`. [DONE]
+- IMPLEMENTATION DETAILS: Created IEntityApiService.cs and EntityApiService.cs for HTTP-based entity operations.
+  Updated GenericEntityPage.razor to inject and use IEntityApiService. Added 9 comprehensive unit tests.
+  All tests passing (23/23 total), build successful with 0 warnings/errors.
 
 5) Replace ProductsSection with EntitySection
 - Add `Components/Sections/EntitySection.razor` that renders any entity via metadata + DynamicDataGrid.

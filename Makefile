@@ -13,6 +13,7 @@ ASPNETCORE_ENVIRONMENT?=Development
 .PHONY: clean check build https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop
 
 clean:
+	> msbuild.binlog
 	$(DOTNET) clean
 
 https:
