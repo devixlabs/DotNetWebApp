@@ -23,10 +23,11 @@ check:
 	shellcheck dotnet-build.sh
 	shellcheck Makefile
 	$(DOTNET) restore
-	$(DOTNET) build --no-restore
+	$(MAKE) build
 
 build:
-	$(DOTNET) build --configuration Release
+	$(DOTNET) build DotNetWebApp.csproj --configuration Release --no-restore
+	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration Release --no-restore
 
 migrate:
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
@@ -35,7 +36,8 @@ seed:
 	$(DOTNET) run --project DotNetWebApp.csproj -- --seed
 
 test:
-	$(DOTNET) test --configuration Release --no-build
+	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration Release --no-restore
+	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration Release --no-build --no-restore
 
 # Test the complete DDL → YAML → Model generation pipeline
 test-ddl-pipeline: clean test
@@ -47,7 +49,7 @@ test-ddl-pipeline: clean test
 	cd ModelGenerator && "../$(DOTNET)" run ../app-test.yaml
 	@echo ""
 	@echo " -- Building project..."
-	$(DOTNET) build
+	$(MAKE) build
 	@echo ""
 	@echo " -- DDL pipeline test completed!"
 	@echo ""

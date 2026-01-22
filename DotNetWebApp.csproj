@@ -38,6 +38,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="tests\**\*.cs" />
+    <Content Remove="tests/**/*.cs" />
+    <Content Remove="tests\**\*.cs" />
+    <EmbeddedResource Remove="tests/**/*.cs" />
+    <EmbeddedResource Remove="tests\**\*.cs" />
+    <None Remove="tests/**/*.cs" />
+    <None Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="app.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
