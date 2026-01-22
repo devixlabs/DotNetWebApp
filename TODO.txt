@@ -1,5 +1,8 @@
-
-Plan: remove hard-coded Product/Category pieces, make entity flows app.yaml-driven, keep SPA optional example.
+Plan:
+- Document the Docker workflow for installing `mssql-tools`/`sqlcmd` so future devs can invoke the sample seed file without needing external tooling.
+- Confirm `sample-seed.sql` stays idempotent with category lookups via subqueries and is executed via `SampleDataSeeder`.
+- Add focused unit tests for `SampleDataSeeder` so we can run `make test` and catch regressions in the seed step.
+- Outline manual verification steps for seeding + docker SQL tooling (used by QA/devs to validate the work).
 
 VERIFICATION NOTES (2026-01-21):
 - ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)

@@ -162,6 +162,24 @@ make db-start
 make migrate
 ```
 
+---
+
+## Sample Seed Data
+
+`sample-seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make migrate`, populate the demo catalog data with:
+
+```bash
+make seed
+```
+
+Then verify the data landed via the container's `sqlcmd`:
+```bash
+docker exec -it --user root sqlserver-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -Q "SELECT Name FROM dbo.Categories"
+```
+Repeat a similar query for `dbo.Products` to confirm the product seed rows.
+
+The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies pending EF migrations (`Database.MigrateAsync()`) and then runs `sample-seed.sql` via the `SampleDataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. This keeps the seeding logic within the EF toolchain and avoids any provider-specific tooling. You can still run `sample-seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
+
 If you need to add a new migration manually:
 ```bash
 ./dotnet-build.sh ef migrations add YourMigrationName
@@ -183,6 +201,43 @@ docker run -d \
   -p 8080:80 \
   --name dotnetwebapp \
   dotnetwebapp:latest
+```
+
+### Install SQL Server tools inside the container
+
+To run `sqlcmd` from within the Dockerized SQL Server instance:
+
+1. Open a root shell in the container (required for `apt-get`):
+   ```bash
+   docker exec -it --user root sqlserver-dev bash
+   ```
+2. Refresh package metadata and install the tools:
+   ```bash
+   apt-get update
+   ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+   ```
+3. Add the CLI tools to your shell session (or update `/etc/profile` if you want it permanent):
+   ```bash
+   export PATH="$PATH:/opt/mssql-tools/bin"
+   ```
+4. Run an example query with the container's SA credentials (replace `$SA_PASSWORD` as needed):
+   ```bash
+   /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -Q "SELECT TOP 5 Name FROM dbo.Categories"
+   ```
+
+When you are done, exit the container shell with `exit`. These commands let you run any `sample-seed.sql` script manually or troubleshoot seed data without needing extra tooling on the host.
+
+Run the following commands from your host (the first must be executed as `root` inside the container) to install the SQL Server CLI tooling (`sqlcmd`) and verify the `DotNetWebAppDb` demo data:
+
+```bash
+docker exec -it --user root sqlserver-dev bash -lc "ACCEPT_EULA=Y apt-get update && \
+  ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev"
+docker exec -it sqlserver-dev \
+  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
+  -d DotNetWebAppDb -Q "SELECT Id, Name FROM dbo.Categories;"
+docker exec -it sqlserver-dev \
+  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
+  -d DotNetWebAppDb -Q "SELECT Name, Price, CategoryId FROM dbo.Products;"
 ```
 
 ---
@@ -332,6 +387,7 @@ make dev  # Tries 5000, 5001, etc.
 | `app.yaml` | 📋 Source of truth for data model, theme, app metadata |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
 | `Migrations/` | 📚 Database schema history |
+| `sample-seed.sql` | 🧪 Seed data for the default schema (run after migrations) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
 | `SECRETS.md` | 🔐 Connection string setup guide |

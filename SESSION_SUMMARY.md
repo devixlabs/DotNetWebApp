@@ -31,12 +31,14 @@
 - `make migrate` requires SQL Server running and valid connection string.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
 - **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
+- `DotNetWebApp.Tests` now covers `SampleDataSeeder` via SQLite-backed integration tests so `make test` (Release) can validate the seed script and missing-file paths.
 
 **Database State / Migrations:**
 - Migration `AddCatalogSchema` creates `Categories` table and adds `CategoryId`, `CreatedAt`, `Description` to `Products`.
 - Apply with: `make migrate` (requires SQL Server running via `make db-start`).
 - `sample-seed.sql` provides example rows for the default schema; it now guards against duplicates and is executed by `SampleDataSeeder`.
 - `make seed` invokes `dotnet run --project DotNetWebApp.csproj -- --seed`, which runs `Database.MigrateAsync()` and then executes the contents of `sample-seed.sql` via `ExecuteSqlRawAsync`; it keeps the seeding logic within EF without external tooling.
+- README now documents how to install `mssql-tools` inside the SQL Server Docker container and how to query `dbo.Categories`/`dbo.Products` after running `make seed`.
 
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 

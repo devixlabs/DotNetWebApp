@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
@@ -36,6 +38,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
+builder.Services.AddScoped<SampleDataSeeder>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddSingleton<IAppDictionaryService>(sp =>
@@ -48,9 +51,18 @@ builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+var seedMode = args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase));
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+if (seedMode)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<SampleDataSeeder>().SeedAsync();
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
