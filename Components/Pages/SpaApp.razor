@@ -3,7 +3,6 @@
 @using DotNetWebApp.Models.Generated
 @inject NavigationManager Navigation
 @inject ISpaSectionService SpaSections
-@inject IProductService ProductService
 
 <PageTitle>DotNet SPA</PageTitle>
 
@@ -18,7 +17,7 @@
             }
             else if (activeSection == SpaSection.Products)
             {
-                <ProductsSection Products="@products" IsLoading="@IsLoading" OnRefresh="@LoadProducts" />
+                <EntitySection EntityName="Product" IsLoading="@IsLoading" OnRefresh="@HandleRefresh" />
             }
             else if (activeSection == SpaSection.Settings)
             {
@@ -31,7 +30,6 @@
 @code {
     private SpaSection activeSection = SpaSection.Dashboard;
     private AsyncUiState? loadingState;
-    private IReadOnlyList<Product>? products;
 
     private bool IsLoading => loadingState?.IsBusy == true;
 
@@ -61,20 +59,12 @@
         await loadingState!.RunAsync(async () =>
         {
             SpaSections.NavigateTo(section);
-
-            if (section == SpaSection.Products)
-            {
-                await LoadProducts();
-            }
-            else
-            {
-                await Task.Delay(500);
-            }
+            await Task.Delay(500);
         });
     }
 
-    private async Task LoadProducts()
+    private async Task HandleRefresh()
     {
-        products = await ProductService.GetProductsAsync();
+        await Task.Delay(100);
     }
 }

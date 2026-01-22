@@ -1,0 +1,75 @@
+@using DotNetWebApp.Services
+@using DotNetWebApp.Models.AppDictionary
+
+<RadzenCard>
+    <RadzenStack Gap="16px">
+        <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" JustifyContent="@JustifyContent.SpaceBetween">
+            <RadzenText Text="@($"{EntityName} Management")" TextStyle="TextStyle.Subtitle2" />
+            <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="8px">
+                <RadzenButton Click="OnRefresh" IsBusy="@IsLoading" Text="@(IsLoading ? "Loading..." : "Refresh")"
+                              Icon="refresh" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Click="AddNewEntity" Text="@($"Add {EntityName}")" Icon="add"
+                              ButtonStyle="ButtonStyle.Success" />
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (entities == null || entities.Count == 0)
+        {
+            @if (IsLoading)
+            {
+                <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                    <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                    <RadzenText Text="@($"Loading {EntityName.ToLower()}...")" TextStyle="TextStyle.Body2" />
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                    <RadzenText Text="@($"No {EntityName.ToLower()} found.")" TextStyle="TextStyle.Body2" />
+                    <RadzenButton Click="OnRefresh" Text="@($"Load {EntityName}")" ButtonStyle="ButtonStyle.Primary" />
+                </RadzenStack>
+            }
+        }
+        else
+        {
+            <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter] public string EntityName { get; set; } = string.Empty;
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private IReadOnlyList<object>? entities;
+
+    [Inject] private IEntityApiService EntityApiService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(EntityName))
+        {
+            await LoadEntities();
+        }
+    }
+
+    private async Task LoadEntities()
+    {
+        try
+        {
+            var result = await EntityApiService.GetEntitiesAsync(EntityName);
+            entities = result.ToList().AsReadOnly();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading {EntityName}: {ex.Message}");
+        }
+    }
+
+    private async Task AddNewEntity()
+    {
+        await Task.Delay(100);
+        Console.WriteLine($"Add new {EntityName} clicked");
+    }
+}
