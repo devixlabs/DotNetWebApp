@@ -15,7 +15,7 @@
 3. **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` -> `Products`).
 4. **Generic API:** `GenericController<T>` powers entity endpoints with singular names matching entity names.
 5. **Dynamic UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render entities from YAML; `NavMenu.razor` provides dynamic navigation.
-6. **DDL to YAML Parser Pipeline:** ✅ **NEW - COMPLETE**
+6. **DDL to YAML Parser Pipeline:** ✅ **COMPLETE**
    - **DdlParser** console project converts SQL Server DDL files to `app.yaml` format
    - Uses `Microsoft.SqlServer.TransactSql.ScriptDom` (170.147.0) for robust T-SQL parsing
    - Extracts: table definitions, column metadata (type, nullability, constraints), foreign keys, IDENTITY columns, DEFAULT values
@@ -24,6 +24,16 @@
    - Makefile target: `make test-ddl-pipeline` orchestrates full workflow with validation
    - Test files: `sample-schema.sql` demonstrates Categories/Products schema; generates `app-test.yaml`
    - All nullable reference warnings (CS8601) resolved with null-coalescing defaults
+7. **ModelGenerator Path Bug Fixed:** ✅ **COMPLETE (2026-01-21)**
+   - Fixed nested directory bug: line 32 changed from `../DotNetWebApp/Models/Generated` to `../Models/Generated`
+   - Created `ModelGenerator.Tests` project with 3 unit tests validating path resolution
+   - Tests prevent regression by verifying correct output path and detecting nested structure
+   - All tests passing; files now correctly generate to `Models/Generated/` (not nested)
+8. **Developer Context Updated:** ✅ **COMPLETE (2026-01-21)**
+   - `CLAUDE.md` fully updated with current project state from git logs, source code, and documentation
+   - Restructured "Current State" into ✅ Completed Features, ⚠️ Limitations, 🔧 Development Status
+   - Expanded "Architecture Notes" with detailed technical descriptions
+   - Added "Key Files and Their Purposes" table and "Recent Development History" section
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
@@ -32,6 +42,8 @@
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
 - **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
 - `DotNetWebApp.Tests` now covers `SampleDataSeeder` via SQLite-backed integration tests so `make test` (Release) can validate the seed script and missing-file paths.
+- **ModelGenerator.Tests** (2026-01-21) validates path resolution with 3 unit tests; prevents nested directory regression.
+- `make test` runs all 5 tests (2 DotNetWebApp.Tests + 3 ModelGenerator.Tests) - all passing.
 
 **Database State / Migrations:**
 - Migration `AddCatalogSchema` creates `Categories` table and adds `CategoryId`, `CreatedAt`, `Description` to `Products`.
@@ -42,9 +54,12 @@
 
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 
-**Current Task Status:** 🚧 **IN PROGRESS**
-- Transitioning from product-specific SPA/API to app.yaml-driven entities
-- Added `IEntityMetadataService` to map app.yaml entities to CLR types for reuse in API/UI
+**Current Task Status:** ✅ **READY FOR NEXT PHASE**
+- ModelGenerator path bug fixed and tested (2026-01-21)
+- CLAUDE.md updated with current project state (2026-01-21)
+- All tests passing (5/5); full DDL pipeline verified
+- Ready to implement: Transitioning from product-specific SPA/API to app.yaml-driven entities
+- Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for reuse in API/UI
 
 **How to Use DDL Parser:**
 ```bash
