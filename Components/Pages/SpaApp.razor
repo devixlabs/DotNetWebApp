@@ -4,25 +4,34 @@
 @inject NavigationManager Navigation
 @inject ISpaSectionService SpaSections
 @inject IProductService ProductService
+@inject IEntityMetadataService EntityMetadataService
 
 <PageTitle>DotNet SPA</PageTitle>
 
 <RadzenRow Gap="20px" Style="min-height: calc(100vh - 140px);">
     <RadzenColumn Size="12">
         <RadzenStack Gap="20px">
-            <SectionHeader Title="@SpaSections.GetInfo(activeSection).Title" IsLoading="@IsLoading" />
+            @if (isEntitySection && activeEntityName != null)
+            {
+                <SectionHeader Title="@activeEntityName" IsLoading="@false" />
+                <EntitySection EntityName="@activeEntityName" OnRefresh="@(() => StateHasChanged())" />
+            }
+            else
+            {
+                <SectionHeader Title="@SpaSections.GetInfo(activeSection).Title" IsLoading="@IsLoading" />
 
-            @if (activeSection == SpaSection.Dashboard)
-            {
-                <DashboardSection />
-            }
-            else if (activeSection == SpaSection.Products)
-            {
-                <ProductsSection Products="@products" IsLoading="@IsLoading" OnRefresh="@LoadProducts" />
-            }
-            else if (activeSection == SpaSection.Settings)
-            {
-                <SettingsSection />
+                @if (activeSection == SpaSection.Dashboard)
+                {
+                    <DashboardSection />
+                }
+                else if (activeSection == SpaSection.Products)
+                {
+                    <ProductsSection Products="@products" IsLoading="@IsLoading" OnRefresh="@LoadProducts" />
+                }
+                else if (activeSection == SpaSection.Settings)
+                {
+                    <SettingsSection />
+                }
             }
         </RadzenStack>
     </RadzenColumn>
@@ -30,6 +39,8 @@
 
 @code {
     private SpaSection activeSection = SpaSection.Dashboard;
+    private string? activeEntityName;
+    private bool isEntitySection => activeEntityName != null;
     private AsyncUiState? loadingState;
     private IReadOnlyList<Product>? products;
 
@@ -45,8 +56,41 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        var requestedSection = SpaSections.FromRouteSegment(Section) ?? SpaSections.DefaultSection;
-        await LoadSection(requestedSection);
+        string? segment = Section?.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrEmpty(segment))
+        {
+            // Default to Dashboard
+            activeSection = SpaSection.Dashboard;
+            activeEntityName = null;
+            return;
+        }
+
+        // Try to match static section first
+        var staticSection = SpaSections.FromRouteSegment(segment);
+        if (staticSection != null)
+        {
+            activeSection = staticSection.Value;
+            activeEntityName = null;
+            await LoadSection(staticSection.Value);
+            return;
+        }
+
+        // Check if it's an entity name
+        var entityMeta = EntityMetadataService.Entities
+            .FirstOrDefault(e => e.Definition.Name.Equals(segment, StringComparison.OrdinalIgnoreCase));
+
+        if (entityMeta != null)
+        {
+            activeSection = SpaSection.Dashboard; // Keep a default value
+            activeEntityName = entityMeta.Definition.Name;
+            // No need to load data - EntitySection handles it
+            return;
+        }
+
+        // Fallback to Dashboard if unrecognized
+        activeSection = SpaSection.Dashboard;
+        activeEntityName = null;
     }
 
     private async Task LoadSection(SpaSection section)

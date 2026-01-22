@@ -2,7 +2,7 @@ namespace DotNetWebApp.Models;
 
 public class DashboardSummary
 {
-    public int TotalProducts { get; set; }
+    public IReadOnlyDictionary<string, int> EntityCounts { get; set; } = new Dictionary<string, int>();
     public decimal Revenue { get; set; }
     public int ActiveUsers { get; set; }
     public int GrowthPercent { get; set; }

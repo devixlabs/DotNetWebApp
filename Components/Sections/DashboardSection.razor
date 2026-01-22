@@ -1,20 +1,27 @@
 <RadzenStack Gap="20px">
     <RadzenRow Gap="20px">
-        <RadzenColumn Size="12" Medium="6" Large="3">
-            <RadzenCard>
-                <RadzenStack Gap="8px">
-                    <RadzenText Text="Total Products" TextStyle="TextStyle.Subtitle2" />
-                    @if (isLoading)
-                    {
-                        <RadzenText Text="Loading..." TextStyle="TextStyle.H5" />
-                    }
-                    else
-                    {
-                        <RadzenText Text="@summary.TotalProducts.ToString()" TextStyle="TextStyle.H4" />
-                    }
-                </RadzenStack>
-            </RadzenCard>
-        </RadzenColumn>
+        @* Dynamic entity count cards *@
+        @foreach (var entityMeta in EntityMetadataService.Entities)
+        {
+            var count = summary.EntityCounts.GetValueOrDefault(entityMeta.Definition.Name, 0);
+            var displayName = entityMeta.Definition.Name;
+
+            <RadzenColumn Size="12" Medium="6" Large="3">
+                <RadzenCard>
+                    <RadzenStack Gap="8px">
+                        <RadzenText Text="@displayName" TextStyle="TextStyle.Subtitle2" />
+                        @if (isLoading)
+                        {
+                            <RadzenText Text="Loading..." TextStyle="TextStyle.H5" />
+                        }
+                        else
+                        {
+                            <RadzenText Text="@count.ToString()" TextStyle="TextStyle.H4" />
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        }
 
         <RadzenColumn Size="12" Medium="6" Large="3">
             <RadzenCard>
@@ -61,6 +68,7 @@
 </RadzenStack>
 
 @inject IDashboardService DashboardService
+@inject IEntityMetadataService EntityMetadataService
 
 @code {
     private DashboardSummary summary = new();

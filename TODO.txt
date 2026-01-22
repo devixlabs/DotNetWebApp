@@ -32,13 +32,23 @@ VERIFICATION NOTES (2026-01-21):
   Updated GenericEntityPage.razor to inject and use IEntityApiService. Added 9 comprehensive unit tests.
   All tests passing (23/23 total), build successful with 0 warnings/errors.
 
-5) Replace ProductsSection with EntitySection
-- Add `Components/Sections/EntitySection.razor` that renders any entity via metadata + DynamicDataGrid.
-- Update `Components/Pages/SpaApp.razor` to render the selected entity (route segment or explicit query string).
+5) Replace ProductsSection with EntitySection [✅ COMPLETE]
+- Add `Components/Sections/EntitySection.razor` that renders any entity via metadata + DynamicDataGrid. [DONE]
+- Update `Components/Pages/SpaApp.razor` to render the selected entity (route segment or explicit query string). [DONE]
+- IMPLEMENTATION DETAILS: Created EntitySection.razor component that uses IEntityMetadataService.Find() to resolve
+  entity metadata and IEntityApiService.GetEntitiesAsync() to fetch data. Includes loading states and error handling.
+  Updated SpaApp.razor with hybrid routing: checks static sections first (Dashboard/Products/Settings), then falls
+  back to entity name matching via EntityMetadataService.Entities. Case-insensitive URL matching with proper null handling.
+  Routes like /app/product or /app/category now dynamically render the appropriate entity using EntitySection component.
 
-6) Generalize dashboard counts
-- Replace `DashboardSummary.TotalProducts` with a generic summary that does not assume a primary entity.
-- Update `DashboardService` + `Components/Sections/DashboardSection.razor` to use `IEntityApiService`.
+6) Generalize dashboard counts [✅ COMPLETE]
+- Replace `DashboardSummary.TotalProducts` with a generic summary that does not assume a primary entity. [DONE]
+- Update `DashboardService` + `Components/Sections/DashboardSection.razor` to use `IEntityApiService`. [DONE]
+- IMPLEMENTATION DETAILS: Replaced DashboardSummary.TotalProducts (int) with EntityCounts (IReadOnlyDictionary<string, int>).
+  DashboardService now iterates all entities from IEntityMetadataService.Entities and loads counts in parallel using
+  Task.WhenAll() with IEntityApiService.GetCountAsync(). Graceful error handling returns 0 for failed entity counts.
+  DashboardSection.razor loops through EntityMetadataService.Entities to dynamically render count cards for all entities
+  from app.yaml. Uses GetValueOrDefault() for safe dictionary access.
 
 7) Make SPA sections data-driven + optional
 - Refactor `SpaSection` enum + `SpaSectionService` to build sections from app.yaml entities (keep Dashboard/Settings as optional static).
@@ -61,7 +71,6 @@ IMPLEMENTATION SEQUENCE NOTES:
 - Task 7 (Data-driven SPA) builds on tasks 5-6 and GenericEntityPage working
 - Task 8 (Remove artifacts) is final cleanup after all replacements work
 - Task 9 (Docs) should be done after major changes
-- Task 10 (Seed data) is independent and can be done anytime
 
 === NEXT ===
 a) Look at using dotnet aspnet codegenerator scaffolding for what we have currently or planned for:

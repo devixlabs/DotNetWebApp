@@ -4,20 +4,44 @@ namespace DotNetWebApp.Services;
 
 public sealed class DashboardService : IDashboardService
 {
-    private readonly IProductService _productService;
+    private readonly IEntityApiService _entityApiService;
+    private readonly IEntityMetadataService _entityMetadataService;
 
-    public DashboardService(IProductService productService)
+    public DashboardService(
+        IEntityApiService entityApiService,
+        IEntityMetadataService entityMetadataService)
     {
-        _productService = productService;
+        _entityApiService = entityApiService;
+        _entityMetadataService = entityMetadataService;
     }
 
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        var totalProducts = await _productService.GetProductCountAsync(cancellationToken);
+        // Get all entities
+        var entities = _entityMetadataService.Entities;
+
+        // Load counts in parallel
+        var countTasks = entities
+            .Select(async e =>
+            {
+                try
+                {
+                    var count = await _entityApiService.GetCountAsync(e.Definition.Name);
+                    return (Name: e.Definition.Name, Count: count);
+                }
+                catch
+                {
+                    // Return 0 if count fails for individual entity
+                    return (Name: e.Definition.Name, Count: 0);
+                }
+            })
+            .ToArray();
+
+        var counts = await Task.WhenAll(countTasks);
 
         return new DashboardSummary
         {
-            TotalProducts = totalProducts,
+            EntityCounts = counts.ToDictionary(c => c.Name, c => c.Count),
             Revenue = 45789.50m,
             ActiveUsers = 1250,
             GrowthPercent = 15,
