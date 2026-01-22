@@ -35,6 +35,8 @@
 **Database State / Migrations:**
 - Migration `AddCatalogSchema` creates `Categories` table and adds `CategoryId`, `CreatedAt`, `Description` to `Products`.
 - Apply with: `make migrate` (requires SQL Server running via `make db-start`).
+- `sample-seed.sql` provides example rows for the default schema; it now guards against duplicates and is executed by `SampleDataSeeder`.
+- `make seed` invokes `dotnet run --project DotNetWebApp.csproj -- --seed`, which runs `Database.MigrateAsync()` and then executes the contents of `sample-seed.sql` via `ExecuteSqlRawAsync`; it keeps the seeding logic within EF without external tooling.
 
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 

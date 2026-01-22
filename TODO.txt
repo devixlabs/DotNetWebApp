@@ -1,13 +1,24 @@
 
 Plan: remove hard-coded Product/Category pieces, make entity flows app.yaml-driven, keep SPA optional example.
 
-1) Add shared entity metadata resolver
-- Introduce a service that maps entity name -> AppDictionary entity + CLR type.
-- Use it for consistent 404/validation without changing behavior yet.
+VERIFICATION NOTES (2026-01-21):
+- ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)
+- ✅ DDL → YAML → Models pipeline tested and verified (make test-ddl-pipeline succeeds)
+- ✅ Generated models (Product.cs, Category.cs) have correct namespace and EF annotations
+- ✅ AppDbContext reflection-based entity discovery works (models in DotNetWebApp.Models.Generated)
+- ✅ App runs successfully with `make dev`, dynamic menu shows entities
+- ⚠️ QUIRK: ModelGenerator outputs to DotNetWebApp/Models/Generated/ (nested) instead of Models/Generated/
+  Fix: Change line 32 in ModelGenerator/Program.cs from "../DotNetWebApp/Models/Generated" to "../Models/Generated"
+- NOTE: No unit tests currently exist; consider adding test projects for future tasks
 
-2) Add dynamic API endpoints (non-breaking)
+1) Add shared entity metadata resolver [✅ COMPLETE]
+- IEntityMetadataService already exists and maps entity name -> AppDictionary entity + CLR type.
+- Already used for dynamic entity discovery; no changes needed for this task.
+
+2) Add dynamic API endpoints (non-breaking) [READY TO IMPLEMENT]
 - Add a controller for `api/entities/{entityName}` + `api/entities/{entityName}/count` + POST using DbContext.Set(Type).
 - Keep Product/Category controllers for now to avoid breaking routes.
+- IMPLEMENTATION NOTE: Use EntityMetadataService.Find(entityName) to resolve CLR type, then DbContext.Set(type) for queries.
 
 3) Add generic API client for entities
 - Create `IEntityApiService` with `GetEntitiesAsync(entityName)` and `GetCountAsync(entityName)`.
@@ -37,3 +48,17 @@ Plan: remove hard-coded Product/Category pieces, make entity flows app.yaml-driv
 9) Docs + summary
 - Update `SESSION_SUMMARY.md` and any docs referencing product-specific SPA.
 - Document the dynamic API route and SPA example flag.
+
+10) Sample seed data
+- Confirm `sample-seed.sql` guards against duplicate inserts so it is idempotent.
+- Document the script and add `SampleDataSeeder` so the application can run the SQL via EF (calls `ExecuteSqlRawAsync`).
+- Update `make seed` to run `dotnet run -- --seed`, which migrates the schema and invokes the seeder so the sample rows appear automatically.
+
+IMPLEMENTATION SEQUENCE NOTES:
+- Tasks 2-4 form a dependency chain: Endpoints → ApiService → GenericEntityPage wiring
+- Task 5 (EntitySection) depends on IEntityApiService from task 3
+- Task 6 (Dashboard) depends on IEntityApiService from task 3
+- Task 7 (Data-driven SPA) builds on tasks 5-6 and GenericEntityPage working
+- Task 8 (Remove artifacts) is final cleanup after all replacements work
+- Task 9 (Docs) should be done after major changes
+- Task 10 (Seed data) is independent and can be done anytime
