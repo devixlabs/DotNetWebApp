@@ -19,7 +19,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop
+.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
 
 clean:
 	rm -f msbuild.binlog
@@ -110,6 +110,11 @@ db-stop:
 db-logs:
 	@docker logs -f sqlserver-dev
 
+# Tail native SQL Server logs (systemd + errorlog)
+ms-logs:
+	@echo "Tailing systemd and errorlog (Ctrl+C to stop)..."
+	@sudo sh -c 'journalctl -u mssql-server -f --no-pager & tail -f /var/opt/mssql/log/errorlog; wait'
+
 # Drop the local dev database (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
 db-drop:
 	# shellcheck disable=SC2016
@@ -141,5 +146,4 @@ ms-status:
 
 ms-start:
 	sudo systemctl start mssql-server
-
 
