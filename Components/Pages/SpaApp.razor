@@ -13,7 +13,7 @@
             @if (isEntitySection && activeEntityName != null)
             {
                 <SectionHeader Title="@activeEntityName" IsLoading="@false" />
-                <EntitySection EntityName="@activeEntityName" OnRefresh="@(() => StateHasChanged())" />
+                <EntitySection EntityName="@activeEntityName" />
             }
             else
             {
@@ -25,7 +25,7 @@
                 }
                 else if (activeSection == SpaSection.Products)
                 {
-                    <EntitySection EntityName="Product" OnRefresh="@(() => StateHasChanged())" />
+                    <EntitySection EntityName="Product" />
                 }
                 else if (activeSection == SpaSection.Settings)
                 {
@@ -54,8 +54,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        string? segment = Section?.Trim().ToLowerInvariant();
-
+        var segment = Section?.Trim();
         if (string.IsNullOrEmpty(segment))
         {
             // Default to Dashboard
@@ -74,21 +73,9 @@
             return;
         }
 
-        // Check if it's an entity name
-        var entityMeta = EntityMetadataService.Entities
-            .FirstOrDefault(e => e.Definition.Name.Equals(segment, StringComparison.OrdinalIgnoreCase));
-
-        if (entityMeta != null)
-        {
-            activeSection = SpaSection.Dashboard; // Keep a default value
-            activeEntityName = entityMeta.Definition.Name;
-            // No need to load data - EntitySection handles it
-            return;
-        }
-
-        // Fallback to Dashboard if unrecognized
+        // Treat any non-static route segment as an entity name.
         activeSection = SpaSection.Dashboard;
-        activeEntityName = null;
+        activeEntityName = segment;
     }
 
     private async Task LoadSection(SpaSection section)
@@ -106,4 +93,5 @@
             await Task.Delay(500);
         });
     }
+
 }

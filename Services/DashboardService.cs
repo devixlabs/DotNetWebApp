@@ -21,10 +21,9 @@ public sealed class DashboardService : IDashboardService
 
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        // Get all entities from metadata service
         var entities = _entityMetadataService.Entities;
 
-        // Load counts in parallel for better performance
+        // Load counts in parallel
         var countTasks = entities
             .Select(async e =>
             {
@@ -36,7 +35,6 @@ public sealed class DashboardService : IDashboardService
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error getting count for {EntityName}", e.Definition.Name);
-                    // Return 0 if count fails for individual entity
                     return new EntityCountInfo(e.Definition.Name, 0);
                 }
             })

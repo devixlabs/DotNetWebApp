@@ -34,6 +34,12 @@
    - Restructured "Current State" into ✅ Completed Features, ⚠️ Limitations, 🔧 Development Status
    - Expanded "Architecture Notes" with detailed technical descriptions
    - Added "Key Files and Their Purposes" table and "Recent Development History" section
+9. **Makefile Shellcheck Clean:** ✅ **COMPLETE**
+   - Quoted `$(BUILD_CONFIGURATION)` in `Makefile` commands to satisfy `shellcheck` in `make check`
+10. **DDL Pipeline Runtime Fix:** ✅ **COMPLETE**
+   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make test-ddl-pipeline`
+11. **Native MSSQL Log Helper:** ✅ **COMPLETE**
+   - Added `make ms-logs` to tail systemd and `/var/opt/mssql/log/errorlog` for native Linux installs
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
@@ -60,6 +66,7 @@
 - All tests passing (5/5); full DDL pipeline verified
 - Ready to implement: Transitioning from product-specific SPA/API to app.yaml-driven entities
 - Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for reuse in API/UI
+- Manual merge with `templify_merged_5-6` completed; branch re-synced with latest templify UI/build updates (2026-01-21)
 
 **How to Use DDL Parser:**
 ```bash

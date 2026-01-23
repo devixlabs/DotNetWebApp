@@ -19,7 +19,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop
+.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
 
 clean:
 	rm -f msbuild.binlog
@@ -110,6 +110,11 @@ db-stop:
 db-logs:
 	@docker logs -f sqlserver-dev
 
+# Tail native SQL Server logs (systemd + errorlog)
+ms-logs:
+	@echo "Tailing systemd and errorlog (Ctrl+C to stop)..."
+	@sudo sh -c 'journalctl -u mssql-server -f --no-pager & tail -f /var/opt/mssql/log/errorlog; wait'
+
 # Drop the local dev database (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
 db-drop:
 	# shellcheck disable=SC2016
@@ -133,3 +138,12 @@ db-drop:
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C \
 			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
 		echo "Dropped database DotNetWebAppDb (if it existed)."'
+
+# Local install of MSSQL (no Docker)
+ms-status:
+	systemctl status mssql-server
+	ss -ltnp | rg 1433
+
+ms-start:
+	sudo systemctl start mssql-server
+

@@ -19,9 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DotNetWebApp.csproj">
-      <Private>true</Private>
-    </ProjectReference>
+    <ProjectReference Include="..\DotNetWebApp.csproj" />
   </ItemGroup>
 
 </Project>
