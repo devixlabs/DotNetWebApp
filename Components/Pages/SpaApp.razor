@@ -1,33 +1,46 @@
 @page "/app"
 @page "/app/{Section?}"
-@using DotNetWebApp.Models.Generated
-@inject NavigationManager Navigation
 @inject ISpaSectionService SpaSections
 @inject IEntityMetadataService EntityMetadataService
+@inject IOptions<AppCustomizationOptions> AppOptions
 
 <PageTitle>DotNet SPA</PageTitle>
 
 <RadzenRow Gap="20px" Style="min-height: calc(100vh - 140px);">
     <RadzenColumn Size="12">
         <RadzenStack Gap="20px">
-            @if (isEntitySection && activeEntityName != null)
+            @if (!IsSpaEnabled)
             {
-                <SectionHeader Title="@activeEntityName" IsLoading="@false" />
+                <RadzenCard>
+                    <RadzenStack Gap="12px">
+                        <RadzenText Text="SPA example disabled." TextStyle="TextStyle.Subtitle1" />
+                        <RadzenText Text="Enable AppCustomization:EnableSpaExample to use the /app routes." TextStyle="TextStyle.Body2" />
+                    </RadzenStack>
+                </RadzenCard>
+            }
+            else if (activeSection == null)
+            {
+                <RadzenCard>
+                    <RadzenStack Gap="12px">
+                        <RadzenText Text="No SPA sections are configured." TextStyle="TextStyle.Subtitle1" />
+                        <RadzenText Text="Add entities to app.yaml or enable SPA sections in appsettings.json." TextStyle="TextStyle.Body2" />
+                    </RadzenStack>
+                </RadzenCard>
+            }
+            else if (isEntitySection && activeEntityName != null)
+            {
+                <SectionHeader Title="@activeSection.Title" IsLoading="@false" />
                 <EntitySection EntityName="@activeEntityName" />
             }
             else
             {
-                <SectionHeader Title="@SpaSections.GetInfo(activeSection).Title" IsLoading="@IsLoading" />
+                <SectionHeader Title="@activeSection.Title" IsLoading="@IsLoading" />
 
-                @if (activeSection == SpaSection.Dashboard)
+                @if (activeSection.Section == SpaSection.Dashboard)
                 {
                     <DashboardSection />
                 }
-                else if (activeSection == SpaSection.Products)
-                {
-                    <EntitySection EntityName="Product" />
-                }
-                else if (activeSection == SpaSection.Settings)
+                else if (activeSection.Section == SpaSection.Settings)
                 {
                     <SettingsSection />
                 }
@@ -37,12 +50,13 @@
 </RadzenRow>
 
 @code {
-    private SpaSection activeSection = SpaSection.Dashboard;
+    private SpaSectionInfo? activeSection;
     private string? activeEntityName;
-    private bool isEntitySection => activeEntityName != null;
+    private bool isEntitySection => activeSection?.Section == SpaSection.Entity && activeEntityName != null;
     private AsyncUiState? loadingState;
 
     private bool IsLoading => loadingState?.IsBusy == true;
+    private bool IsSpaEnabled => AppOptions.Value.EnableSpaExample;
 
     [Parameter] public string? Section { get; set; }
 
@@ -54,31 +68,42 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!IsSpaEnabled)
+        {
+            activeSection = null;
+            activeEntityName = null;
+            return;
+        }
+
         var segment = Section?.Trim();
         if (string.IsNullOrEmpty(segment))
         {
-            // Default to Dashboard
-            activeSection = SpaSection.Dashboard;
+            // Default to the first SPA section.
+            activeSection = SpaSections.DefaultSection;
             activeEntityName = null;
             return;
         }
 
         // Try to match static section first
-        var staticSection = SpaSections.FromRouteSegment(segment);
-        if (staticSection != null)
+        var section = SpaSections.FromRouteSegment(segment);
+        if (section != null)
         {
-            activeSection = staticSection.Value;
-            activeEntityName = null;
-            await LoadSection(staticSection.Value);
+            activeSection = section;
+            activeEntityName = section.Section == SpaSection.Entity ? section.EntityName : null;
+
+            if (section.Section != SpaSection.Entity)
+            {
+                await LoadSection(section);
+            }
             return;
         }
 
         // Treat any non-static route segment as an entity name.
-        activeSection = SpaSection.Dashboard;
+        activeSection = new SpaSectionInfo(SpaSection.Entity, segment, segment, segment, segment);
         activeEntityName = segment;
     }
 
-    private async Task LoadSection(SpaSection section)
+    private async Task LoadSection(SpaSectionInfo section)
     {
         if (activeSection == section && !IsLoading)
         {

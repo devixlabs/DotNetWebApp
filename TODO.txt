@@ -1,14 +1,14 @@
 
 VERIFICATION NOTES (2026-01-21):
 - ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)
-- ✅ DDL → YAML → Models pipeline tested and verified (make test-ddl-pipeline succeeds)
+- ✅ DDL → YAML → Models pipeline tested and verified (make run-ddl-pipeline succeeds)
 - ✅ Generated models (Product.cs, Category.cs) have correct namespace and EF annotations
 - ✅ AppDbContext reflection-based entity discovery works (models in DotNetWebApp.Models.Generated)
 - ✅ App runs successfully with `make dev`, dynamic menu shows entities
 - ✅ FIXED (2026-01-21): ModelGenerator now outputs to correct Models/Generated/ location
-  - Fixed line 32 in ModelGenerator/Program.cs: "../DotNetWebApp/Models/Generated" → "../Models/Generated"
-  - Added ModelGenerator.Tests project with 3 path resolution tests (all passing)
-  - Cleaned up incorrect nested DotNetWebApp/DotNetWebApp/Models/Generated directory
+- ✅ Fixed line 32 in ModelGenerator/Program.cs: "../DotNetWebApp/Models/Generated" → "../Models/Generated"
+- ✅ Added ModelGenerator.Tests project with 3 path resolution tests (all passing)
+- ✅ Cleaned up incorrect nested DotNetWebApp/DotNetWebApp/Models/Generated directory
 
 1) Add shared entity metadata resolver [✅ COMPLETE]
 - IEntityMetadataService already exists and maps entity name -> AppDictionary entity + CLR type.
@@ -27,7 +27,7 @@ VERIFICATION NOTES (2026-01-21):
 
 4) Wire dynamic entity UI path [✅ COMPLETE]
 - Update `Components/Pages/GenericEntityPage.razor` to use `IEntityApiService` and the new `api/entities/` routes. [DONE]
-- Verify DDL -> app.yaml -> models -> API -> UI with `make test-ddl-pipeline`. [DONE]
+- Verify DDL -> app.yaml -> models -> API -> UI with `make run-ddl-pipeline`. [DONE]
 - IMPLEMENTATION DETAILS: Created IEntityApiService.cs and EntityApiService.cs for HTTP-based entity operations.
   Updated GenericEntityPage.razor to inject and use IEntityApiService. Added 9 comprehensive unit tests.
   All tests passing (23/23 total), build successful with 0 warnings/errors.
@@ -50,16 +50,16 @@ VERIFICATION NOTES (2026-01-21):
   DashboardSection.razor loops through EntityMetadataService.Entities to dynamically render count cards for all entities
   from app.yaml and builds a name->count map for safe lookups.
 
-7) Make SPA sections data-driven + optional
+7) Make SPA sections data-driven + optional [✅ COMPLETE]
 - Refactor `SpaSection` enum + `SpaSectionService` to build sections from app.yaml entities (keep Dashboard/Settings as optional static).
 - Add `EnableSpaExample` flag in `AppCustomizationOptions` + `appsettings.json` (default true).
 - Hide the "Application" nav group when disabled; optionally link Home to the entity list.
 
-8) Remove product/category artifacts
+8) Remove product/category artifacts [✅ COMPLETE]
 - Delete Product/Category controllers, `IProductService`, `ProductService`, and `ProductsSection`.
 - Remove product-specific labels from `Models/AppCustomizationOptions.cs` and `appsettings.json`.
 
-9) Docs + summary
+9) Docs + summary [✅ COMPLETE]
 - Update `SESSION_SUMMARY.md` and any docs referencing product-specific SPA.
 - Document the dynamic API route and SPA example flag.
 
@@ -113,7 +113,7 @@ DotNetWebApp.csproj (Web API + Blazor Server)
 5. Update DdlParser.csproj to reference Models project (instead of DotNetWebApp)
 6. Update test projects to reference Models project if needed
 7. Add Models project to DotNetWebApp.sln
-8. Test all build targets (make build, make test, make test-ddl-pipeline)
+8. Test all build targets (make build, make test, make run-ddl-pipeline)
 
 **Impact:**
 - Eliminates unnecessary rebuilds when tools change

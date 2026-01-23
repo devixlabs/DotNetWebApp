@@ -21,7 +21,7 @@
    - Extracts: table definitions, column metadata (type, nullability, constraints), foreign keys, IDENTITY columns, DEFAULT values
    - Handles: VARCHAR/NVARCHAR max lengths, DECIMAL precision/scale, PRIMARY KEY and FOREIGN KEY constraints
    - Pipeline: `database.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs`
-   - Makefile target: `make test-ddl-pipeline` orchestrates full workflow with validation
+   - Makefile target: `make run-ddl-pipeline` orchestrates full workflow with validation
    - Test files: `sample-schema.sql` demonstrates Categories/Products schema; generates `app-test.yaml`
    - All nullable reference warnings (CS8601) resolved with null-coalescing defaults
 7. **ModelGenerator Path Bug Fixed:** ✅ **COMPLETE (2026-01-21)**
@@ -37,26 +37,32 @@
 9. **Makefile Shellcheck Clean:** ✅ **COMPLETE**
    - Quoted `$(BUILD_CONFIGURATION)` in `Makefile` commands to satisfy `shellcheck` in `make check`
 10. **DDL Pipeline Runtime Fix:** ✅ **COMPLETE**
-   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make test-ddl-pipeline`
+   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make run-ddl-pipeline`
 11. **Native MSSQL Log Helper:** ✅ **COMPLETE**
    - Added `make ms-logs` to tail systemd and `/var/opt/mssql/log/errorlog` for native Linux installs
+12. **SPA Example Cleanup + Dynamic Sections:** ✅ **COMPLETE (2026-01-21)**
+    - `SpaSectionService` now builds sections from `app.yaml` entities and supports a new `EnableSpaExample` flag
+    - Product/category controllers, services, and SPA section removed in favor of entity-driven UI
+    - Nav menu hides the SPA group when disabled and Home can link directly to the first entity
+    - Docs updated with dynamic API routes and SPA flag information
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build` is clean; `make test-ddl-pipeline` tests complete DDL→YAML→Models→Build workflow.
-- `make migrate` requires SQL Server running and valid connection string.
+- `make build` is clean; `make run-ddl-pipeline` runs DDL→YAML→Models→Migration→Build workflow and now rebuilds `DotNetWebApp` before generating migrations to avoid stale assemblies.
+- `make migrate` requires SQL Server running and a generated migration from the DDL pipeline.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
 - **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
 - `DotNetWebApp.Tests` now covers `SampleDataSeeder` via SQLite-backed integration tests so `make test` (Release) can validate the seed script and missing-file paths.
 - **ModelGenerator.Tests** (2026-01-21) validates path resolution with 3 unit tests; prevents nested directory regression.
 - `make test` runs all 5 tests (2 DotNetWebApp.Tests + 3 ModelGenerator.Tests) - all passing.
+- `make dev` now scopes `dotnet watch` to `DotNetWebApp.csproj` to avoid building test projects during hot reload.
 
 **Database State / Migrations:**
-- Migration `AddCatalogSchema` creates `Categories` table and adds `CategoryId`, `CreatedAt`, `Description` to `Products`.
-- Apply with: `make migrate` (requires SQL Server running via `make db-start`).
+- Database schema is generated from SQL DDL via `make run-ddl-pipeline`, which regenerates `app.yaml`, models, and a fresh migration in `Migrations/` (ignored in repo).
+- Apply the generated migration with `make migrate` (requires SQL Server running via `make db-start`).
 - `sample-seed.sql` provides example rows for the default schema; it now guards against duplicates and is executed by `SampleDataSeeder`.
-- `make seed` invokes `dotnet run --project DotNetWebApp.csproj -- --seed`, which runs `Database.MigrateAsync()` and then executes the contents of `sample-seed.sql` via `ExecuteSqlRawAsync`; it keeps the seeding logic within EF without external tooling.
-- README now documents how to install `mssql-tools` inside the SQL Server Docker container and how to query `dbo.Categories`/`dbo.Products` after running `make seed`.
+- `make seed` invokes `dotnet run --project DotNetWebApp.csproj -- --seed`, which applies the generated migration via `Database.MigrateAsync()` and then executes `sample-seed.sql` via `ExecuteSqlRawAsync`; ensure the migration is generated from the DDL pipeline first.
+- README documents how to install `mssql-tools` inside the SQL Server Docker container and how to query sample data after running `make seed`.
 
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 
@@ -64,13 +70,13 @@
 - ModelGenerator path bug fixed and tested (2026-01-21)
 - CLAUDE.md updated with current project state (2026-01-21)
 - All tests passing (5/5); full DDL pipeline verified
-- Ready to implement: Transitioning from product-specific SPA/API to app.yaml-driven entities
+- SPA sections are now entity-driven and optional via configuration
 - Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for reuse in API/UI
 
 **How to Use DDL Parser:**
 ```bash
 # Test pipeline with sample schema
-make test-ddl-pipeline
+make run-ddl-pipeline
 
 # Or manually parse custom SQL:
 cd DdlParser && ../dotnet-build.sh run -- /path/to/schema.sql ../app.yaml
@@ -97,6 +103,6 @@ DdlParser/
 - Schema names normalized (all tables assumed in dbo schema)
 
 **Next Steps (Optional):**
-- Use `make test-ddl-pipeline` to validate any new SQL schema files
+- Use `make run-ddl-pipeline` to validate any new SQL schema files
 - Or integrate into CI/CD pipeline for automatic model regeneration from DDL
 - Extend TypeMapper or CreateTableVisitor for additional SQL types if needed

@@ -19,11 +19,15 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop
 
 clean:
 	rm -f msbuild.binlog
-	$(DOTNET) clean DotNetWebApp.sln
+	$(DOTNET) clean DotNetWebApp.csproj
+	$(DOTNET) clean ModelGenerator/ModelGenerator.csproj
+	$(DOTNET) clean DdlParser/DdlParser.csproj
+	$(DOTNET) clean tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
+	$(DOTNET) clean tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 
 https:
 	$(DOTNET) dev-certs https
@@ -34,7 +38,11 @@ check:
 	$(MAKE) build
 
 restore:
-	$(DOTNET) restore DotNetWebApp.sln
+	$(DOTNET) restore DotNetWebApp.csproj
+	$(DOTNET) restore ModelGenerator/ModelGenerator.csproj
+	$(DOTNET) restore DdlParser/DdlParser.csproj
+	$(DOTNET) restore tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
+	$(DOTNET) restore tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 
 # Build with configurable configuration (Debug by default for fast dev iteration)
 # Builds main projects only (excludes test projects to avoid OOM on memory-limited systems)
@@ -56,10 +64,10 @@ build-release:
 	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DdlParser/DdlParser.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 
-migrate:
+migrate: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
-seed:
+seed: migrate
 	$(DOTNET) run --project DotNetWebApp.csproj -- --seed
 
 # Run tests with same configuration as build target for consistency
@@ -70,14 +78,19 @@ test:
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 
-# Test the complete DDL → YAML → Model generation pipeline
-test-ddl-pipeline: clean test
-	@echo "Starting pipeline test..."
+# Run the complete DDL → YAML → Model generation pipeline
+run-ddl-pipeline: clean
+	@echo "Starting pipeline run..."
 	@echo " -- Parsing DDL to YAML..."
-	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app-test.yaml
+	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app.yaml
 	@echo ""
 	@echo " -- Generating models from YAML..."
-	cd ModelGenerator && "../$(DOTNET)" run ../app-test.yaml
+	cd ModelGenerator && "../$(DOTNET)" run ../app.yaml
+	@echo ""
+	@echo " -- Regenerating EF Core migration..."
+	rm -f Migrations/*.cs
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
 	@echo " -- Building project..."
 	$(MAKE) build
@@ -96,7 +109,7 @@ run:
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 # Always uses Debug configuration for fastest rebuild times during watch mode
 dev:
-	$(DOTNET) watch run --project DotNetWebApp.csproj --launch-profile https --configuration Debug
+	$(DOTNET) watch --project DotNetWebApp.csproj run --launch-profile https --configuration Debug
 
 # Start the SQL Server Docker container used for local dev
 db-start:
@@ -147,3 +160,18 @@ ms-status:
 ms-start:
 	sudo systemctl start mssql-server
 
+# Drop the database from native MSSQL instance on Linux
+ms-drop:
+	# shellcheck disable=SC2016
+	@/bin/sh -c '\
+		PASSWORD="$$SA_PASSWORD"; \
+		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
+			PASSWORD="$$MSSQL_SA_PASSWORD"; \
+		fi; \
+		if [ -z "$$PASSWORD" ]; then \
+			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
+			exit 1; \
+		fi; \
+		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C \
+			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
+		echo "Dropped database DotNetWebAppDb (if it existed)."'

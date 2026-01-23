@@ -68,7 +68,7 @@ Shared/
   MainLayout.razor        <- RadzenLayout, RadzenHeader, RadzenSidebar, RadzenBody, RadzenComponents
   NavMenu.razor           <- RadzenPanelMenu
 Components/Sections/
-  ProductsSection.razor   <- Product management UI with RadzenDataGrid
+  EntitySection.razor     <- Dynamic entity UI with RadzenDataGrid
   SettingsSection.razor   <- Settings UI with RadzenStack, RadzenCard, etc.
 ```
 
@@ -186,7 +186,7 @@ After making CSS changes, verify:
 
 This project includes several key section components for the SPA:
 
-- `Components/Sections/ProductsSection.razor` - Product management with RadzenDataGrid
+- `Components/Sections/EntitySection.razor` - Dynamic entity management with RadzenDataGrid
 - `Components/Sections/SettingsSection.razor` - Application settings interface
 
 <!-- FIXME: Missing DashboardSection.razor and the dynamic entity page/grid components. -->

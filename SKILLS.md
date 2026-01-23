@@ -448,23 +448,21 @@ Components/
     Home.razor         <- Landing page (route: /)
   Sections/
     DashboardSection.razor   <- Metrics cards
-    ProductsSection.razor    <- DataGrid with products
+    EntitySection.razor      <- Dynamic entity section
     SettingsSection.razor    <- Config forms
 Shared/
   MainLayout.razor     <- Master layout (contains RadzenComponents)
   NavMenu.razor        <- Navigation bar
 Models/
-  Product.cs           <- Data models go here
+  Generated/           <- Auto-generated entity models from app.yaml
 ```
 
 ### Adding a New Section
 
 <!-- FIXME: SPA sections are coordinated via SpaSection enum + SpaSectionService/ISpaSectionService; update steps to include those files. -->
-1. Create `Components/Sections/NewSection.razor`
-2. Add parameters if receiving data from parent
-3. Add navigation button in `SpaApp.razor`
-4. Add case in `SpaApp.razor` switch statement for rendering
-5. Add loading logic in `LoadSection()` method
+1. Add a new entity to `app.yaml` (SPA sections are data-driven)
+2. Regenerate models with `ModelGenerator` if needed
+3. Verify the entity appears in `/app/{EntityName}` and the "Data" nav group
 
 ### Adding a New Radzen Component
 

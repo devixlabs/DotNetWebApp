@@ -3,19 +3,19 @@
 ## Project Structure & Module Organization
 
 - `Components/`, `Pages/`, `Shared/`: Blazor UI components and layouts.
-- `Controllers/`: Web API endpoints (singular controllers, e.g., `ProductController`).
+- `Controllers/`: Web API endpoints (generic and entity controllers).
 - `Services/`: Business logic and DI services.
 - `Data/`: `AppDbContext`, tenancy helpers, and EF configuration.
 - `Models/` and `Models/Generated/`: Entity models; generated types come from `ModelGenerator`.
 - `ModelGenerator/`: Reads `app.yaml` and produces generated models.
-- `Migrations/`: EF Core migration files.
+- `Migrations/`: Generated EF Core migration files (kept empty in repo).
 - `wwwroot/`: Static assets (CSS, images, JS).
 
 ## Build, Test, and Development Commands
 
 - `make check`: Runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
 - `make build`: Release builds for `DotNetWebApp` and `ModelGenerator` (not the full solution).
-- `make migrate`: Applies EF Core migrations (SQL Server must be running).
+- `make migrate`: Applies the generated EF Core migration after running the DDL pipeline (SQL Server must be running).
 - `make dev`: Runs with hot reload (`dotnet watch`).
 - `make run`: Runs once without hot reload.
 - `make test`: Builds and runs `dotnet test` in Release for `tests/DotNetWebApp.Tests`.
@@ -25,7 +25,7 @@
 ## Project Goal & Session Notes
 
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
-- **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before Product/Category pages work. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
+- **Current State:** YAML drives generated models, API routes, and UI navigation; database schema should be created from the DDL pipeline before seeding. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Coding Style & Naming Conventions
@@ -43,7 +43,7 @@
 ## Commit & Pull Request Guidelines
 
 - Commit messages are short and imperative (e.g., “Add docker database commands”, “Fix nav bar button”); keep them concise.
-- PRs should include: a brief summary, commands run (`make check`, `make build`, etc.), screenshots for UI changes, and migration notes if schema changed.
+- PRs should include: a brief summary, commands run (`make check`, `make build`, etc.), screenshots for UI changes, and DDL pipeline notes if schema changed.
 
 ## Configuration & Safety Notes
 
