@@ -133,3 +133,13 @@ db-drop:
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C \
 			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
 		echo "Dropped database DotNetWebAppDb (if it existed)."'
+
+# Local install of MSSQL (no Docker)
+ms-status:
+	systemctl status mssql-server
+	ss -ltnp | rg 1433
+
+ms-start:
+	sudo systemctl start mssql-server
+
+
