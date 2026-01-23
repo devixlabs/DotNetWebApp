@@ -1,4 +1,5 @@
 using DotNetWebApp.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetWebApp.Services;
 
@@ -6,13 +7,16 @@ public sealed class DashboardService : IDashboardService
 {
     private readonly IEntityApiService _entityApiService;
     private readonly IEntityMetadataService _entityMetadataService;
+    private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
         IEntityApiService entityApiService,
-        IEntityMetadataService entityMetadataService)
+        IEntityMetadataService entityMetadataService,
+        ILogger<DashboardService> logger)
     {
         _entityApiService = entityApiService;
         _entityMetadataService = entityMetadataService;
+        _logger = logger;
     }
 
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
@@ -30,7 +34,7 @@ public sealed class DashboardService : IDashboardService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error getting count for {e.Definition.Name}: {ex.Message}");
+                    _logger.LogWarning(ex, "Error getting count for {EntityName}", e.Definition.Name);
                     return new EntityCountInfo(e.Definition.Name, 0);
                 }
             })
