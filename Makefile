@@ -23,7 +23,11 @@ BUILD_CONFIGURATION?=Debug
 
 clean:
 	rm -f msbuild.binlog
-	$(DOTNET) clean DotNetWebApp.sln
+	$(DOTNET) clean DotNetWebApp.csproj
+	$(DOTNET) clean ModelGenerator/ModelGenerator.csproj
+	$(DOTNET) clean DdlParser/DdlParser.csproj
+	$(DOTNET) clean tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
+	$(DOTNET) clean tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 
 https:
 	$(DOTNET) dev-certs https
@@ -76,12 +80,16 @@ test:
 
 # Test the complete DDL → YAML → Model generation pipeline
 run-ddl-pipeline: clean test
-	@echo "Starting pipeline test..."
+	@echo "Starting pipeline run..."
 	@echo " -- Parsing DDL to YAML..."
-	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app-test.yaml
+	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app.yaml
 	@echo ""
 	@echo " -- Generating models from YAML..."
-	cd ModelGenerator && "../$(DOTNET)" run ../app-test.yaml
+	cd ModelGenerator && "../$(DOTNET)" run ../app.yaml
+	@echo ""
+	@echo " -- Regenerating EF Core migration..."
+	rm -f Migrations/*.cs
+	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
 	@echo " -- Building project..."
 	$(MAKE) build
