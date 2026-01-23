@@ -15,17 +15,22 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a YA
 ## Project Goal & Session Notes
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
+- **Build Optimizations:** See `BUILD_OPTIMIZATION_SUMMARY.md` for complete details on build performance improvements (30+ min → 2-5 min)
 
 ## Key Commands
-- Check/Setup: `make check` (restore and build)
-- Build: `make build`
+- Check/Setup: `make check` (restore and build main projects - 4-8 min)
+- Build: `make build` (fast Debug build, main projects only - 2-5 min)
+- Build All: `make build-all` (includes test projects - 10-20 min, higher memory)
+- Build Release: `make build-release` (production build - 10-20 min)
 - Run (dev): `make dev` (with hot reload - use for active development)
 - Run (prod): `make run` (without hot reload - use for production-like testing)
-- Test: `make test`
+- Test: `make test` (build and run tests sequentially - 10-15 min)
 - Apply Migrations: `make migrate`
 - Add Migration: `./dotnet-build.sh ef migrations add <MigrationName>`
 - Docker Build: `make docker-build`
 - Clean: `make clean`
+
+**Important:** Default `make build` excludes test projects to prevent OOM errors. Use `make build-all` if you need tests built.
 
 ## Build Commands
 - The project uses a Makefile with the following targets: `check`, `build`, `dev`, `run`, `test`, `migrate`, `docker-build`, `clean`

@@ -1,4 +1,5 @@
 using DotNetWebApp.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetWebApp.Services;
 
@@ -6,33 +7,37 @@ public sealed class DashboardService : IDashboardService
 {
     private readonly IEntityApiService _entityApiService;
     private readonly IEntityMetadataService _entityMetadataService;
+    private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
         IEntityApiService entityApiService,
-        IEntityMetadataService entityMetadataService)
+        IEntityMetadataService entityMetadataService,
+        ILogger<DashboardService> logger)
     {
         _entityApiService = entityApiService;
         _entityMetadataService = entityMetadataService;
+        _logger = logger;
     }
 
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        // Get all entities
+        // Get all entities from metadata service
         var entities = _entityMetadataService.Entities;
 
-        // Load counts in parallel
+        // Load counts in parallel for better performance
         var countTasks = entities
             .Select(async e =>
             {
                 try
                 {
                     var count = await _entityApiService.GetCountAsync(e.Definition.Name);
-                    return (Name: e.Definition.Name, Count: count);
+                    return new EntityCountInfo(e.Definition.Name, count);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Error getting count for {EntityName}", e.Definition.Name);
                     // Return 0 if count fails for individual entity
-                    return (Name: e.Definition.Name, Count: 0);
+                    return new EntityCountInfo(e.Definition.Name, 0);
                 }
             })
             .ToArray();
@@ -41,15 +46,15 @@ public sealed class DashboardService : IDashboardService
 
         return new DashboardSummary
         {
-            EntityCounts = counts.ToDictionary(c => c.Name, c => c.Count),
+            EntityCounts = counts.ToList().AsReadOnly(),
             Revenue = 45789.50m,
             ActiveUsers = 1250,
             GrowthPercent = 15,
             RecentActivities = new[]
             {
-                new ActivityItem("2 min ago", "New product added"),
+                new ActivityItem("2 min ago", "New entity added"),
                 new ActivityItem("15 min ago", "User registered"),
-                new ActivityItem("1 hour ago", "Order completed")
+                new ActivityItem("1 hour ago", "Operation completed")
             }
         };
     }

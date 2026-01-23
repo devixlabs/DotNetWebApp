@@ -75,5 +75,60 @@ IMPLEMENTATION SEQUENCE NOTES:
 === NEXT ===
 a) Look at using dotnet aspnet codegenerator scaffolding for what we have currently or planned for:
    https://learn.microsoft.com/en-us/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-10.0#arguments
-b) 
+b) BUILD OPTIMIZATION TODO (2026-01-22)
+
+Priority #6: Break Project Reference Cycle (Medium Priority - Architectural Refactor)
+
+**Problem:**
+ModelGenerator and DdlParser both reference DotNetWebApp.csproj, creating a compile-time
+dependency that causes unnecessary rebuilds. When DotNetWebApp changes, both tools rebuild
+even though they only need access to model definitions, not the full web application.
+
+**Current Dependency Graph:**
+```
+DotNetWebApp.csproj (Web API + Blazor Server + Models)
+  ↑
+  └─── ModelGenerator.csproj (references DotNetWebApp)
+  └─── DdlParser.csproj (references DotNetWebApp)
+```
+
+**Proposed Solution:**
+Extract Models to a separate class library project:
+
+```
+DotNetWebApp.Models.csproj (Entities only)
+  ↑                           ↑
+  │                           │
+  │                           └─── ModelGenerator.csproj
+  │                           └─── DdlParser.csproj
+  │
+DotNetWebApp.csproj (Web API + Blazor Server)
+```
+
+**Implementation Steps:**
+1. Create new project: DotNetWebApp.Models.csproj
+2. Move Models/ folder to new project
+3. Update DotNetWebApp.csproj to reference Models project
+4. Update ModelGenerator.csproj to reference Models project (instead of DotNetWebApp)
+5. Update DdlParser.csproj to reference Models project (instead of DotNetWebApp)
+6. Update test projects to reference Models project if needed
+7. Add Models project to DotNetWebApp.sln
+8. Test all build targets (make build, make test, make test-ddl-pipeline)
+
+**Impact:**
+- Eliminates unnecessary rebuilds when tools change
+- Cleaner separation of concerns
+- Better incremental build performance
+- Estimated 10-15% additional build speed improvement
+
+**Estimated Effort:** 2-3 hours
+
+**Risk:** Medium - requires thorough testing of all build targets and runtime behavior
+
+**Status:** Documented in BUILD_OPTIMIZATION_SUMMARY.md, not yet implemented
+
+**Note:** All other build optimizations (1-7 plus additional optimizations) are COMPLETE
+and documented in BUILD_OPTIMIZATION_SUMMARY.md and BUILD_OPTIMIZATIONS_QUICK_REF.md 
+
+c) <YOUR_NEXT_PLACEHOLDER>
 

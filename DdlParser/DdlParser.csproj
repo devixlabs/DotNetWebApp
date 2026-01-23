@@ -13,8 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DotNetWebApp.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
+      <Private>true</Private>
     </ProjectReference>
   </ItemGroup>
 </Project>

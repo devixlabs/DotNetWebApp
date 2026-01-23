@@ -5,6 +5,19 @@
 
 <RadzenCard>
     <RadzenStack Gap="16px">
+        @* Header with controls *@
+        <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" JustifyContent="@JustifyContent.SpaceBetween">
+            <RadzenText Text="@($"{EntityName} Management")" TextStyle="TextStyle.Subtitle2" />
+            <RadzenStack Orientation="@Orientation.Horizontal" AlignItems="@AlignItems.Center" Gap="8px">
+                <RadzenButton Click="Refresh" IsBusy="@isLoading"
+                              Text="@(isLoading ? "Loading..." : "Refresh")"
+                              Icon="refresh" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Click="AddNewEntity" Text="@($"Add {EntityName}")" Icon="add"
+                              ButtonStyle="ButtonStyle.Success" />
+            </RadzenStack>
+        </RadzenStack>
+
+        @* Error handling *@
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter">
@@ -13,9 +26,10 @@
         }
         else if (isLoading)
         {
-            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px">
-                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
-                <RadzenText Text="Loading..." />
+            <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary" Value="100"
+                                   ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                <RadzenText Text="@($"Loading {EntityName.ToLower()}...")" TextStyle="TextStyle.Body2" />
             </RadzenStack>
         }
         else if (data != null && entityType != null)
@@ -24,7 +38,10 @@
         }
         else
         {
-            <RadzenText Text="No data available" TextStyle="TextStyle.Body2" />
+            <RadzenStack Gap="12px" AlignItems="@AlignItems.Center">
+                <RadzenText Text="@($"No {EntityName.ToLower()} found.")" TextStyle="TextStyle.Body2" />
+                <RadzenButton Click="Refresh" Text="@($"Load {EntityName}")" ButtonStyle="ButtonStyle.Primary" />
+            </RadzenStack>
         }
     </RadzenStack>
 </RadzenCard>
@@ -75,5 +92,17 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task Refresh()
+    {
+        await OnRefresh.InvokeAsync();
+        await OnParametersSetAsync();
+    }
+
+    private async Task AddNewEntity()
+    {
+        await Task.Delay(100);
+        // TODO: Implement add new entity modal/form
     }
 }
