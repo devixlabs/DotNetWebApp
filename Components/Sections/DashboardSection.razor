@@ -1,18 +1,21 @@
 <RadzenStack Gap="20px">
     <RadzenRow Gap="20px">
-        @foreach (var entityCount in summary.EntityCounts)
+        @foreach (var entityMeta in EntityMetadataService.Entities)
         {
+            var displayName = entityMeta.Definition.Name;
+            var count = entityCountsByName.GetValueOrDefault(displayName, 0);
+
             <RadzenColumn Size="12" Medium="6" Large="3">
                 <RadzenCard>
                     <RadzenStack Gap="8px">
-                        <RadzenText Text="@($"Total {entityCount.EntityName}s")" TextStyle="TextStyle.Subtitle2" />
+                        <RadzenText Text="@($"Total {displayName}s")" TextStyle="TextStyle.Subtitle2" />
                         @if (isLoading)
                         {
                             <RadzenText Text="Loading..." TextStyle="TextStyle.H5" />
                         }
                         else
                         {
-                            <RadzenText Text="@entityCount.Count.ToString()" TextStyle="TextStyle.H4" />
+                            <RadzenText Text="@count.ToString()" TextStyle="TextStyle.H4" />
                         }
                     </RadzenStack>
                 </RadzenCard>
@@ -64,16 +67,22 @@
 </RadzenStack>
 
 @inject IDashboardService DashboardService
+@inject IEntityMetadataService EntityMetadataService
 
 @code {
     private DashboardSummary summary = new();
     private bool isLoading = true;
+    private IReadOnlyDictionary<string, int> entityCountsByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             summary = await DashboardService.GetSummaryAsync();
+            entityCountsByName = summary.EntityCounts.ToDictionary(
+                entityCount => entityCount.EntityName,
+                entityCount => entityCount.Count,
+                StringComparer.OrdinalIgnoreCase);
         }
         finally
         {

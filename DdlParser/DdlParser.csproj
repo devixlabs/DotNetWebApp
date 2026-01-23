@@ -12,9 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DotNetWebApp.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
+    <ProjectReference Include="..\DotNetWebApp.csproj" />
   </ItemGroup>
 </Project>

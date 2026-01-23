@@ -19,7 +19,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop
+.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
 
 clean:
 	rm -f msbuild.binlog
@@ -41,13 +41,13 @@ restore:
 # Note: Reduced parallelism (-maxcpucount:2) to prevent memory exhaustion
 # If error(s) contain "Run a NuGet package restore", try 'make restore' 
 build:
-	$(DOTNET) build DotNetWebApp.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DdlParser/DdlParser.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DdlParser/DdlParser.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 
 # Build everything including test projects (higher memory usage)
 build-all:
-	$(DOTNET) build DotNetWebApp.sln --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 
 # Build with Release configuration for production deployments
 # This target always uses Release regardless of BUILD_CONFIGURATION variable
@@ -65,10 +65,10 @@ seed:
 # Run tests with same configuration as build target for consistency
 # Builds and runs test projects sequentially to avoid memory exhaustion
 test:
-	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-restore --nologo
-	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-build --no-restore --nologo
-	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-restore --nologo
-	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-build --no-restore --nologo
+	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 
 # Test the complete DDL → YAML → Model generation pipeline
 test-ddl-pipeline: clean test
@@ -91,7 +91,7 @@ docker-build:
 
 # Run the application once without hot reload (uses Debug by default unless BUILD_CONFIGURATION=Release)
 run:
-	$(DOTNET) run --project DotNetWebApp.csproj --configuration $(BUILD_CONFIGURATION)
+	$(DOTNET) run --project DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)"
 
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 # Always uses Debug configuration for fastest rebuild times during watch mode
@@ -109,6 +109,11 @@ db-stop:
 # Tail logs for the SQL Server Docker container
 db-logs:
 	@docker logs -f sqlserver-dev
+
+# Tail native SQL Server logs (systemd + errorlog)
+ms-logs:
+	@echo "Tailing systemd and errorlog (Ctrl+C to stop)..."
+	@sudo sh -c 'journalctl -u mssql-server -f --no-pager & tail -f /var/opt/mssql/log/errorlog; wait'
 
 # Drop the local dev database (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
 db-drop:
@@ -133,3 +138,12 @@ db-drop:
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C \
 			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
 		echo "Dropped database DotNetWebAppDb (if it existed)."'
+
+# Local install of MSSQL (no Docker)
+ms-status:
+	systemctl status mssql-server
+	ss -ltnp | rg 1433
+
+ms-start:
+	sudo systemctl start mssql-server
+

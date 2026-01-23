@@ -1,7 +1,6 @@
 @page "/{EntityName}"
-@using DotNetWebApp.Models.AppDictionary
-@inject IAppDictionaryService AppDictionary
 @inject IEntityApiService EntityApi
+@inject IEntityMetadataService EntityMetadataService
 
 @if (isLoading)
 {
@@ -11,13 +10,13 @@ else if (!string.IsNullOrWhiteSpace(errorMessage))
 {
     <p role="alert">@errorMessage</p>
 }
-else if (entity != null)
+else if (!string.IsNullOrWhiteSpace(EntityName))
 {
-    <h1>@entity.Name</h1>
+    <h1>@EntityName</h1>
 
-    @if (data != null && entityType != null)
+    @if (entities != null)
     {
-        <DynamicDataGrid DataType="@entityType" Data="@data" />
+        <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
     }
 }
 
@@ -25,9 +24,7 @@ else if (entity != null)
     [Parameter]
     public string? EntityName { get; set; }
 
-    private Entity? entity;
-    private Type? entityType;
-    private IQueryable? data;
+    private IReadOnlyList<object>? entities;
 
     private bool isLoading;
     private string? errorMessage;
@@ -36,9 +33,7 @@ else if (entity != null)
     {
         isLoading = true;
         errorMessage = null;
-        entity = null;
-        entityType = null;
-        data = null;
+        entities = null;
 
         if (string.IsNullOrWhiteSpace(EntityName))
         {
@@ -47,35 +42,22 @@ else if (entity != null)
             return;
         }
 
-        entity = AppDictionary.AppDefinition.DataModel.Entities.FirstOrDefault(e =>
-            e.Name.Equals(EntityName, StringComparison.OrdinalIgnoreCase));
-
-        if (entity == null)
+        var metadata = EntityMetadataService.Find(EntityName);
+        if (metadata == null || metadata.ClrType == null)
         {
-            errorMessage = $"Unknown entity '{EntityName}'.";
-            isLoading = false;
-            return;
-        }
-
-        entityType = Type.GetType($"DotNetWebApp.Models.Generated.{entity.Name}, DotNetWebApp");
-        if (entityType == null)
-        {
-            errorMessage = $"No model type found for '{entity.Name}'.";
+            errorMessage = $"No model type found for '{EntityName}'.";
             isLoading = false;
             return;
         }
 
         try
         {
-            var entities = await EntityApi.GetEntitiesAsync(entity.Name);
-            if (entities != null)
-            {
-                data = entities.AsQueryable();
-            }
+            var result = await EntityApi.GetEntitiesAsync(metadata.Definition.Name);
+            entities = result.ToList().AsReadOnly();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load {entity.Name} data: {ex.Message}";
+            errorMessage = $"Failed to load {metadata.Definition.Name} data: {ex.Message}";
         }
         finally
         {
