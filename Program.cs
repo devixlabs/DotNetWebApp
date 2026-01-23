@@ -37,7 +37,6 @@ builder.Services.AddScoped(sp =>
 });
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
-builder.Services.AddScoped<SampleDataSeeder>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddSingleton<IAppDictionaryService>(sp =>
@@ -50,6 +49,8 @@ builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
+builder.Services.AddScoped<SampleDataSeeder>();
 
 var seedMode = args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase));
 var app = builder.Build();
