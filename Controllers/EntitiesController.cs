@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using DotNetWebApp.Data;
 using DotNetWebApp.Services;
 using System.Collections;
 using System.Reflection;
@@ -12,11 +11,11 @@ namespace DotNetWebApp.Controllers
     [Route("api/entities")]
     public class EntitiesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly DbContext _context;
         private readonly IEntityMetadataService _metadataService;
 
         public EntitiesController(
-            AppDbContext context,
+            DbContext context,
             IEntityMetadataService metadataService)
         {
             _context = context;

@@ -8,8 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.AppDictionary;
-using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
+using DotNetWebApp.Tests.TestEntities;
 using Xunit;
 
 namespace DotNetWebApp.Tests;

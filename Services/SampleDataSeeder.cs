@@ -9,13 +9,13 @@ namespace DotNetWebApp.Services;
 
 public sealed class SampleDataSeeder
 {
-    private readonly AppDbContext _dbContext;
+    private readonly DbContext _dbContext;
     private readonly IHostEnvironment _environment;
     private readonly ILogger<SampleDataSeeder> _logger;
     private const string SeedFileName = "sample-seed.sql";
 
     public SampleDataSeeder(
-        AppDbContext dbContext,
+        DbContext dbContext,
         IHostEnvironment environment,
         ILogger<SampleDataSeeder> logger)
     {

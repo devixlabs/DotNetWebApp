@@ -3,8 +3,8 @@ using System.IO;
 using System.Threading.Tasks;
 using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
-using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
+using DotNetWebApp.Tests.TestEntities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -29,11 +29,11 @@ public class SampleDataSeederTests
 
             await using var connection = new SqliteConnection("DataSource=:memory:");
             await connection.OpenAsync();
-            var options = new DbContextOptionsBuilder<AppDbContext>()
+            var options = new DbContextOptionsBuilder<TestAppDbContext>()
                 .UseSqlite(connection)
                 .Options;
 
-            await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+            await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
             await context.Database.EnsureCreatedAsync();
 
             var seeder = new SampleDataSeeder(context, new TestHostEnvironment(tempDir), NullLogger<SampleDataSeeder>.Instance);
@@ -56,11 +56,11 @@ public class SampleDataSeederTests
         {
             await using var connection = new SqliteConnection("DataSource=:memory:");
             await connection.OpenAsync();
-            var options = new DbContextOptionsBuilder<AppDbContext>()
+            var options = new DbContextOptionsBuilder<TestAppDbContext>()
                 .UseSqlite(connection)
                 .Options;
 
-            await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+            await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
             await context.Database.EnsureCreatedAsync();
 
             var seeder = new SampleDataSeeder(context, new TestHostEnvironment(tempDir), NullLogger<SampleDataSeeder>.Instance);

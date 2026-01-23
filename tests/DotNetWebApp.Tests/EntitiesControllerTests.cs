@@ -6,8 +6,8 @@ using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.AppDictionary;
-using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
+using DotNetWebApp.Tests.TestEntities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -22,11 +22,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         await context.Database.EnsureCreatedAsync();
 
         context.Set<Product>().Add(new Product { Name = "Test Product", Price = 10.99m });
@@ -48,11 +48,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         await context.Database.EnsureCreatedAsync();
 
         context.Set<Category>().Add(new Category { Name = "Test Category" });
@@ -74,11 +74,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var controller = new EntitiesController(context, metadataService);
 
@@ -93,11 +93,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         await context.Database.EnsureCreatedAsync();
 
         context.Set<Product>().AddRange(
@@ -121,11 +121,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var controller = new EntitiesController(context, metadataService);
 
@@ -140,11 +140,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
@@ -173,11 +173,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var controller = new EntitiesController(context, metadataService);
 
@@ -198,11 +198,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var controller = new EntitiesController(context, metadataService);
 
@@ -224,11 +224,11 @@ public class EntitiesControllerTests
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<TestAppDbContext>()
             .UseSqlite(connection)
             .Options;
 
-        await using var context = new AppDbContext(options, new TestTenantSchemaAccessor("dbo"));
+        await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var controller = new EntitiesController(context, metadataService);
 
