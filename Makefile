@@ -41,13 +41,13 @@ restore:
 # Note: Reduced parallelism (-maxcpucount:2) to prevent memory exhaustion
 # If error(s) contain "Run a NuGet package restore", try 'make restore' 
 build:
-	$(DOTNET) build DotNetWebApp.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DdlParser/DdlParser.csproj --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DdlParser/DdlParser.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 
 # Build everything including test projects (higher memory usage)
 build-all:
-	$(DOTNET) build DotNetWebApp.sln --configuration $(BUILD_CONFIGURATION) --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 
 # Build with Release configuration for production deployments
 # This target always uses Release regardless of BUILD_CONFIGURATION variable
@@ -65,10 +65,10 @@ seed:
 # Run tests with same configuration as build target for consistency
 # Builds and runs test projects sequentially to avoid memory exhaustion
 test:
-	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-restore --nologo
-	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-build --no-restore --nologo
-	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-restore --nologo
-	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration $(BUILD_CONFIGURATION) --no-build --no-restore --nologo
+	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 
 # Test the complete DDL → YAML → Model generation pipeline
 test-ddl-pipeline: clean test
@@ -91,7 +91,7 @@ docker-build:
 
 # Run the application once without hot reload (uses Debug by default unless BUILD_CONFIGURATION=Release)
 run:
-	$(DOTNET) run --project DotNetWebApp.csproj --configuration $(BUILD_CONFIGURATION)
+	$(DOTNET) run --project DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)"
 
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 # Always uses Debug configuration for fastest rebuild times during watch mode

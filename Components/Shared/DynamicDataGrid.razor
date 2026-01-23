@@ -19,11 +19,21 @@ else
 
     private RenderFragment Grid => builder =>
     {
-        if (DataType != null)
+        if (DataType != null && Data != null)
         {
+            // First Cast from IQueryable<object> to IEnumerable<T>
+            var castMethod = typeof(Enumerable).GetMethod("Cast", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)!
+                .MakeGenericMethod(DataType);
+            var castedData = castMethod.Invoke(null, new object[] { Data })!;
+
+            // Then materialize to List<T>
+            var toListMethod = typeof(Enumerable).GetMethod("ToList", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)!
+                .MakeGenericMethod(DataType);
+            var materializedData = toListMethod.Invoke(null, new object[] { castedData })!;
+
             var gridType = typeof(RadzenDataGrid<>).MakeGenericType(DataType);
             builder.OpenComponent(0, gridType);
-            builder.AddAttribute(1, "Data", Data);
+            builder.AddAttribute(1, "Data", materializedData);
             builder.AddAttribute(2, "AllowFiltering", true);
             builder.AddAttribute(3, "AllowPaging", true);
             builder.AddAttribute(4, "AllowSorting", true);
