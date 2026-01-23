@@ -1,8 +1,8 @@
 # DotNetWebApp
 
-.NET 8 Web API + Blazor Server application with **YAML-driven data models** and **SQL DDL to YAML parser pipeline**.
+.NET 8 Web API + Blazor Server application with **SQL DDL-driven data models** and a **DDL → YAML → C# pipeline**.
 
-> **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
+> **Primary Goal:** Use SQL DDL as the source of truth and generate `app.yaml` + C# models for dynamic customization.
 
 ---
 
@@ -23,7 +23,8 @@ dotnet tool install --global dotnet-ef --version 8.*
 ```bash
 make check     # Lint scripts, restore packages, build
 make db-start  # Start SQL Server (Docker only)
-make migrate   # Apply database migrations
+make run-ddl-pipeline  # Generate app.yaml, models, and migration from SQL DDL
+make migrate   # Apply generated migration
 make dev       # Start dev server (http://localhost:5000)
 ```
 
@@ -38,7 +39,7 @@ The **DdlParser** converts your SQL Server DDL files into `app.yaml` format, whi
 ### How It Works
 
 ```
-your-schema.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs → Build & Run
+your-schema.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs → Migration → Build & Run
 ```
 
 ### Example: Parse Your Own Schema
@@ -78,6 +79,7 @@ cd ..
 make build
 
 # Start the app
+make run-ddl-pipeline
 make migrate
 make dev
 ```
@@ -105,14 +107,14 @@ DotNetWebApp/
 ├── Models/
 │   ├── Generated/           # 🔄 Auto-generated entities from app.yaml
 │   └── AppDictionary/       # YAML model classes
-├── Migrations/              # EF Core database migrations
+├── Migrations/              # Generated EF Core migrations (ignored in repo)
 ├── DdlParser/               # 🆕 SQL DDL → YAML converter
 │   ├── Program.cs
 │   ├── CreateTableVisitor.cs
 │   └── TypeMapper.cs
 ├── ModelGenerator/          # YAML → C# entity generator
 ├── wwwroot/                 # Static files (CSS, JS, images)
-├── app.yaml                 # 📋 Data model definition (source of truth)
+├── app.yaml                 # 📋 Generated data model definition (from SQL DDL)
 ├── Makefile                 # Build automation
 └── dotnet-build.sh          # SDK version wrapper script
 ```
@@ -121,13 +123,13 @@ DotNetWebApp/
 
 ## Current State
 
-- ✅ `app.yaml` drives app metadata, theme, and data model shape
+- ✅ `app.yaml` is generated from SQL DDL and drives app metadata, theme, and data model shape
 - ✅ `ModelGenerator` produces entities in `Models/Generated` with proper nullable types
 - ✅ `AppDbContext` auto-discovers entities via reflection
 - ✅ `GenericController<T>` provides REST endpoints
 - ✅ `GenericEntityPage.razor` + `DynamicDataGrid.razor` provide dynamic CRUD UI
 - ✅ **DdlParser** converts SQL DDL files to `app.yaml` format
-- ✅ Migrations tracked in `Migrations/` folder
+- ✅ Migrations generated from SQL DDL pipeline (kept out of source control)
 - ⚠️ Branding currently from `appsettings.json` (can be moved to YAML)
 - ✅ Tenant schema switching via `X-Customer-Schema` header (defaults to `dbo`)
 - ✅ Dynamic API routes: `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
@@ -144,23 +146,25 @@ DotNetWebApp/
 | `make dev` | Start dev server with hot reload |
 | `make run` | Start server without hot reload |
 | `make test` | Run unit tests |
-| `make migrate` | Apply pending database migrations |
+| `make migrate` | Apply generated migration |
 | `make db-start` | Start SQL Server container (Docker) |
 | `make db-stop` | Stop SQL Server container (Docker) |
 | `make docker-build` | Build Docker image |
-| `make run-ddl-pipeline` | Parse DDL → generate models → build (full pipeline run) |
+<<<<<<< HEAD
+| `make run-ddl-pipeline` | Parse DDL → generate models → migration → build (full pipeline run) |
 
 ---
 
 ## Database Migrations
 
-After modifying `app.yaml` or running the DDL parser:
+After modifying `sample-schema.sql` or running the DDL parser:
 
 ```bash
 # Start SQL Server
 make db-start
 
-# Apply migrations
+# Generate migration from DDL, then apply it
+make run-ddl-pipeline
 make migrate
 ```
 
@@ -168,7 +172,7 @@ make migrate
 
 ## Sample Seed Data
 
-`sample-seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make migrate`, populate the demo catalog data with:
+`sample-seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
 
 ```bash
 make seed
@@ -176,13 +180,7 @@ make seed
 
 Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
 
-The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies pending EF migrations (`Database.MigrateAsync()`) and then runs `sample-seed.sql` via the `SampleDataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. This keeps the seeding logic within the EF toolchain and avoids any provider-specific tooling. You can still run `sample-seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
-
-If you need to add a new migration manually:
-```bash
-./dotnet-build.sh ef migrations add YourMigrationName
-make migrate
-```
+The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `sample-seed.sql` via the `SampleDataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `sample-seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
 
 ---
 
@@ -238,9 +236,10 @@ dotnet tool install --global dotnet-ef --version 8.*
 make check
 ```
 
-### 4. Start database and migrations
+### 4. Start database and apply generated schema
 ```bash
 make db-start      # Only needed for Docker
+make run-ddl-pipeline
 make migrate
 ```
 
@@ -296,8 +295,9 @@ Generated files:
 - `Models/Generated/Author.cs`
 - `Models/Generated/Book.cs`
 
-### Step 4: Create database and run
+### Step 4: Generate migration, apply schema, and run
 ```bash
+make run-ddl-pipeline
 make migrate
 make dev
 ```
@@ -336,7 +336,8 @@ make db-start
 
 ### "Invalid object name 'dbo.YourTable'"
 ```bash
-# Apply pending migrations
+# Regenerate schema from DDL and apply it
+make run-ddl-pipeline
 make migrate
 ```
 
@@ -362,10 +363,10 @@ make dev  # Tries 5000, 5001, etc.
 
 | File | Purpose |
 |------|---------|
-| `app.yaml` | 📋 Source of truth for data model, theme, app metadata |
+| `app.yaml` | 📋 Generated data model (from SQL DDL) plus app metadata |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
-| `Migrations/` | 📚 Database schema history |
-| `sample-seed.sql` | 🧪 Seed data for the default schema (run after migrations) |
+| `Migrations/` | 📚 Generated schema history (ignored in repo) |
+| `sample-seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
 | `SECRETS.md` | 🔐 Connection string setup guide |
@@ -388,7 +389,7 @@ make dev  # Tries 5000, 5001, etc.
 - **Backend:** ASP.NET Core 8 Web API with Entity Framework Core
 - **Frontend:** Blazor Server with Radzen UI components
 - **Database:** SQL Server (Docker or native)
-- **Configuration:** YAML-driven data models + JSON appsettings
+- **Configuration:** DDL-driven data models + JSON appsettings
 - **Model Generation:** Automated from YAML via Scriban templates
 
 ---
