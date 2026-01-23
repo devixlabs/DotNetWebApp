@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 
 - `Components/`, `Pages/`, `Shared/`: Blazor UI components and layouts.
-- `Controllers/`: Web API endpoints (singular controllers, e.g., `ProductController`).
+- `Controllers/`: Web API endpoints (generic and entity controllers).
 - `Services/`: Business logic and DI services.
 - `Data/`: `AppDbContext`, tenancy helpers, and EF configuration.
 - `Models/` and `Models/Generated/`: Entity models; generated types come from `ModelGenerator`.
@@ -25,7 +25,7 @@
 ## Project Goal & Session Notes
 
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
-- **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before Product/Category pages work. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
+- **Current State:** YAML drives generated models, API routes, and UI navigation; the `AddCatalogSchema` migration must be applied before seeded entity pages work. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Coding Style & Naming Conventions

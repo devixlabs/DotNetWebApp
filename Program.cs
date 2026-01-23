@@ -35,7 +35,6 @@ builder.Services.AddScoped(sp =>
     }
     return new HttpClient(handler) { BaseAddress = new Uri(navigationManager.BaseUri) };
 });
-builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<SampleDataSeeder>();

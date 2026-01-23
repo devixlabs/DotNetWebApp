@@ -8,29 +8,48 @@ public sealed class SpaSectionService : ISpaSectionService
 {
     private readonly NavigationManager _navigationManager;
     private readonly IReadOnlyList<SpaSectionInfo> _sections;
-    private readonly Dictionary<SpaSection, SpaSectionInfo> _bySection;
-    private readonly Dictionary<string, SpaSection> _byRouteSegment;
+    private readonly Dictionary<SpaSection, SpaSectionInfo> _staticSections;
+    private readonly Dictionary<string, SpaSectionInfo> _byRouteSegment;
 
-    public SpaSectionService(NavigationManager navigationManager, IOptions<AppCustomizationOptions> options)
+    public SpaSectionService(
+        NavigationManager navigationManager,
+        IOptions<AppCustomizationOptions> options,
+        IAppDictionaryService appDictionary)
     {
         _navigationManager = navigationManager;
 
         var labels = options.Value.SpaSections;
-        _sections = new List<SpaSectionInfo>
-        {
-            new(SpaSection.Dashboard, labels.DashboardNav, labels.DashboardTitle, "dashboard"),
-            new(SpaSection.Products, labels.ProductsNav, labels.ProductsTitle, "products"),
-            new(SpaSection.Settings, labels.SettingsNav, labels.SettingsTitle, "settings")
-        };
+        var sections = new List<SpaSectionInfo>();
 
-        _bySection = _sections.ToDictionary(section => section.Section);
-        _byRouteSegment = _sections.ToDictionary(section => section.RouteSegment, section => section.Section, StringComparer.OrdinalIgnoreCase);
+        if (options.Value.EnableSpaExample)
+        {
+            sections.Add(new(SpaSection.Dashboard, labels.DashboardNav, labels.DashboardTitle, "dashboard"));
+
+            foreach (var entity in appDictionary.AppDefinition.DataModel.Entities)
+            {
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                {
+                    continue;
+                }
+
+                var label = entity.Name;
+                sections.Add(new(SpaSection.Entity, label, label, entity.Name, entity.Name));
+            }
+
+            sections.Add(new(SpaSection.Settings, labels.SettingsNav, labels.SettingsTitle, "settings"));
+        }
+
+        _sections = sections;
+        _staticSections = sections
+            .Where(section => section.Section != SpaSection.Entity)
+            .ToDictionary(section => section.Section);
+        _byRouteSegment = sections.ToDictionary(section => section.RouteSegment, StringComparer.OrdinalIgnoreCase);
     }
 
-    public SpaSection DefaultSection => SpaSection.Dashboard;
+    public SpaSectionInfo? DefaultSection => _sections.FirstOrDefault();
     public IReadOnlyList<SpaSectionInfo> Sections => _sections;
 
-    public SpaSection? FromUri(string uri)
+    public SpaSectionInfo? FromUri(string uri)
     {
         var relativePath = _navigationManager.ToBaseRelativePath(uri);
         if (string.IsNullOrWhiteSpace(relativePath))
@@ -53,7 +72,7 @@ public sealed class SpaSectionService : ISpaSectionService
         return null;
     }
 
-    public SpaSection? FromRouteSegment(string? segment)
+    public SpaSectionInfo? FromRouteSegment(string? segment)
     {
         if (string.IsNullOrWhiteSpace(segment))
         {
@@ -63,15 +82,16 @@ public sealed class SpaSectionService : ISpaSectionService
         return _byRouteSegment.TryGetValue(segment, out var section) ? section : null;
     }
 
-    public SpaSectionInfo GetInfo(SpaSection section)
+    public SpaSectionInfo? GetInfo(SpaSection section)
     {
-        return _bySection[section];
+        return _staticSections.TryGetValue(section, out var info) ? info : null;
     }
 
-    public void NavigateTo(SpaSection section, bool replace = true)
+    public void NavigateTo(SpaSectionInfo section, bool replace = true)
     {
-        var routeSegment = _bySection[section].RouteSegment;
-        var path = section == DefaultSection ? "app" : $"app/{routeSegment}";
+        var path = DefaultSection != null && section == DefaultSection
+            ? "app"
+            : $"app/{section.RouteSegment}";
         _navigationManager.NavigateTo(path, replace: replace);
     }
 }

@@ -40,6 +40,11 @@
    - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make test-ddl-pipeline`
 11. **Native MSSQL Log Helper:** ✅ **COMPLETE**
    - Added `make ms-logs` to tail systemd and `/var/opt/mssql/log/errorlog` for native Linux installs
+12. **SPA Example Cleanup + Dynamic Sections:** ✅ **COMPLETE (2026-01-21)**
+    - `SpaSectionService` now builds sections from `app.yaml` entities and supports a new `EnableSpaExample` flag
+    - Product/category controllers, services, and SPA section removed in favor of entity-driven UI
+    - Nav menu hides the SPA group when disabled and Home can link directly to the first entity
+    - Docs updated with dynamic API routes and SPA flag information
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
@@ -64,7 +69,7 @@
 - ModelGenerator path bug fixed and tested (2026-01-21)
 - CLAUDE.md updated with current project state (2026-01-21)
 - All tests passing (5/5); full DDL pipeline verified
-- Ready to implement: Transitioning from product-specific SPA/API to app.yaml-driven entities
+- SPA sections are now entity-driven and optional via configuration
 - Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for reuse in API/UI
 
 **How to Use DDL Parser:**

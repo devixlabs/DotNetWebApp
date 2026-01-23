@@ -7,6 +7,7 @@ public class AppCustomizationOptions
     public string SourceLinkUrl { get; set; } = "https://github.com/devixlabs/DotNetWebApp/";
     public BrandCustomization Branding { get; set; } = new();
     public NavigationLabels Navigation { get; set; } = new();
+    public bool EnableSpaExample { get; set; } = true;
     public SpaSectionLabels SpaSections { get; set; } = new();
 }
 
@@ -33,9 +34,7 @@ public class NavigationLabels
 public class SpaSectionLabels
 {
     public string DashboardNav { get; set; } = "Dashboard";
-    public string ProductsNav { get; set; } = "Products";
     public string SettingsNav { get; set; } = "Settings";
     public string DashboardTitle { get; set; } = "Dashboard";
-    public string ProductsTitle { get; set; } = "Products Management";
     public string SettingsTitle { get; set; } = "Application Settings";
 }

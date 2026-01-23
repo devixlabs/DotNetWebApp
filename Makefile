@@ -34,7 +34,11 @@ check:
 	$(MAKE) build
 
 restore:
-	$(DOTNET) restore DotNetWebApp.sln
+	$(DOTNET) restore DotNetWebApp.csproj
+	$(DOTNET) restore ModelGenerator/ModelGenerator.csproj
+	$(DOTNET) restore DdlParser/DdlParser.csproj
+	$(DOTNET) restore tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
+	$(DOTNET) restore tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 
 # Build with configurable configuration (Debug by default for fast dev iteration)
 # Builds main projects only (excludes test projects to avoid OOM on memory-limited systems)
@@ -146,4 +150,3 @@ ms-status:
 
 ms-start:
 	sudo systemctl start mssql-server
-

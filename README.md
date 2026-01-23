@@ -97,10 +97,10 @@ The app now has **Companies** and **Employees** entities with:
 
 ```
 DotNetWebApp/
-├── Controllers/              # API endpoints (ProductController, CategoryController, etc.)
+├── Controllers/              # API endpoints (GenericController<T>, EntitiesController, etc.)
 ├── Components/
 │   ├── Pages/               # Blazor routable pages (Home.razor, SpaApp.razor)
-│   └── Sections/            # SPA components (Dashboard, Products, Settings, etc.)
+│   └── Sections/            # SPA components (Dashboard, Settings, Entity, etc.)
 ├── Data/                    # EF Core DbContext
 ├── Models/
 │   ├── Generated/           # 🔄 Auto-generated entities from app.yaml
@@ -130,6 +130,8 @@ DotNetWebApp/
 - ✅ Migrations tracked in `Migrations/` folder
 - ⚠️ Branding currently from `appsettings.json` (can be moved to YAML)
 - ✅ Tenant schema switching via `X-Customer-Schema` header (defaults to `dbo`)
+- ✅ Dynamic API routes: `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
+- ✅ SPA example routes are optional via `AppCustomization:EnableSpaExample` (default true)
 
 ---
 

@@ -46,10 +46,10 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 ## Project Structure
 ```
 DotNetWebApp/
-├── Controllers/                   # API endpoints (GenericController<T>, ProductController, CategoryController)
+├── Controllers/                   # API endpoints (GenericController<T>, EntitiesController, etc.)
 ├── Components/
 │   ├── Pages/                    # Routable Blazor pages (Home.razor, SpaApp.razor)
-│   └── Sections/                 # SPA components (Dashboard, Products, Categories, etc.)
+│   └── Sections/                 # SPA components (Dashboard, Settings, Entity, etc.)
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
 │   └── SampleDataSeeder.cs       # Executes sample-seed.sql via EF
@@ -91,6 +91,8 @@ DotNetWebApp/
 - **Model Generation:** `ModelGenerator` reads `app.yaml` and generates C# entities with nullable value types for optional fields
 - **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` → `Products`)
 - **Generic REST API:** `GenericController<T>` provides CRUD endpoints with singular entity names (e.g., `/api/products`)
+- **Dynamic Entity API:** `EntitiesController` supports `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
+- **Optional SPA example:** Toggle the `/app` routes via `AppCustomization:EnableSpaExample` in `appsettings.json`
 - **Generic CRUD UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render dynamic data grids from YAML definitions
 - **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with links to all entities via `AppDictionaryService`
 - **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → Models/Generated)
