@@ -19,7 +19,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop
 
 clean:
 	rm -f msbuild.binlog
@@ -159,3 +159,19 @@ ms-status:
 
 ms-start:
 	sudo systemctl start mssql-server
+
+# Drop the database from native MSSQL instance on Linux
+ms-drop:
+	# shellcheck disable=SC2016
+	@/bin/sh -c '\
+		PASSWORD="$$SA_PASSWORD"; \
+		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
+			PASSWORD="$$MSSQL_SA_PASSWORD"; \
+		fi; \
+		if [ -z "$$PASSWORD" ]; then \
+			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
+			exit 1; \
+		fi; \
+		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C \
+			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
+		echo "Dropped database DotNetWebAppDb (if it existed)."'
