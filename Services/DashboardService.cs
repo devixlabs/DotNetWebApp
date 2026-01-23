@@ -5,35 +5,42 @@ namespace DotNetWebApp.Services;
 public sealed class DashboardService : IDashboardService
 {
     private readonly IEntityApiService _entityApiService;
-    private readonly IAppDictionaryService _appDictionaryService;
+    private readonly IEntityMetadataService _entityMetadataService;
 
-    public DashboardService(IEntityApiService entityApiService, IAppDictionaryService appDictionaryService)
+    public DashboardService(
+        IEntityApiService entityApiService,
+        IEntityMetadataService entityMetadataService)
     {
         _entityApiService = entityApiService;
-        _appDictionaryService = appDictionaryService;
+        _entityMetadataService = entityMetadataService;
     }
 
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        var entityCounts = new List<EntityCountInfo>();
+        var entities = _entityMetadataService.Entities;
 
-        var entities = _appDictionaryService.AppDefinition.DataModel.Entities;
-        foreach (var entity in entities)
-        {
-            try
+        // Load counts in parallel
+        var countTasks = entities
+            .Select(async e =>
             {
-                var count = await _entityApiService.GetCountAsync(entity.Name);
-                entityCounts.Add(new EntityCountInfo(entity.Name, count));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting count for {entity.Name}: {ex.Message}");
-            }
-        }
+                try
+                {
+                    var count = await _entityApiService.GetCountAsync(e.Definition.Name);
+                    return new EntityCountInfo(e.Definition.Name, count);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting count for {e.Definition.Name}: {ex.Message}");
+                    return new EntityCountInfo(e.Definition.Name, 0);
+                }
+            })
+            .ToArray();
+
+        var counts = await Task.WhenAll(countTasks);
 
         return new DashboardSummary
         {
-            EntityCounts = entityCounts.AsReadOnly(),
+            EntityCounts = counts.ToList().AsReadOnly(),
             Revenue = 45789.50m,
             ActiveUsers = 1250,
             GrowthPercent = 15,
