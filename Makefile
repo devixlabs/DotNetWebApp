@@ -19,7 +19,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test test-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs
 
 clean:
 	rm -f msbuild.binlog
@@ -75,7 +75,7 @@ test:
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 
 # Test the complete DDL → YAML → Model generation pipeline
-test-ddl-pipeline: clean test
+run-ddl-pipeline: clean test
 	@echo "Starting pipeline test..."
 	@echo " -- Parsing DDL to YAML..."
 	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app-test.yaml

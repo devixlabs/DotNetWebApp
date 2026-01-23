@@ -21,7 +21,7 @@
    - Extracts: table definitions, column metadata (type, nullability, constraints), foreign keys, IDENTITY columns, DEFAULT values
    - Handles: VARCHAR/NVARCHAR max lengths, DECIMAL precision/scale, PRIMARY KEY and FOREIGN KEY constraints
    - Pipeline: `database.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs`
-   - Makefile target: `make test-ddl-pipeline` orchestrates full workflow with validation
+   - Makefile target: `make run-ddl-pipeline` orchestrates full workflow with validation
    - Test files: `sample-schema.sql` demonstrates Categories/Products schema; generates `app-test.yaml`
    - All nullable reference warnings (CS8601) resolved with null-coalescing defaults
 7. **ModelGenerator Path Bug Fixed:** ✅ **COMPLETE (2026-01-21)**
@@ -37,7 +37,7 @@
 9. **Makefile Shellcheck Clean:** ✅ **COMPLETE**
    - Quoted `$(BUILD_CONFIGURATION)` in `Makefile` commands to satisfy `shellcheck` in `make check`
 10. **DDL Pipeline Runtime Fix:** ✅ **COMPLETE**
-   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make test-ddl-pipeline`
+   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make run-ddl-pipeline`
 11. **Native MSSQL Log Helper:** ✅ **COMPLETE**
    - Added `make ms-logs` to tail systemd and `/var/opt/mssql/log/errorlog` for native Linux installs
 12. **SPA Example Cleanup + Dynamic Sections:** ✅ **COMPLETE (2026-01-21)**
@@ -48,7 +48,7 @@
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build` is clean; `make test-ddl-pipeline` tests complete DDL→YAML→Models→Build workflow.
+- `make build` is clean; `make run-ddl-pipeline` tests complete DDL→YAML→Models→Build workflow.
 - `make migrate` requires SQL Server running and valid connection string.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
 - **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
@@ -75,7 +75,7 @@
 **How to Use DDL Parser:**
 ```bash
 # Test pipeline with sample schema
-make test-ddl-pipeline
+make run-ddl-pipeline
 
 # Or manually parse custom SQL:
 cd DdlParser && ../dotnet-build.sh run -- /path/to/schema.sql ../app.yaml
@@ -102,6 +102,6 @@ DdlParser/
 - Schema names normalized (all tables assumed in dbo schema)
 
 **Next Steps (Optional):**
-- Use `make test-ddl-pipeline` to validate any new SQL schema files
+- Use `make run-ddl-pipeline` to validate any new SQL schema files
 - Or integrate into CI/CD pipeline for automatic model regeneration from DDL
 - Extend TypeMapper or CreateTableVisitor for additional SQL types if needed

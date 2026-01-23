@@ -148,7 +148,7 @@ DotNetWebApp/
 | `make db-start` | Start SQL Server container (Docker) |
 | `make db-stop` | Stop SQL Server container (Docker) |
 | `make docker-build` | Build Docker image |
-| `make test-ddl-pipeline` | Parse DDL → generate models → build (full pipeline test) |
+| `make run-ddl-pipeline` | Parse DDL → generate models → build (full pipeline run) |
 
 ---
 

@@ -1,7 +1,7 @@
 
 VERIFICATION NOTES (2026-01-21):
 - ✅ IEntityMetadataService fully implemented and working (Services/EntityMetadataService.cs)
-- ✅ DDL → YAML → Models pipeline tested and verified (make test-ddl-pipeline succeeds)
+- ✅ DDL → YAML → Models pipeline tested and verified (make run-ddl-pipeline succeeds)
 - ✅ Generated models (Product.cs, Category.cs) have correct namespace and EF annotations
 - ✅ AppDbContext reflection-based entity discovery works (models in DotNetWebApp.Models.Generated)
 - ✅ App runs successfully with `make dev`, dynamic menu shows entities
@@ -27,7 +27,7 @@ VERIFICATION NOTES (2026-01-21):
 
 4) Wire dynamic entity UI path [✅ COMPLETE]
 - Update `Components/Pages/GenericEntityPage.razor` to use `IEntityApiService` and the new `api/entities/` routes. [DONE]
-- Verify DDL -> app.yaml -> models -> API -> UI with `make test-ddl-pipeline`. [DONE]
+- Verify DDL -> app.yaml -> models -> API -> UI with `make run-ddl-pipeline`. [DONE]
 - IMPLEMENTATION DETAILS: Created IEntityApiService.cs and EntityApiService.cs for HTTP-based entity operations.
   Updated GenericEntityPage.razor to inject and use IEntityApiService. Added 9 comprehensive unit tests.
   All tests passing (23/23 total), build successful with 0 warnings/errors.
@@ -113,7 +113,7 @@ DotNetWebApp.csproj (Web API + Blazor Server)
 5. Update DdlParser.csproj to reference Models project (instead of DotNetWebApp)
 6. Update test projects to reference Models project if needed
 7. Add Models project to DotNetWebApp.sln
-8. Test all build targets (make build, make test, make test-ddl-pipeline)
+8. Test all build targets (make build, make test, make run-ddl-pipeline)
 
 **Impact:**
 - Eliminates unnecessary rebuilds when tools change

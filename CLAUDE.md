@@ -98,7 +98,7 @@ DotNetWebApp/
 - **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → Models/Generated)
   - Converts SQL Server DDL files to `app.yaml` format
   - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
-  - Test target: `make test-ddl-pipeline` validates full workflow
+  - Pipeline target: `make run-ddl-pipeline` executes the full workflow
 - **Entity Metadata Service:** `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
 - **Seed Data System:** `SampleDataSeeder` executes `sample-seed.sql` via EF migrations
   - Run with: `make seed`
@@ -148,7 +148,7 @@ DotNetWebApp/
 |------|---------|
 | `app.yaml` | 📋 **Source of truth** for data model, app metadata, and theme configuration |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
-| `sample-schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make test-ddl-pipeline` |
+| `sample-schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make run-ddl-pipeline` |
 | `sample-seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
 | `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
