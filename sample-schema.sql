@@ -3,7 +3,7 @@ CREATE TABLE Categories (
     Name NVARCHAR(50) NOT NULL
 );
 
-CREATE TABLE Producks (
+CREATE TABLE Products (
     Id INT PRIMARY KEY IDENTITY(1,1),
     Name NVARCHAR(100) NOT NULL,
     Description NVARCHAR(500) NULL,

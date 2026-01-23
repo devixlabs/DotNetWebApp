@@ -64,10 +64,10 @@ build-release:
 	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DdlParser/DdlParser.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 
-migrate:
+migrate: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
-seed:
+seed: migrate
 	$(DOTNET) run --project DotNetWebApp.csproj -- --seed
 
 # Run tests with same configuration as build target for consistency
@@ -78,8 +78,8 @@ test:
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 
-# Test the complete DDL → YAML → Model generation pipeline
-run-ddl-pipeline: clean test
+# Run the complete DDL → YAML → Model generation pipeline
+run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
 	@echo " -- Parsing DDL to YAML..."
 	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app.yaml
@@ -89,6 +89,7 @@ run-ddl-pipeline: clean test
 	@echo ""
 	@echo " -- Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
 	@echo " -- Building project..."
@@ -108,7 +109,7 @@ run:
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 # Always uses Debug configuration for fastest rebuild times during watch mode
 dev:
-	$(DOTNET) watch run --project DotNetWebApp.csproj --launch-profile https --configuration Debug
+	$(DOTNET) watch --project DotNetWebApp.csproj run --launch-profile https --configuration Debug
 
 # Start the SQL Server Docker container used for local dev
 db-start:

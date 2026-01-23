@@ -48,13 +48,14 @@
 
 **Build / Tooling:**
 - `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build` is clean; `make run-ddl-pipeline` runs DDL→YAML→Models→Migration→Build workflow.
+- `make build` is clean; `make run-ddl-pipeline` runs DDL→YAML→Models→Migration→Build workflow and now rebuilds `DotNetWebApp` before generating migrations to avoid stale assemblies.
 - `make migrate` requires SQL Server running and a generated migration from the DDL pipeline.
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
 - **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
 - `DotNetWebApp.Tests` now covers `SampleDataSeeder` via SQLite-backed integration tests so `make test` (Release) can validate the seed script and missing-file paths.
 - **ModelGenerator.Tests** (2026-01-21) validates path resolution with 3 unit tests; prevents nested directory regression.
 - `make test` runs all 5 tests (2 DotNetWebApp.Tests + 3 ModelGenerator.Tests) - all passing.
+- `make dev` now scopes `dotnet watch` to `DotNetWebApp.csproj` to avoid building test projects during hot reload.
 
 **Database State / Migrations:**
 - Database schema is generated from SQL DDL via `make run-ddl-pipeline`, which regenerates `app.yaml`, models, and a fresh migration in `Migrations/` (ignored in repo).
