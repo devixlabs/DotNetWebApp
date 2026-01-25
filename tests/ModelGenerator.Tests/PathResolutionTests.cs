@@ -49,7 +49,7 @@ namespace ModelGenerator.Tests
             // Verify at least one generated file exists in the correct location
             var generatedFiles = Directory.GetFiles(expectedOutputDir, "*.cs");
             Assert.True(generatedFiles.Length > 0,
-                $"No generated files found in {expectedOutputDir}");
+                $"No generated files found in {expectedOutputDir} - try running 'make run-ddl-pipeline'");
 
             // Verify no files in the incorrect nested location
             if (Directory.Exists(incorrectOutputDir))
