@@ -67,42 +67,15 @@
 **Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
 
 **Current Task Status:** ✅ **READY FOR NEXT PHASE**
-- ModelGenerator path bug fixed and tested (2026-01-21)
-- CLAUDE.md updated with current project state (2026-01-21)
-- All tests passing (5/5); full DDL pipeline verified
-- SPA sections are now entity-driven and optional via configuration
-- Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for reuse in API/UI
+- All core features implemented and tested (5/5 tests passing)
+- DDL pipeline fully functional: `SQL → app.yaml → Models → Migration → Build`
+- SPA sections are entity-driven and optional via `AppCustomization:EnableSpaExample` config
+- Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
+- See `CLAUDE.md` for detailed architecture, current features, and limitations
+- See `README.md` for DDL parser usage and project structure
+- See `TODO.txt` for incomplete actionable items
 
-**How to Use DDL Parser:**
-```bash
-# Test pipeline with sample schema
-make run-ddl-pipeline
-
-# Or manually parse custom SQL:
-cd DdlParser && ../dotnet-build.sh run -- /path/to/schema.sql ../app.yaml
-cd ../ModelGenerator && ../dotnet-build.sh run ../app.yaml
-make build
-```
-
-**File Structure (New):**
-```
-DdlParser/
-  ├── DdlParser.csproj
-  ├── Program.cs              (CLI entry point)
-  ├── SqlDdlParser.cs         (ScriptDom wrapper)
-  ├── CreateTableVisitor.cs   (AST visitor for CREATE TABLE)
-  ├── TypeMapper.cs           (SQL → YAML type conversion)
-  ├── YamlGenerator.cs        (Metadata → YAML serialization)
-  └── README.md               (Usage documentation)
-```
-
-**Known Limitations (By Design):**
-- Composite primary keys not supported (single column PKs only)
-- CHECK and UNIQUE constraints ignored
-- Computed columns ignored
-- Schema names normalized (all tables assumed in dbo schema)
-
-**Next Steps (Optional):**
-- Use `make run-ddl-pipeline` to validate any new SQL schema files
-- Or integrate into CI/CD pipeline for automatic model regeneration from DDL
-- Extend TypeMapper or CreateTableVisitor for additional SQL types if needed
+**Next Steps (from TODO.txt):**
+a) Explore dotnet aspnet codegenerator scaffolding for code generation
+b) Break project reference cycle by extracting DotNetWebApp.Models to separate project
+c) Add more SQL types to TypeMapper or refactor as needed for production MSSQL Server database
