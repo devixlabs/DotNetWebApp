@@ -1,5 +1,174 @@
+=== TODOs ===
 
-=== NEXT ===
+1. Implement Missing CRUD Operations in EntitiesController (High Priority - Refactoring Prerequisite)
+
+**Problem:**
+EntitiesController currently only supports 3 operations (Get all, Count, Create) but lacks
+Update, Delete, and GetById operations. These must be implemented before extracting reflection
+logic to IEntityOperationService, as per REFACTOR.md.
+
+**Current Operations:**
+- GET /api/entities/{entityName} (Read all)
+- GET /api/entities/{entityName}/count (Count)
+- POST /api/entities/{entityName} (Create)
+
+**Missing Operations:**
+- GET /api/entities/{entityName}/{id} (GetById)
+- PUT /api/entities/{entityName}/{id} (Update)
+- DELETE /api/entities/{entityName}/{id} (Delete)
+
+**Implementation Details:**
+- GetById: Requires primary key resolution from EntityMetadata
+- Update: Requires deserializing entity and finding by PK before SaveChangesAsync
+- Delete: Requires finding entity by PK and removing before SaveChangesAsync
+- All three need reflection-based primary key detection
+
+**Related Files:**
+- /Controllers/EntitiesController.cs
+- /Services/IEntityMetadataService.cs
+- /Models/EntityMetadata.cs
+
+**Estimated Effort:** 2-3 hours (includes testing)
+
+**Risk:** Low - extends existing reflection patterns, no breaking changes
+
+**Blocks:** REFACTOR.md Phase 1 (Extract Reflection Logic to IEntityOperationService)
+
+2. Controller Architecture Clarification (VERIFIED - No action needed)
+
+**Finding:**
+EntitiesController is the ACTIVE, CHOSEN pattern for this application.
+- ✅ EntitiesController: Used by EntityApiService, tested, routes registered
+- ✅ GenericController: UNUSED (no derived controllers, no active routes)
+
+**Why Both Exist (Historical):**
+Two patterns emerged during development:
+1. GenericController = Traditional ASP.NET pattern (compile-time type safety)
+2. EntitiesController = Dynamic pattern aligned with YAML-driven architecture
+
+**Decision Made:**
+EntitiesController is the correct pattern because:
+- ✅ Works with YAML-driven dynamic model discovery
+- ✅ Supports unlimited entities without code generation
+- ✅ Single endpoint handles all entities
+- ✅ Aligns with DDL → YAML → Code → Dynamic API philosophy
+
+**Status:** GenericController has been deleted via git commit (already handled)
+
+**Impact on Refactoring:**
+All REFACTOR.md recommendations focus on EntitiesController optimization.
+No changes needed to GenericController architecture.
+
+3. Existing Service Layer Integration (VERIFIED - No code changes needed)
+
+**Finding:**
+Three existing services work at DIFFERENT LAYERS and do NOT need modification:
+
+```
+Blazor Components (UI)
+    ↓ (calls via HTTP)
+EntityApiService (HTTP client wrapper)
+    ↓ (calls endpoints)
+EntitiesController (REST API layer)
+    ↓ (delegates to NEW service)
+[PROPOSED] IEntityOperationService (reflection logic layer)
+    ↓ (accesses)
+DbContext (data layer)
+```
+
+**Service Breakdown:**
+- EntityApiService: HTTP client for Blazor → calls /api/entities/* endpoints
+  - Does NOT access DbContext directly
+  - Only calls REST endpoints (HTTP layer)
+  - Uses IEntityMetadataService for type information
+
+- DashboardService: Business logic that consumes EntityApiService
+  - Calls EntityApiService.GetCountAsync() to load dashboard data
+  - Used by Blazor dashboard components
+  - Works at business logic layer
+
+- SpaSectionService: UI navigation and routing
+  - Reads app.yaml via IAppDictionaryService
+  - Builds navigation menu from YAML definitions
+  - Completely independent from EntitiesController
+
+**Refactoring Impact: ZERO CODE CHANGES**
+
+When IEntityOperationService is extracted:
+1. EntitiesController delegates reflection logic → IEntityOperationService ✅
+2. EntitiesController still exposes same HTTP endpoints ✅
+3. EntityApiService still calls same endpoints (no HTTP change) ✅
+4. DashboardService still calls EntityApiService (no change) ✅
+5. SpaSectionService continues unchanged ✅
+
+**Why No Changes Needed:**
+- Services work at different architectural layers
+- They communicate through HTTP (for clients) or interfaces (for server)
+- IEntityOperationService is an INTERNAL implementation detail
+- External contracts (HTTP endpoints) remain identical
+
+**Status:** No action required. Services are properly decoupled.
+
+4. Configuration Consolidation Audit (VERIFIED - Action needed for one item)
+
+**Finding:**
+REFACTOR.md recommended consolidating hard-coded values to configuration. Investigation found:
+
+**ISSUE FOUND - DataSeeder (NEEDS FIX):**
+- Location: `/Services/DataSeeder.cs` line 15
+- Hard-coded value: `private const string SeedFileName = "seed.sql";`
+- Status: ❌ NOT in appsettings.json
+- Impact: Hard to change seed file name without recompiling code
+
+**Recommendation:**
+Move SeedFileName to appsettings.json:
+```json
+{
+  "DataSeeder": {
+    "SeedFileName": "seed.sql"
+  }
+}
+```
+Then inject via IOptions<DataSeederOptions>
+
+**Implementation:**
+- Update `/Services/DataSeeder.cs` to accept IOptions<DataSeederOptions>
+- Create `/Models/DataSeederOptions.cs` with SeedFileName property
+- Update `appsettings.json` with DataSeeder section
+- Update `Program.cs` to configure options
+
+**VERIFIED OK - TenantSchemaOptions (No change needed):**
+- Location: `/Data/Tenancy/TenantSchemaOptions.cs` lines 5-6
+- Default values: `DefaultSchema = "dbo"`, `HeaderName = "X-Customer-Schema"`
+- Status: ✅ These defaults ARE overridden by appsettings.json (lines 12-15)
+- Assessment: Keeping defaults in the class is a best practice for options classes
+  (provides fallback if config missing, documents expected structure)
+- No change needed
+
+**VERIFIED OK - DdlParser YamlGenerator (Tool configuration):**
+- Location: `/DdlParser/YamlGenerator.cs` lines 15-25
+- Hard-coded values: App name, colors, logo URL for generated YAML
+- Status: ✅ These are SENSIBLE DEFAULTS for code generation tool
+- Assessment: The DDL parser is a standalone tool that generates starter YAML.
+  Hard-coded defaults here are appropriate (analogous to ASP.NET project scaffolding).
+  Users typically edit the generated app.yaml after running the tool.
+- No change needed - these are generation defaults, not runtime configuration
+
+**Configuration Sources Summary:**
+| Component | Config Source | Status |
+|-----------|---------------|--------|
+| TenantSchema | appsettings.json | ✅ OK (with class defaults) |
+| AppCustomization | appsettings.json | ✅ OK |
+| DataSeeder.SeedFileName | Const in code | ❌ NEEDS FIX |
+| DDL Parser Defaults | Code constants | ✅ OK (tool defaults) |
+
+**Estimated Effort:** 1 hour (DataSeeder refactoring only)
+
+**Risk:** Low - simple configuration extraction
+
+**Blocks:** REFACTOR.md Phase 5 (Configuration & Immutability) - but DataSeeder fix is independent
+
+=== NEXT (ONLY when TODOs above are completed OR empty) ===
 a) Look at using dotnet aspnet codegenerator scaffolding for what we have currently or planned for:
    https://learn.microsoft.com/en-us/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-10.0#arguments
 b) BUILD OPTIMIZATION TODO (2026-01-22)

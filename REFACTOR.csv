@@ -1,0 +1,14 @@
+Project,URL,Stars,Last_Commit,Dapper_Support
+dotnet-ef,https://github.com/dotnet/efcore,"14,500+",2026,No
+EntityFrameworkCore.Generator,https://github.com/loresoft/EntityFrameworkCore.Generator,387,2026,No
+CodegenCS,https://github.com/Drizin/CodegenCS,301,2024,Yes
+POCOGenerator,https://github.com/jaklithn/POCOGenerator,73,2024,Yes
+DapperCodeGenerator,https://github.com/spronkets/DapperCodeGenerator,51,2026,Yes
+CatFactory.SqlServer,https://github.com/rpg711/CatFactory.SqlServer,41,2023,Yes
+DtoGenerator,https://github.com/luisllamasbinaburo/DtoGenerator,30,2018,No
+SqlGen,https://github.com/busterwood/SqlGen,5,2018,Yes
+EmilianoMusso/pocoGenerator,https://github.com/EmilianoMusso/pocoGenerator,2,2018,No
+IMujagic/sql-to-sharp,https://github.com/IMujagic/sql-to-sharp,2,2022,No
+manhng83/GenClassesFromDatabase,https://github.com/manhng83/GenClassesFromDatabase,1,2021,No
+ongyishen/DataModelGenerator,https://github.com/ongyishen/DataModelGenerator,0,2022,No
+faradaysage/Retro-Data-Mapper,https://github.com/faradaysage/Retro-Data-Mapper-Generator,0,2020,No
