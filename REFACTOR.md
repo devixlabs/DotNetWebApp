@@ -114,7 +114,7 @@ Blazor Components (DynamicDataGrid, GenericEntityPage)
 
 #### 1. Extract Reflection Logic to Service Layer
 
-**PREREQUISITE:** See TODO.txt #1 - Missing CRUD operations (GetById, Update, Delete) must be implemented FIRST before extracting reflection logic to IEntityOperationService. This task is blocked by TODO #1.
+**PREREQUISITE:** ✅ COMPLETED (2026-01-25) - Missing CRUD operations (GetById, Update, Delete) have been implemented. This task is now unblocked.
 
 **Problem:** EntitiesController contains 50+ lines of reflection logic that should be encapsulated.
 

@@ -1,39 +1,5 @@
 === TODOs ===
 
-1. Implement Missing CRUD Operations in EntitiesController (High Priority - Refactoring Prerequisite)
-
-**Problem:**
-EntitiesController currently only supports 3 operations (Get all, Count, Create) but lacks
-Update, Delete, and GetById operations. These must be implemented before extracting reflection
-logic to IEntityOperationService, as per REFACTOR.md.
-
-**Current Operations:**
-- GET /api/entities/{entityName} (Read all)
-- GET /api/entities/{entityName}/count (Count)
-- POST /api/entities/{entityName} (Create)
-
-**Missing Operations:**
-- GET /api/entities/{entityName}/{id} (GetById)
-- PUT /api/entities/{entityName}/{id} (Update)
-- DELETE /api/entities/{entityName}/{id} (Delete)
-
-**Implementation Details:**
-- GetById: Requires primary key resolution from EntityMetadata
-- Update: Requires deserializing entity and finding by PK before SaveChangesAsync
-- Delete: Requires finding entity by PK and removing before SaveChangesAsync
-- All three need reflection-based primary key detection
-
-**Related Files:**
-- /Controllers/EntitiesController.cs
-- /Services/IEntityMetadataService.cs
-- /Models/EntityMetadata.cs
-
-**Estimated Effort:** 2-3 hours (includes testing)
-
-**Risk:** Low - extends existing reflection patterns, no breaking changes
-
-**Blocks:** REFACTOR.md Phase 1 (Extract Reflection Logic to IEntityOperationService)
-
 2. Controller Architecture Clarification (VERIFIED - No action needed)
 
 **Finding:**

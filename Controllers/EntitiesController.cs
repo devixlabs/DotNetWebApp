@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DotNetWebApp.Services;
+using DotNetWebApp.Models;
 using System.Collections;
 using System.Reflection;
 using System.Text.Json;
@@ -13,6 +14,10 @@ namespace DotNetWebApp.Controllers
     {
         private readonly DbContext _context;
         private readonly IEntityMetadataService _metadataService;
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         public EntitiesController(
             DbContext context,
@@ -135,7 +140,7 @@ namespace DotNetWebApp.Controllers
             object? entity;
             try
             {
-                entity = JsonSerializer.Deserialize(json, metadata.ClrType);
+                entity = JsonSerializer.Deserialize(json, metadata.ClrType, _jsonOptions);
             }
             catch (JsonException ex)
             {
@@ -160,6 +165,205 @@ namespace DotNetWebApp.Controllers
             return CreatedAtAction(nameof(GetEntities),
                 new { entityName = entityName },
                 entity);
+        }
+
+        [HttpGet("{entityName}/{id}")]
+        public async Task<ActionResult> GetEntityById(string entityName, string id)
+        {
+            var metadata = _metadataService.Find(entityName);
+            if (metadata == null || metadata.ClrType == null)
+            {
+                return NotFound(new { error = $"Entity '{entityName}' not found" });
+            }
+
+            var pkProperty = GetPrimaryKeyProperty(metadata);
+            if (pkProperty == null)
+            {
+                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+            }
+
+            object? pkValue;
+            try
+            {
+                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+            }
+
+            var entity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
+            if (entity == null)
+            {
+                return NotFound(new { error = $"Entity with id '{id}' not found" });
+            }
+
+            return Ok(entity);
+        }
+
+        [HttpPut("{entityName}/{id}")]
+        public async Task<ActionResult> UpdateEntity(string entityName, string id)
+        {
+            var metadata = _metadataService.Find(entityName);
+            if (metadata == null || metadata.ClrType == null)
+            {
+                return NotFound(new { error = $"Entity '{entityName}' not found" });
+            }
+
+            var pkProperty = GetPrimaryKeyProperty(metadata);
+            if (pkProperty == null)
+            {
+                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+            }
+
+            object? pkValue;
+            try
+            {
+                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+            }
+
+            var existingEntity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
+            if (existingEntity == null)
+            {
+                return NotFound(new { error = $"Entity with id '{id}' not found" });
+            }
+
+            using var reader = new StreamReader(Request.Body);
+            var json = await reader.ReadToEndAsync();
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return BadRequest(new { error = "Request body is empty" });
+            }
+
+            object? updatedEntity;
+            try
+            {
+                updatedEntity = JsonSerializer.Deserialize(json, metadata.ClrType, _jsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                return BadRequest(new { error = $"Invalid JSON: {ex.Message}" });
+            }
+
+            if (updatedEntity == null)
+            {
+                return BadRequest(new { error = "Failed to deserialize entity" });
+            }
+
+            // Copy properties from updatedEntity to existingEntity
+            var properties = metadata.ClrType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var property in properties)
+            {
+                // Skip primary key and navigation properties
+                if (property.Name == pkProperty.Name || !property.CanWrite)
+                {
+                    continue;
+                }
+
+                var value = property.GetValue(updatedEntity);
+                property.SetValue(existingEntity, value);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(existingEntity);
+        }
+
+        [HttpDelete("{entityName}/{id}")]
+        public async Task<ActionResult> DeleteEntity(string entityName, string id)
+        {
+            var metadata = _metadataService.Find(entityName);
+            if (metadata == null || metadata.ClrType == null)
+            {
+                return NotFound(new { error = $"Entity '{entityName}' not found" });
+            }
+
+            var pkProperty = GetPrimaryKeyProperty(metadata);
+            if (pkProperty == null)
+            {
+                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+            }
+
+            object? pkValue;
+            try
+            {
+                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+            }
+
+            var entity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
+            if (entity == null)
+            {
+                return NotFound(new { error = $"Entity with id '{id}' not found" });
+            }
+
+            var dbSet = GetDbSet(metadata.ClrType);
+            var removeMethod = dbSet.GetType().GetMethod("Remove");
+            if (removeMethod == null)
+            {
+                throw new InvalidOperationException($"Failed to resolve Remove method for type {metadata.ClrType.Name}");
+            }
+
+            removeMethod.Invoke(dbSet, new[] { entity });
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private Models.AppDictionary.Property? GetPrimaryKeyProperty(EntityMetadata metadata)
+        {
+            return metadata.Definition.Properties?
+                .FirstOrDefault(p => p.IsPrimaryKey);
+        }
+
+        private object ConvertPrimaryKeyValue(string id, Models.AppDictionary.Property pkProperty)
+        {
+            return pkProperty.Type.ToLowerInvariant() switch
+            {
+                "int" => int.Parse(id),
+                "long" => long.Parse(id),
+                "guid" => Guid.Parse(id),
+                "string" => id,
+                _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
+            };
+        }
+
+        private async Task<object?> FindEntityByPrimaryKey(Type entityType, object pkValue)
+        {
+            var findAsyncMethod = typeof(DbContext)
+                .GetMethod(nameof(DbContext.FindAsync), new[] { typeof(Type), typeof(object[]) });
+
+            if (findAsyncMethod == null)
+            {
+                throw new InvalidOperationException($"Failed to resolve FindAsync method");
+            }
+
+            var valueTask = findAsyncMethod.Invoke(_context, new object[] { entityType, new[] { pkValue } });
+            if (valueTask == null)
+            {
+                return null;
+            }
+
+            // ValueTask<object?> needs to be awaited
+            var asTaskMethod = valueTask.GetType().GetMethod("AsTask");
+            if (asTaskMethod == null)
+            {
+                throw new InvalidOperationException("Failed to resolve AsTask method on ValueTask");
+            }
+
+            var task = (Task)asTaskMethod.Invoke(valueTask, null)!;
+            await task;
+
+            var resultProperty = task.GetType().GetProperty("Result");
+            return resultProperty?.GetValue(task);
         }
     }
 }
