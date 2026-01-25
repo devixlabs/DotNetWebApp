@@ -50,7 +50,7 @@ builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
-builder.Services.AddScoped<SampleDataSeeder>();
+builder.Services.AddScoped<DataSeeder>();
 
 var seedMode = args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase));
 var app = builder.Build();
@@ -60,7 +60,7 @@ if (seedMode)
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
-    await scope.ServiceProvider.GetRequiredService<SampleDataSeeder>().SeedAsync();
+    await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync();
     return;
 }
 

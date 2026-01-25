@@ -52,7 +52,7 @@ DotNetWebApp/
 │   └── Sections/                 # SPA components (Dashboard, Settings, Entity, etc.)
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
-│   └── SampleDataSeeder.cs       # Executes sample-seed.sql via EF
+│   └── DataSeeder.cs       # Executes seed.sql via EF
 ├── Models/
 │   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
 │   ├── AppDictionary/            # YAML model classes (AppDictionary.cs, Entity.cs, Property.cs, etc.)
@@ -76,8 +76,8 @@ DotNetWebApp/
 ├── wwwroot/                      # Static files (CSS, JS, images)
 ├── _Imports.razor                # Global Blazor using statements
 ├── app.yaml                      # 📋 Generated data model and theme metadata (from SQL DDL)
-├── sample-schema.sql             # Sample SQL DDL for testing DDL parser
-├── sample-seed.sql               # Sample seed data (Categories, Products)
+├── schema.sql             # Sample SQL DDL for testing DDL parser
+├── seed.sql               # Sample seed data (Categories, Products)
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
 ├── DotNetWebApp.sln              # Solution file
@@ -100,11 +100,11 @@ DotNetWebApp/
   - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
   - Pipeline target: `make run-ddl-pipeline` executes the full workflow
 - **Entity Metadata Service:** `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
-- **Seed Data System:** `SampleDataSeeder` executes `sample-seed.sql` once schema exists
+- **Seed Data System:** `DataSeeder` executes `seed.sql` once schema exists
   - Run with: `make seed`
   - Guards against duplicate inserts
 - **Tenant Schema Support:** Multi-schema via `X-Customer-Schema` header (defaults to `dbo`)
-- **Unit Tests:** `DotNetWebApp.Tests` covers SampleDataSeeder with SQLite-backed integration tests
+- **Unit Tests:** `DotNetWebApp.Tests` covers DataSeeder with SQLite-backed integration tests
 - **Shell Script Validation:** `make check` runs `shellcheck` on setup.sh and dotnet-build.sh
 - **Build Passes:** `make check` and `make build` pass; `make test` passes with Release config
 - **Docker Support:** Makefile includes Docker build and SQL Server container commands
@@ -133,7 +133,7 @@ DotNetWebApp/
 - **Data model:** All entities support IDENTITY primary keys, nullable value types for optional fields, foreign key relationships
 - **Multi-tenancy:** Schema switching via `X-Customer-Schema` HTTP header
 - **CSS:** Global animations (pulse, spin, slideIn) in `wwwroot/css/app.css`
-- **Dependency injection:** Services registered in `Program.cs` (DbContext, AppDictionaryService, EntityMetadataService, SampleDataSeeder)
+- **Dependency injection:** Services registered in `Program.cs` (DbContext, AppDictionaryService, EntityMetadataService, DataSeeder)
 
 ## Secrets Management
 - Project uses **User Secrets** for local development (see SECRETS.md for details)
@@ -147,8 +147,8 @@ DotNetWebApp/
 |------|---------|
 | `app.yaml` | 📋 Generated data model and theme configuration (from SQL DDL) |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
-| `sample-schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make run-ddl-pipeline` |
-| `sample-seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
+| `schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make run-ddl-pipeline` |
+| `seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
 | `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
 | `Services/IEntityMetadataService.cs` | Maps YAML entity names to CLR types for API/UI |

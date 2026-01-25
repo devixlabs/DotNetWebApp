@@ -82,7 +82,7 @@ test:
 run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
 	@echo " -- Parsing DDL to YAML..."
-	cd DdlParser && "../$(DOTNET)" run -- ../sample-schema.sql ../app.yaml
+	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../app.yaml
 	@echo ""
 	@echo " -- Generating models from YAML..."
 	cd ModelGenerator && "../$(DOTNET)" run ../app.yaml

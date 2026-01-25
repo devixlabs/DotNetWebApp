@@ -157,7 +157,7 @@ DotNetWebApp/
 
 ## Database Migrations
 
-After modifying `sample-schema.sql` or running the DDL parser:
+After modifying `schema.sql` or running the DDL parser:
 
 ```bash
 # Start SQL Server
@@ -172,7 +172,7 @@ make migrate
 
 ## Sample Seed Data
 
-`sample-seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
+`seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
 
 ```bash
 make seed
@@ -180,7 +180,7 @@ make seed
 
 Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
 
-The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `sample-seed.sql` via the `SampleDataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `sample-seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
+The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `seed.sql` via the `DataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
 
 ---
 
@@ -214,7 +214,7 @@ docker exec -it sqlserver-dev \
   -d DotNetWebAppDb -Q "SELECT Name, Price, CategoryId FROM dbo.Products;"
 ```
 
-These commands let you run `sample-seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
+These commands let you run `seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
 
 ---
 
@@ -366,7 +366,7 @@ make dev  # Tries 5000, 5001, etc.
 | `app.yaml` | 📋 Generated data model (from SQL DDL) plus app metadata |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
 | `Migrations/` | 📚 Generated schema history (ignored in repo) |
-| `sample-seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
+| `seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
 | `SECRETS.md` | 🔐 Connection string setup guide |

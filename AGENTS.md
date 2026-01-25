@@ -19,14 +19,14 @@
 - `make dev`: Runs with hot reload (`dotnet watch`).
 - `make run`: Runs once without hot reload.
 - `make test`: Builds and runs `dotnet test` in Release for `tests/DotNetWebApp.Tests`.
-- `make seed`: Runs the app in seed mode to apply `sample-seed.sql` via EF (`-- --seed`).
+- `make seed`: Runs the app in seed mode to apply `seed.sql` via EF (`-- --seed`).
 - Docker DB helpers: `make db-start`, `make db-stop`, `make db-logs`, `make db-drop`.
 
 ## Project Goal & Session Notes
 
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 <<<<<<< HEAD
-- **Current State:** YAML drives generated models, API routes, and UI navigation; database schema should be created from the DDL pipeline before seeding. Seed data lives in `sample-seed.sql` and is applied via `make seed`.
+- **Current State:** YAML drives generated models, API routes, and UI navigation; database schema should be created from the DDL pipeline before seeding. Seed data lives in `seed.sql` and is applied via `make seed`.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Coding Style & Naming Conventions
