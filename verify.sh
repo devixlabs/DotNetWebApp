@@ -50,8 +50,9 @@ echo ""
 
 # Step 3: Drop database
 print_info "Step 3: Dropping database (make db-drop)..."
-make db-drop || print_info "Docker database drop attempted (may not exist or run 'make ms-drop' for MSSQL Server)"
-print_status "Database dropped"
+make db-drop || print_info "Docker database drop attempted (may not exist - running 'make ms-drop' for MSSQL Server)"
+make ms-drop || print_info "MSSQL Server database drop attempted"
+print_status "Database(s) dropped? ¯\_(ツ)_/¯"
 echo ""
 
 # Step 4: Run DDL pipeline
