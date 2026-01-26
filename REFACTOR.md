@@ -116,10 +116,10 @@ Blazor Components (DynamicDataGrid, GenericEntityPage)
 
 **PREREQUISITE:** ✅ COMPLETED (2026-01-25) - Missing CRUD operations (GetById, Update, Delete) have been implemented. This task is now unblocked.
 
-**Problem:** EntitiesController contains 50+ lines of reflection logic that should be encapsulated.
+**Problem:** EntitiesController contains reflection logic scattered across multiple methods that should be encapsulated.
 
 **Files affected:**
-- `/Controllers/EntitiesController.cs` (lines 37-87, 89-115, 117-143)
+- `/Controllers/EntitiesController.cs` (lines 30-56, 58-77, 94-106, 321-325, 327-337, 339-367)
 
 **Solution:** Create `IEntityOperationService`
 
@@ -136,7 +136,7 @@ public interface IEntityOperationService
 }
 ```
 
-**Benefit:** Reduces EntitiesController from ~200 lines to ~80 lines; centralizes reflection logic for reuse and testing.
+**Benefit:** Reduces EntitiesController from 369 lines to ~150-180 lines; centralizes reflection logic for reuse and testing.
 
 #### 2. Add Input Validation Pipeline
 
@@ -217,15 +217,10 @@ public interface IRepository<TEntity> where TEntity : class
 
 #### 5. Make YAML Models Immutable
 
-**Problem:** AppDefinition, Entity, Property classes use mutable properties.
+**Problem:** AppDefinition, Entity, Property classes and related nested classes use mutable properties.
 
 **Files affected:**
-- `/Models/AppDictionary/AppDefinition.cs`
-- `/Models/AppDictionary/Entity.cs`
-- `/Models/AppDictionary/Property.cs`
-- `/Models/AppDictionary/Relationship.cs`
-- `/Models/AppDictionary/AppMetadata.cs`
-- `/Models/AppDictionary/Theme.cs`
+- `/DotNetWebApp.Models/AppDictionary/AppDefinition.cs` (contains all nested classes: AppMetadata, Theme, DataModel, Entity, Property, Relationship)
 
 **Solution:** Change all `set` accessors to `init`
 
@@ -312,9 +307,7 @@ public class AppDefinition
 8. `/Data/Tenancy/TenantSchemaOptions.cs`
 
 ### Tier 4 - YAML Models (Add Immutability)
-9. `/Models/AppDictionary/AppDefinition.cs`
-10. `/Models/AppDictionary/Entity.cs`
-11. `/Models/AppDictionary/Property.cs`
+9. `/DotNetWebApp.Models/AppDictionary/AppDefinition.cs` (all nested classes)
 
 ### Tier 5 - Services (New Abstractions)
 12. NEW: `/Services/IEntityOperationService.cs`
@@ -389,7 +382,7 @@ public class AppDefinition
 ## Part 8: Success Criteria
 
 After refactoring:
-- ✅ EntitiesController reduced from ~200 lines to ~80 lines
+- ✅ EntitiesController reduced from 369 lines to ~150-180 lines
 - ✅ Reflection logic centralized in EntityOperationService
 - ✅ All API endpoints validate input before persistence
 - ✅ Multi-tenancy powered by Finbuckle.MultiTenant

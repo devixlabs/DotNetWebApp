@@ -53,15 +53,20 @@ DotNetWebApp/
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
 │   └── DataSeeder.cs       # Executes seed.sql via EF
-├── Models/
+├── DotNetWebApp.Models/          # 🔄 Separate models assembly (extracted from main project)
 │   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
-│   ├── AppDictionary/            # YAML model classes (AppDictionary.cs, Entity.cs, Property.cs, etc.)
-│   └── DTOs/                     # Data transfer objects (if any)
+│   ├── AppDictionary/            # YAML model classes (AppDefinition.cs, Entity.cs, Property.cs, etc.)
+│   ├── AppCustomizationOptions.cs  # App customization settings
+│   ├── DashboardSummary.cs       # Dashboard data model
+│   ├── DataSeederOptions.cs      # Data seeder configuration
+│   ├── EntityMetadata.cs         # Entity metadata record
+│   ├── SpaSection.cs             # SPA section model
+│   └── SpaSectionInfo.cs         # SPA section info model
 ├── Services/
 │   ├── AppDictionaryService.cs   # Loads and caches app.yaml
 │   ├── IEntityMetadataService.cs # Maps YAML entities to CLR types
 │   └── EntityMetadataService.cs  # Implementation
-├── Migrations/                   # Generated EF Core migrations (ignored in repo)
+├── Migrations/                   # Generated EF Core migrations (current baseline checked in; pipeline regenerates)
 ├── Pages/                        # Blazor host pages (_Host.cshtml, _Layout.cshtml)
 ├── Shared/                       # Shared Blazor components (MainLayout.razor, NavMenu.razor, GenericEntityPage.razor, DynamicDataGrid.razor)
 ├── DdlParser/                    # 🆕 SQL DDL → YAML converter (separate console project)
@@ -72,7 +77,8 @@ DotNetWebApp/
 │   └── YamlGenerator.cs
 ├── ModelGenerator/               # YAML → C# entity generator (separate console project)
 ├── tests/
-│   └── DotNetWebApp.Tests/       # Unit/integration tests
+│   ├── DotNetWebApp.Tests/       # Unit/integration tests
+│   └── ModelGenerator.Tests/     # Model generator path resolution tests
 ├── wwwroot/                      # Static files (CSS, JS, images)
 ├── _Imports.razor                # Global Blazor using statements
 ├── app.yaml                      # 📋 Generated data model and theme metadata (from SQL DDL)
@@ -80,7 +86,7 @@ DotNetWebApp/
 ├── seed.sql               # Sample seed data (Categories, Products)
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
-├── DotNetWebApp.sln              # Solution file
+├── DotNetWebApp.sln              # Solution file (includes all projects)
 └── DotNetWebApp.csproj           # Main project file
 ```
 
@@ -89,12 +95,13 @@ DotNetWebApp/
 ### ✅ Completed Features
 - **DDL-driven data model:** SQL DDL generates `app.yaml` and entity models
 - **Model Generation:** `ModelGenerator` reads `app.yaml` and generates C# entities with nullable value types for optional fields
+- **Modular Architecture:** Models extracted to separate `DotNetWebApp.Models` assembly for better separation of concerns
 - **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` → `Products`)
 - **Dynamic Entity API:** `EntitiesController` provides CRUD endpoints at `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
 - **Optional SPA example:** Toggle the `/app` routes via `AppCustomization:EnableSpaExample` in `appsettings.json`
 - **Generic CRUD UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render dynamic data grids from YAML definitions
 - **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with links to all entities via `AppDictionaryService`
-- **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → Models/Generated)
+- **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → DotNetWebApp.Models/Generated)
   - Converts SQL Server DDL files to `app.yaml` format
   - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
   - Pipeline target: `make run-ddl-pipeline` executes the full workflow
@@ -103,13 +110,14 @@ DotNetWebApp/
   - Run with: `make seed`
   - Guards against duplicate inserts
 - **Tenant Schema Support:** Multi-schema via `X-Customer-Schema` header (defaults to `dbo`)
-- **Unit Tests:** `DotNetWebApp.Tests` covers DataSeeder with SQLite-backed integration tests
+- **Unit Tests:** `DotNetWebApp.Tests` covers DataSeeder with SQLite-backed integration tests; `ModelGenerator.Tests` validates path resolution
 - **Shell Script Validation:** `make check` runs `shellcheck` on setup.sh and dotnet-build.sh
 - **Build Passes:** `make check` and `make build` pass; `make test` passes with Release config
+- **Build Optimization:** `cleanup-nested-dirs` Makefile target prevents inotify exhaustion on Linux systems
 - **Docker Support:** Makefile includes Docker build and SQL Server container commands
 
 ### ⚠️ Current Limitations / WIP
-- Generated models folder (`Models/Generated/`) is empty; needs `make build` or manual `ModelGenerator` run to populate
+- Generated models folder (`DotNetWebApp.Models/Generated/`) is empty initially; populated by `make run-ddl-pipeline` or manual `ModelGenerator` run
 - Branding currently mixed between `appsettings.json` and `app.yaml` (could be fully moved to YAML)
 - Composite primary keys not supported in DDL parser (single column PKs only)
 - CHECK and UNIQUE constraints ignored by DDL parser
@@ -145,7 +153,9 @@ DotNetWebApp/
 | File | Purpose |
 |------|---------|
 | `app.yaml` | 📋 Generated data model and theme configuration (from SQL DDL) |
-| `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
+| `DotNetWebApp.Models/` | 🔄 Separate models assembly containing all data models and configuration classes |
+| `DotNetWebApp.Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
+| `DotNetWebApp.Models/AppDictionary/` | YAML model classes for app.yaml structure |
 | `schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make run-ddl-pipeline` |
 | `seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
@@ -156,7 +166,7 @@ DotNetWebApp/
 | `Components/Shared/DynamicDataGrid.razor` | Dynamic data grid component that renders columns from YAML definitions |
 | `DdlParser/` | Console project: SQL DDL → `app.yaml` (standalone, not compiled into main app) |
 | `ModelGenerator/` | Console project: YAML → C# entities (run separately when updating models) |
-| `Makefile` | Build automation with targets for check, build, dev, test, migrate, seed, docker |
+| `Makefile` | Build automation with targets for check, build, dev, test, migrate, seed, docker, cleanup-nested-dirs |
 | `dotnet-build.sh` | Wrapper script managing .NET SDK version conflicts across environments |
 
 ## Recent Development History (git log)
@@ -164,12 +174,15 @@ DotNetWebApp/
 Recent commits show the project has evolved through:
 1. **Foundation (earlier commits):** Initial Blazor Server + API setup, Docker integration, self-signed certs
 2. **Data Model Generation:** Introduction of YAML-driven approach with ModelGenerator
-3. **DDL Parser Pipeline:** SQL DDL → YAML → C# entities workflow (commits: `7691ff2`, `d22ff0e`)
-4. **Entity Metadata Service:** System for mapping YAML entities to CLR types (`5cdab1f`)
-5. **Seed Data Implementation:** Integration of sample data seeding (`0e08572`)
-6. **Unit Tests:** Test suite covering seed logic and integration scenarios (`89f1d3c`)
+3. **DDL Parser Pipeline:** SQL DDL → YAML → C# entities workflow
+4. **Entity Metadata Service:** System for mapping YAML entities to CLR types
+5. **Seed Data Implementation:** Integration of sample data seeding
+6. **Unit Tests:** Test suite covering seed logic and integration scenarios
+7. **Models Extraction (2026-01-25):** Models moved to separate `DotNetWebApp.Models` project for better separation of concerns (commits: `552127d`, `601f84d`)
+8. **Build Optimization (2026-01-25):** Added `cleanup-nested-dirs` Makefile target to prevent inotify exhaustion on Linux
+9. **Documentation Expansion (2026-01-25):** SKILLS.md significantly expanded with comprehensive guides; SESSION_SUMMARY.md simplified to documentation index
 
-Latest work focuses on transitioning to a fully YAML-driven architecture with proper service abstraction.
+Latest work focuses on modular architecture and comprehensive developer documentation.
 
 ## Development Notes
 - Development occurs on both Windows and WSL (Ubuntu/Debian via apt-get)
@@ -178,5 +191,7 @@ Latest work focuses on transitioning to a fully YAML-driven architecture with pr
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and temporarily hides global.json during execution
 - `make check` runs `shellcheck setup.sh` and `shellcheck dotnet-build.sh` before restore/build
 - `make migrate` requires SQL Server running and a valid connection string; `dotnet-ef` may warn about version mismatches
+- `make cleanup-nested-dirs` removes nested project directories created by MSBuild to prevent inotify watch exhaustion on Linux (runs automatically after `make build-all` and `make test`)
 - Makefile uses the wrapper script for consistency across all dotnet operations; do not modify the system .NET runtime
 - Package versions use wildcards (`8.*`) to support flexibility across different developer environments while maintaining .NET 8 compatibility
+- Models are in separate `DotNetWebApp.Models` project; YamlDotNet dependency lives there (removed from main project)

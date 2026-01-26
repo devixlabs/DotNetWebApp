@@ -39,7 +39,7 @@ The **DdlParser** converts your SQL Server DDL files into `app.yaml` format, whi
 ### How It Works
 
 ```
-your-schema.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs → Migration → Build & Run
+your-schema.sql → DdlParser → app.yaml → ModelGenerator → DotNetWebApp.Models/Generated/*.cs → Migration → Build & Run
 ```
 
 ### Example: Parse Your Own Schema
@@ -73,7 +73,7 @@ make dev
 ```
 
 The app now has **Companies** and **Employees** entities with:
-- ✅ Auto-generated `Models/Generated/Company.cs` and `Models/Generated/Employee.cs`
+- ✅ Auto-generated `DotNetWebApp.Models/Generated/Company.cs` and `DotNetWebApp.Models/Generated/Employee.cs`
 - ✅ Database tables with correct types, constraints, and relationships
 - ✅ Navigation UI automatically includes Company and Employee links
 - ✅ Generic REST API endpoints (`/api/companies`, `/api/employees`)
@@ -97,15 +97,18 @@ DotNetWebApp/
 │   ├── Program.cs
 │   ├── CreateTableVisitor.cs
 │   └── TypeMapper.cs
-├── ModelGenerator/          # YAML → C# entity generator
-├── Models/
+├── DotNetWebApp.Models/     # 🔄 Separate models assembly
 │   ├── Generated/           # 🔄 Auto-generated entities from app.yaml
-│   └── AppDictionary/       # YAML model classes
+│   ├── AppDictionary/       # YAML model classes
+│   └── *.cs                 # Options classes (AppCustomizationOptions, DataSeederOptions, etc.)
+├── ModelGenerator/          # YAML → C# entity generator
 ├── Migrations/              # Generated EF Core migrations (current baseline checked in; pipeline regenerates)
 ├── Pages/                   # Host and layout pages
 ├── Services/                # Business logic and DI services
 ├── Shared/                  # Layout and shared UI
 ├── tests/                   # Test projects
+│   ├── DotNetWebApp.Tests/
+│   └── ModelGenerator.Tests/
 ├── wwwroot/                 # Static files (CSS, JS, images)
 ├── app.yaml                 # 📋 Generated data model definition (from SQL DDL)
 ├── schema.sql               # Source SQL DDL
@@ -119,7 +122,8 @@ DotNetWebApp/
 ## Current State
 
 - ✅ `app.yaml` is generated from SQL DDL and drives app metadata, theme, and data model shape
-- ✅ `ModelGenerator` produces entities in `Models/Generated` with proper nullable types
+- ✅ `ModelGenerator` produces entities in `DotNetWebApp.Models/Generated` with proper nullable types
+- ✅ Models extracted to separate `DotNetWebApp.Models` assembly for better separation of concerns
 - ✅ `AppDbContext` auto-discovers entities via reflection
 - ✅ `EntitiesController` provides dynamic REST endpoints
 - ✅ `GenericEntityPage.razor` + `DynamicDataGrid.razor` provide dynamic CRUD UI
@@ -286,8 +290,8 @@ make run-ddl-pipeline
 Output: `app.yaml` now contains `Author` and `Book` entities.
 
 Generated files:
-- `Models/Generated/Author.cs`
-- `Models/Generated/Book.cs`
+- `DotNetWebApp.Models/Generated/Author.cs`
+- `DotNetWebApp.Models/Generated/Book.cs`
 
 ### Step 3: Apply migration and run
 ```bash
@@ -358,13 +362,16 @@ make dev  # Uses ports from launchSettings.json
 |------|---------|
 | `app.yaml` | 📋 Generated data model (from SQL DDL) plus app metadata |
 | `schema.sql` | 📄 Source SQL DDL for the generation pipeline |
-| `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
+| `DotNetWebApp.Models/` | 🔄 Separate models assembly containing all data models |
+| `DotNetWebApp.Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
+| `DotNetWebApp.Models/AppDictionary/` | YAML model classes for app.yaml structure |
 | `Migrations/` | 📚 Generated schema history (current baseline checked in; pipeline regenerates) |
 | `seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
 | `SECRETS.md` | 🔐 Connection string setup guide |
-| `SESSION_SUMMARY.md` | 📝 Project state & progress tracking |
+| `SESSION_SUMMARY.md` | 📝 Documentation index |
+| `SKILLS.md` | 📚 Comprehensive developer skill guides |
 
 ---
 
@@ -385,6 +392,7 @@ make dev  # Uses ports from launchSettings.json
 - **Database:** SQL Server (Docker or native)
 - **Configuration:** DDL-driven data models + JSON appsettings
 - **Model Generation:** Automated from YAML via Scriban templates
+- **Modular Design:** Models in separate `DotNetWebApp.Models` assembly for better separation of concerns
 
 ---
 
