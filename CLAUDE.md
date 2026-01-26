@@ -49,15 +49,18 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 - Run All Pipelines: `make run-all-pipelines` (both entity and view generation) **[Phase 2]**
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
-- Clean: `make clean`
+- Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)
+- Stop Dev: `make stop-dev` (kills orphaned `dotnet watch` processes)
+- Shutdown Build Servers: `make shutdown-build-servers` (kills MSBuild/Roslyn processes)
 
 **Important:** Default `make build` excludes test projects to prevent OOM errors. Use `make build-all` if you need tests built.
 
 ## Build Commands
-- The project uses a Makefile with the following targets: `check`, `build`, `dev`, `run`, `test`, `migrate`, `docker-build`, `clean`
+- The project uses a Makefile with the following targets: `check`, `build`, `dev`, `run`, `test`, `migrate`, `docker-build`, `clean`, `stop-dev`, `shutdown-build-servers`
 - The dotnet-build.sh script is located in the project root and handles global.json SDK version conflicts
 - Use `make <target>` for standard operations
 - Use `./dotnet-build.sh <command>` directly only for advanced dotnet CLI operations not covered by Makefile targets
+- **Process cleanup:** If you notice accumulating dotnet processes, run `make clean` (full cleanup) or individually `make stop-dev` / `make shutdown-build-servers`
 
 ## SDK Version Management
 The project uses `dotnet-build.sh` wrapper script to handle SDK version conflicts between Windows and WSL environments. Different developers may have different .NET SDK versions installed (e.g., from Snap, apt-get, or native installers). The wrapper temporarily bypasses `global.json` version enforcement during local development, allowing flexibility while keeping the version specification in place for CI/CD servers.
@@ -155,7 +158,7 @@ DotNetWebApp/
   - Guards against duplicate inserts
 - **Tenant Schema Support:** Multi-schema via `X-Customer-Schema` header (defaults to `dbo`)
 - **Unit Tests:** `DotNetWebApp.Tests` covers DataSeeder with SQLite-backed integration tests; `ModelGenerator.Tests` validates path resolution
-- **Shell Script Validation:** `make check` runs `shellcheck` on setup.sh and dotnet-build.sh
+- **Shell Script Validation:** `make check` runs `shellcheck` on setup.sh, dotnet-build.sh, and verify.sh
 - **Build Passes:** `make check` and `make build` pass; `make test` passes with Release config
 - **Build Optimization:** `cleanup-nested-dirs` Makefile target prevents inotify exhaustion on Linux systems
 - **Docker Support:** Makefile includes Docker build and SQL Server container commands
@@ -168,10 +171,18 @@ DotNetWebApp/
 - Computed columns ignored by DDL parser
 
 ### 🔧 Development Status
-- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-drop`)
+- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-drop`, `stop-dev`, `shutdown-build-servers`)
 - `dotnet-build.sh` wrapper manages .NET SDK version conflicts across Windows/WSL/Linux
 - `make migrate` requires SQL Server running and valid connection string
 - Session tracking via `SESSION_SUMMARY.md` for LLM continuity between sessions
+
+### ⚠️ Known Process Management Pitfalls
+- **MSBuild node reuse:** `dotnet build` spawns MSBuild node processes (`/nodeReuse:true`) that persist after builds. Use `make shutdown-build-servers` to force-kill them.
+- **dotnet build-server shutdown limitations:** The `dotnet build-server shutdown` command claims success but orphaned MSBuild/Roslyn processes may not actually terminate. Our `shutdown-build-servers` target force-kills stuck processes after attempting graceful shutdown.
+- **dotnet watch signal handling:** `dotnet watch` catches SIGTERM (default `kill` signal) for graceful shutdown but ignores it when orphaned/detached. Must use `kill -9` (SIGKILL) to terminate. Use `make stop-dev` which handles this correctly.
+- **Zombie processes:** Killed processes may become zombies (`<defunct>`) until parent reaps them. These are harmless and don't consume resources.
+- **Process accumulation:** Running multiple `make` commands (especially `test`, `run-ddl-pipeline`) without cleanup causes dotnet process accumulation. Run `make clean` periodically or `make stop-dev` + `make shutdown-build-servers` as needed.
+- **Wrapper script processes:** The `dotnet-build.sh` wrapper may leave bash process entries after termination. These typically become zombies and don't need manual cleanup.
 
 ## Architecture Notes
 - **Hybrid architecture:** ASP.NET Core Web API backend + Blazor Server SPA frontend
@@ -233,7 +244,7 @@ Latest work focuses on modular architecture and comprehensive developer document
 - global.json specifies .NET 8.0.410 as the target version
 - New developer setup: Run `./setup.sh`, then `make check`, `make db-start` (if Docker), `make run-ddl-pipeline`, and `make migrate`
 - `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and temporarily hides global.json during execution
-- `make check` runs `shellcheck setup.sh` and `shellcheck dotnet-build.sh` before restore/build
+- `make check` runs `shellcheck` on all shell scripts (setup.sh, dotnet-build.sh, verify.sh) before restore/build
 - `make migrate` requires SQL Server running and a valid connection string; `dotnet-ef` may warn about version mismatches
 - `make cleanup-nested-dirs` removes nested project directories created by MSBuild to prevent inotify watch exhaustion on Linux (runs automatically after `make build-all` and `make test`)
 - Makefile uses the wrapper script for consistency across all dotnet operations; do not modify the system .NET runtime

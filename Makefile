@@ -20,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline verify-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
 	rm -f msbuild.binlog
@@ -31,11 +31,26 @@ clean:
 	$(DOTNET) clean tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
 	$(DOTNET) clean tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
 	@$(MAKE) cleanup-nested-dirs
+	@$(MAKE) shutdown-build-servers
 
 # Internal helper: Remove nested project directories created by MSBuild during test/build-all
 # Prevents inotify watch exhaustion on Linux (limit: 65,536)
 cleanup-nested-dirs:
 	@find . -type d -path "*/bin/*/tests" -o -path "*/bin/*/DotNetWebApp.Models" -o -path "*/bin/*/ModelGenerator" -o -path "*/bin/*/DdlParser" | xargs rm -rf 2>/dev/null || true
+
+# Shutdown all MSBuild/Roslyn/Razor build servers to free memory and prevent process accumulation
+# Run this after intensive build sessions or when dotnet processes are consuming too much memory
+# Force-kills processes if they don't respond to shutdown command
+shutdown-build-servers:
+	@echo "Shutting down .NET build servers..."
+	@$(DOTNET) build-server shutdown 2>/dev/null || true
+	@sleep 1
+	@PIDS=$$(ps -ef | grep -e "MSBuild\.dll" -e "VBCSCompiler\.dll" -e "RazorServer\.dll" | grep -v grep | awk '{print $$2}'); \
+	if [ -n "$$PIDS" ]; then \
+		echo "Force-killing stuck build server processes: $$PIDS"; \
+		kill -9 $$PIDS 2>/dev/null || true; \
+	fi
+	@echo "Build servers stopped."
 
 https:
 	$(DOTNET) dev-certs https
@@ -43,7 +58,6 @@ https:
 check:
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
-	shellcheck Makefile
 	shellcheck verify.sh
 	$(MAKE) restore
 	$(MAKE) build
@@ -157,6 +171,19 @@ run:
 # Always uses Debug configuration for fastest rebuild times during watch mode
 dev:
 	$(DOTNET) watch --project DotNetWebApp.csproj run --launch-profile https --configuration Debug
+
+# Stop any orphaned 'dotnet watch' processes from previous dev sessions
+# Kills wrapper scripts, parent "dotnet watch" commands, and child dotnet-watch.dll processes
+# Uses kill -9 because dotnet watch ignores SIGTERM for graceful shutdown handling
+stop-dev:
+	@echo "Looking for orphaned 'dotnet watch' processes..."
+	@PIDS=$$(ps -ef | grep -e "dotnet-build\.sh watch" -e "dotnet watch --project DotNetWebApp.csproj" -e "dotnet-watch.dll --project DotNetWebApp.csproj" | grep -v grep | awk '{print $$2}'); \
+	if [ -n "$$PIDS" ]; then \
+		echo "Found PIDs: $$PIDS"; \
+		kill -9 $$PIDS 2>/dev/null && echo "Force-stopped orphaned dev processes." || echo "Failed to stop some processes (may need sudo)."; \
+	else \
+		echo "No orphaned dev processes found."; \
+	fi
 
 # Start the SQL Server Docker container used for local dev
 db-start:
