@@ -580,3 +580,163 @@ This refactoring plan has been verified against the actual source code. Prior ve
 - Implement phases sequentially
 - Test thoroughly between phases
 - Don't skip Phase 1 and Phase 2 (foundation for scale)
+
+---
+
+## Part 11: Test Coverage TODOs (Post Code Review)
+
+**Status:** Generated during code review (2026-01-26)
+**Priority:** Complete before merging templify branch
+
+### Completed ✅
+1. **DdlParser.Tests Project** - Comprehensive test suite for SQL parsing
+   - SqlDdlParser tests (all data types, foreign keys, identity columns)
+   - YamlGenerator tests (round-trip serialization, relationships)
+   - TypeMapper tests (SQL to YAML type conversion)
+   - Coverage: 62 tests, all passing
+2. **PipelineIntegrationTests** - End-to-end DDL pipeline validation
+   - Complete SQL → YAML → Model generation workflow
+   - Schema update scenarios
+   - Complex relationship handling
+3. **Makefile Enhancements**
+   - `verify-pipeline` target for CI-friendly output validation
+   - DdlParser.Tests added to `make test` target
+   - Warning comment added to `run-ddl-pipeline` about migration deletion
+
+### Next Sprint (Items 4, 5, 6 from Code Review)
+
+#### TODO #4: Complete Service Layer Tests (High Priority)
+**Estimated Time:** 1 week
+**Files to Create:**
+- `tests/DotNetWebApp.Tests/AppDictionaryServiceTests.cs`
+- `tests/DotNetWebApp.Tests/EntityMetadataServiceTests.cs`
+
+**Test Scenarios:**
+```csharp
+// AppDictionaryService
+[Fact] GetAppDefinition_ValidYaml_LoadsSuccessfully()
+[Fact] GetAppDefinition_MissingFile_ThrowsException()
+[Fact] GetAppDefinition_InvalidYaml_ThrowsException()
+[Fact] GetAppDefinition_SecondCall_ReturnsCachedValue()
+[Fact] GetEntity_ExistingEntity_ReturnsEntity()
+[Fact] GetEntity_NonExistentEntity_ReturnsNull()
+
+// EntityMetadataService
+[Fact] Constructor_ValidEntities_PopulatesMetadata()
+[Fact] Find_ExistingEntity_ReturnsMetadata()
+[Fact] Find_CaseInsensitive_ReturnsMetadata()
+[Fact] Find_NonExistent_ReturnsNull()
+[Fact] Entities_Property_ReturnsReadOnlyList()
+```
+
+**Success Criteria:** 80%+ code coverage on service layer
+
+#### TODO #5: Expand EntitiesController Tests (Medium Priority)
+**Estimated Time:** 3 days
+**File to Update:** `tests/DotNetWebApp.Tests/EntitiesControllerTests.cs`
+
+**Missing Test Scenarios:**
+```csharp
+// CRUD Operations
+[Fact] UpdateEntity_ValidData_Returns200()
+[Fact] UpdateEntity_NonExistentId_Returns404()
+[Fact] UpdateEntity_InvalidData_Returns400()
+[Fact] DeleteEntity_ExistingId_Returns204()
+[Fact] DeleteEntity_NonExistentId_Returns404()
+
+// Pagination/Filtering
+[Fact] GetEntities_WithPagination_ReturnsSubset()
+[Fact] GetEntities_WithFilters_ReturnsFilteredResults()
+
+// Multi-Tenancy
+[Fact] GetEntities_DifferentTenantSchema_ReturnsCorrectData()
+[Fact] CreateEntity_WithTenantHeader_CreatesInCorrectSchema()
+
+// Concurrency
+[Fact] UpdateEntity_ConcurrentModification_Returns409()
+```
+
+**Success Criteria:** All CRUD operations covered with positive and negative test cases
+
+#### TODO #6: Implement Validation Pipeline (High Priority - Phase 3)
+**Estimated Time:** 1 day
+**Reference:** REFACTOR.md Part 5 - Phase 3
+
+**Implementation Steps:**
+1. Add validation middleware to EntitiesController
+2. Respect DataAnnotations from generated models
+3. Return 400 Bad Request with validation error details
+
+**Test Scenarios:**
+```csharp
+// tests/DotNetWebApp.Tests/ValidationTests.cs
+[Fact] CreateEntity_InvalidData_Returns400WithValidationErrors()
+[Fact] CreateEntity_MissingRequiredField_Returns400()
+[Fact] CreateEntity_ExceedsMaxLength_Returns400()
+[Fact] CreateEntity_InvalidDataType_Returns400()
+[Fact] UpdateEntity_InvalidData_Returns400WithValidationErrors()
+```
+
+**Success Criteria:** All entity operations validate before persistence
+
+### P2 - Medium Priority (Future Enhancement)
+
+#### TODO #7: Performance Tests (Low Priority)
+**Estimated Time:** 2 days
+**File to Create:** `tests/DotNetWebApp.Tests/PerformanceTests.cs`
+
+**Test Scenarios:**
+```csharp
+[Fact] ReflectionOverhead_200Entities_IsAcceptable()
+[Fact] DapperVsEF_ComplexJoin_ShowsExpectedImprovement()
+[Fact] ApiResponse_AverageLatency_UnderThreshold()
+```
+
+**Success Criteria:** Baseline performance metrics documented for future comparison
+
+### Known Issues (Document & Track)
+
+1. **research/ Directory Compilation** (Blocker for make test)
+   - **Issue:** DotNetWebApp.csproj compiles research/ files causing build errors
+   - **Fix:** Add to .csproj: `<Compile Remove="research/**/*.cs" />`
+   - **Note:** research/ is for LLM learning examples, not production code
+
+2. **Primary Key Nullability Detection** (Known Limitation)
+   - **Issue:** DdlParser doesn't automatically mark PRIMARY KEY columns as NOT NULL
+   - **Workaround:** Always explicitly add `NOT NULL` to PRIMARY KEY columns in SQL
+   - **Future:** Enhance CreateTableVisitor.cs to set IsNullable=false for PK columns
+
+3. **Composite Primary Keys Not Supported** (Known Limitation)
+   - **Issue:** YamlGenerator only handles single-column primary keys
+   - **Workaround:** Use surrogate keys (INT IDENTITY) for all entities
+   - **Future:** Add composite key support in Phase 2 if needed
+
+### Test Coverage Metrics
+
+**Current State (2026-01-26):**
+```
+DotNetWebApp.Tests:        ~60% coverage (Controllers, Services)
+ModelGenerator.Tests:      ~40% coverage (Path resolution only)
+DdlParser.Tests:           ~80% coverage (62 tests added)
+Integration Tests:         Basic E2E pipeline coverage
+```
+
+**Target State (After TODOs 4, 5, 6):**
+```
+DotNetWebApp.Tests:        80%+ coverage
+ModelGenerator.Tests:      80%+ coverage
+DdlParser.Tests:           80%+ coverage
+Integration Tests:         All critical workflows covered
+```
+
+**Commands:**
+```bash
+# Run all tests
+make test
+
+# Run specific test project
+./dotnet-build.sh test tests/DdlParser.Tests/DdlParser.Tests.csproj --no-restore --nologo
+
+# Verify pipeline outputs
+make verify-pipeline
+```

@@ -1,5 +1,6 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034,SC1089,SC2288,SC2046
+# shellcheck disable=SC2034,SC1089,SC2288,SC2046,SC1072,SC1073
+
 DOTNET=./dotnet-build.sh
 # shellcheck disable=SC2034
 IMAGE_NAME=dotnetwebapp
@@ -19,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline verify-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs
 
 clean:
 	rm -f msbuild.binlog
@@ -93,9 +94,12 @@ test:
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	$(DOTNET) build tests/DdlParser.Tests/DdlParser.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/DdlParser.Tests/DdlParser.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	@$(MAKE) cleanup-nested-dirs
 
 # Run the complete DDL → YAML → Model generation pipeline
+# WARNING: This removes all existing migrations
 run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
 	@echo " -- Parsing DDL to YAML..."
@@ -112,9 +116,35 @@ run-ddl-pipeline: clean
 	@echo " -- Building project..."
 	$(MAKE) build
 	@echo ""
-	@echo " -- DDL pipeline test completed!"
+	@echo "✅ DDL pipeline test completed!"
 	@echo ""
 	@echo "🚀 Next: Run 'make dev' to start the application"
+
+# Verify pipeline outputs are valid
+# Validates that app.yaml, generated models, and migrations were created correctly
+verify-pipeline: run-ddl-pipeline
+	@echo ""
+	@echo "Verifying pipeline outputs..."
+	@# Validate app.yaml exists and is not empty
+	@test -f app.yaml || (echo "❌ app.yaml not found" && exit 1)
+	@test -s app.yaml || (echo "❌ app.yaml is empty" && exit 1)
+	@echo "✅ app.yaml exists and is not empty"
+	@# Validate generated models directory exists
+	@test -d DotNetWebApp.Models/Generated || (echo "❌ Generated/ directory not found" && exit 1)
+	@# Validate at least one generated model file exists
+	@test -n "$$(find DotNetWebApp.Models/Generated -name '*.cs' 2>/dev/null)" || (echo "❌ No generated C# files found" && exit 1)
+	@echo "✅ Generated models exist"
+	@# Validate migrations were created
+	@test -d Migrations || (echo "❌ Migrations/ directory not found" && exit 1)
+	@test -n "$$(find Migrations -name '*.cs' 2>/dev/null)" || (echo "❌ No migration files found" && exit 1)
+	@echo "✅ Migrations created"
+	@# Validate YAML structure (basic check)
+	@grep -q "dataModel:" app.yaml || (echo "❌ app.yaml missing dataModel section" && exit 1)
+	@grep -q "entities:" app.yaml || (echo "❌ app.yaml missing entities section" && exit 1)
+	@echo "✅ app.yaml structure valid"
+	@echo ""
+	@echo "✅ All pipeline verifications passed!"
+	@echo "Pipeline is ready for use."
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .

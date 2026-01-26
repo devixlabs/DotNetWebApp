@@ -28,6 +28,10 @@
 
   <ItemGroup>
     <Compile Remove="DotNetWebApp.Models\**" />
+    <Compile Remove="research\**" />
+    <Content Remove="research\**" />
+    <EmbeddedResource Remove="research\**" />
+    <None Remove="research\**" />
     <Content Remove="DotNetWebApp.Models\**" />
     <EmbeddedResource Remove="DotNetWebApp.Models\**" />
     <None Remove="DotNetWebApp.Models\**" />
