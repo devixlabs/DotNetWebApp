@@ -33,7 +33,10 @@ https:
 	$(DOTNET) dev-certs https
 
 check:
-	shellcheck setup.sh & shellcheck dotnet-build.sh & shellcheck Makefile & wait
+	shellcheck setup.sh
+	shellcheck dotnet-build.sh
+	shellcheck Makefile
+	shellcheck verify.sh
 	$(MAKE) restore
 	$(MAKE) build
 

@@ -50,7 +50,7 @@ echo ""
 
 # Step 3: Drop database
 print_info "Step 3: Dropping database (make db-drop)..."
-make db-drop || print_info "Database drop skipped (may not exist)"
+make db-drop || print_info "Docker database drop attempted (may not exist or run 'make ms-drop' for MSSQL Server)"
 print_status "Database dropped"
 echo ""
 

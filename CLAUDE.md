@@ -46,7 +46,7 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 ## Project Structure
 ```
 DotNetWebApp/
-├── Controllers/                   # API endpoints (GenericController<T>, EntitiesController, etc.)
+├── Controllers/                   # API endpoints (EntitiesController, etc.)
 ├── Components/
 │   ├── Pages/                    # Routable Blazor pages (Home.razor, SpaApp.razor)
 │   └── Sections/                 # SPA components (Dashboard, Settings, Entity, etc.)
@@ -90,8 +90,7 @@ DotNetWebApp/
 - **DDL-driven data model:** SQL DDL generates `app.yaml` and entity models
 - **Model Generation:** `ModelGenerator` reads `app.yaml` and generates C# entities with nullable value types for optional fields
 - **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` → `Products`)
-- **Generic REST API:** `GenericController<T>` provides CRUD endpoints with singular entity names (e.g., `/api/products`)
-- **Dynamic Entity API:** `EntitiesController` supports `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
+- **Dynamic Entity API:** `EntitiesController` provides CRUD endpoints at `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
 - **Optional SPA example:** Toggle the `/app` routes via `AppCustomization:EnableSpaExample` in `appsettings.json`
 - **Generic CRUD UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render dynamic data grids from YAML definitions
 - **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with links to all entities via `AppDictionaryService`
@@ -126,7 +125,7 @@ DotNetWebApp/
 - **Hybrid architecture:** ASP.NET Core Web API backend + Blazor Server SPA frontend
 - **SignalR connection:** Real-time updates between client and server
 - **Entity Framework Core:** Dynamic model registration via reflection; DbContext discovers entities at startup
-- **REST API design:** `GenericController<T>` provides endpoints with singular entity names (e.g., `/api/products`, `/api/categories`)
+- **REST API design:** `EntitiesController` serves dynamic endpoints at `/api/entities/{entityName}`
 - **UI architecture:** Generic Blazor pages (`GenericEntityPage.razor`) with reusable data grid components
 - **YAML-driven generation:** `ModelGenerator` reads `app.yaml` → generates entities → migration generated for schema application
 - **DDL parser pipeline:** SQL Server DDL → `app.yaml` → C# entities → migration generation
@@ -152,7 +151,7 @@ DotNetWebApp/
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
 | `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
 | `Services/IEntityMetadataService.cs` | Maps YAML entity names to CLR types for API/UI |
-| `Controllers/GenericController<T>` | Base controller providing CRUD endpoints for all entities |
+| `Controllers/EntitiesController.cs` | Dynamic controller providing CRUD endpoints for all entities |
 | `Components/Shared/GenericEntityPage.razor` | Reusable page component for rendering any entity's CRUD UI |
 | `Components/Shared/DynamicDataGrid.razor` | Dynamic data grid component that renders columns from YAML definitions |
 | `DdlParser/` | Console project: SQL DDL → `app.yaml` (standalone, not compiled into main app) |

@@ -21,14 +21,14 @@ dotnet tool install --global dotnet-ef --version 8.*
 
 ### 3. Build and run
 ```bash
-make check     # Lint scripts, restore packages, build
+make check     # Lint scripts/Makefile, restore packages, build
 make db-start  # Start SQL Server (Docker only)
 make run-ddl-pipeline  # Generate app.yaml, models, and migration from SQL DDL
 make migrate   # Apply generated migration
-make dev       # Start dev server (http://localhost:5000)
+make dev       # Start dev server (https://localhost:7012 or http://localhost:5210)
 ```
 
-**That's it!** Navigate to http://localhost:5000 to see the app.
+**That's it!** Navigate to https://localhost:7012 (or http://localhost:5210) to see the app.
 
 ---
 
@@ -44,7 +44,7 @@ your-schema.sql → DdlParser → app.yaml → ModelGenerator → Models/Generat
 
 ### Example: Parse Your Own Schema
 
-Create a file `my-schema.sql`:
+Create or replace `schema.sql`:
 ```sql
 CREATE TABLE Companies (
     Id INT PRIMARY KEY IDENTITY(1,1),
@@ -67,18 +67,6 @@ CREATE TABLE Employees (
 
 Then run:
 ```bash
-# Parse DDL to YAML
-cd DdlParser
-../dotnet-build.sh run -- ../my-schema.sql ../app.yaml
-
-# Generate models and build
-cd ../ModelGenerator
-../dotnet-build.sh run ../app.yaml
-
-cd ..
-make build
-
-# Start the app
 make run-ddl-pipeline
 make migrate
 make dev
@@ -91,7 +79,7 @@ The app now has **Companies** and **Employees** entities with:
 - ✅ Generic REST API endpoints (`/api/companies`, `/api/employees`)
 - ✅ Dynamic CRUD UI pages with data grids
 
-**Visit http://localhost:5000 → click "Data" in sidebar → select Company or Employee**
+**Visit https://localhost:7012 (or http://localhost:5210) → click "Data" in sidebar → select Company or Employee**
 
 ---
 
@@ -99,22 +87,29 @@ The app now has **Companies** and **Employees** entities with:
 
 ```
 DotNetWebApp/
-├── Controllers/              # API endpoints (GenericController<T>, EntitiesController, etc.)
 ├── Components/
 │   ├── Pages/               # Blazor routable pages (Home.razor, SpaApp.razor)
-│   └── Sections/            # SPA components (Dashboard, Settings, Entity, etc.)
+│   ├── Sections/            # SPA components (Dashboard, Settings, Entity, etc.)
+│   └── Shared/              # Shared UI components
+├── Controllers/              # API endpoints (EntitiesController, etc.)
 ├── Data/                    # EF Core DbContext
-├── Models/
-│   ├── Generated/           # 🔄 Auto-generated entities from app.yaml
-│   └── AppDictionary/       # YAML model classes
-├── Migrations/              # Generated EF Core migrations (ignored in repo)
 ├── DdlParser/               # 🆕 SQL DDL → YAML converter
 │   ├── Program.cs
 │   ├── CreateTableVisitor.cs
 │   └── TypeMapper.cs
 ├── ModelGenerator/          # YAML → C# entity generator
+├── Models/
+│   ├── Generated/           # 🔄 Auto-generated entities from app.yaml
+│   └── AppDictionary/       # YAML model classes
+├── Migrations/              # Generated EF Core migrations (current baseline checked in; pipeline regenerates)
+├── Pages/                   # Host and layout pages
+├── Services/                # Business logic and DI services
+├── Shared/                  # Layout and shared UI
+├── tests/                   # Test projects
 ├── wwwroot/                 # Static files (CSS, JS, images)
 ├── app.yaml                 # 📋 Generated data model definition (from SQL DDL)
+├── schema.sql               # Source SQL DDL
+├── seed.sql                 # Seed data
 ├── Makefile                 # Build automation
 └── dotnet-build.sh          # SDK version wrapper script
 ```
@@ -126,10 +121,10 @@ DotNetWebApp/
 - ✅ `app.yaml` is generated from SQL DDL and drives app metadata, theme, and data model shape
 - ✅ `ModelGenerator` produces entities in `Models/Generated` with proper nullable types
 - ✅ `AppDbContext` auto-discovers entities via reflection
-- ✅ `GenericController<T>` provides REST endpoints
+- ✅ `EntitiesController` provides dynamic REST endpoints
 - ✅ `GenericEntityPage.razor` + `DynamicDataGrid.razor` provide dynamic CRUD UI
 - ✅ **DdlParser** converts SQL DDL files to `app.yaml` format
-- ✅ Migrations generated from SQL DDL pipeline (kept out of source control)
+- ✅ Migrations generated from SQL DDL pipeline (current baseline checked in; pipeline regenerates)
 - ⚠️ Branding currently from `appsettings.json` (can be moved to YAML)
 - ✅ Tenant schema switching via `X-Customer-Schema` header (defaults to `dbo`)
 - ✅ Dynamic API routes: `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
@@ -141,17 +136,27 @@ DotNetWebApp/
 
 | Command | Purpose |
 |---------|---------|
-| `make check` | Lint, restore packages, build |
-| `make build` | Clean build |
-| `make dev` | Start dev server with hot reload |
-| `make run` | Start server without hot reload |
-| `make test` | Run unit tests |
+| `make check` | Lint scripts/Makefile, restore, build |
+| `make restore` | Restore app, generator, parser, and test projects |
+| `make build` | Build main projects (Debug by default; set `BUILD_CONFIGURATION`) |
+| `make build-all` | Build full solution including tests |
+| `make build-release` | Release build for main projects |
+| `make clean` | Clean build outputs and binlog |
+| `make run-ddl-pipeline` | Parse `schema.sql` → app.yaml → models → migration → build |
 | `make migrate` | Apply generated migration |
+| `make seed` | Apply migration and seed data |
+| `make dev` | Start dev server with hot reload (https://localhost:7012 / http://localhost:5210) |
+| `make run` | Start server without hot reload |
+| `make test` | Run DotNetWebApp.Tests and ModelGenerator.Tests |
 | `make db-start` | Start SQL Server container (Docker) |
 | `make db-stop` | Stop SQL Server container (Docker) |
+| `make db-logs` | Tail SQL Server container logs |
+| `make db-drop` | Drop local dev database in Docker |
+| `make ms-status` | Check native SQL Server status |
+| `make ms-start` | Start native SQL Server |
+| `make ms-logs` | Tail native SQL Server logs |
+| `make ms-drop` | Drop local dev database in native SQL Server |
 | `make docker-build` | Build Docker image |
-<<<<<<< HEAD
-| `make run-ddl-pipeline` | Parse DDL → generate models → migration → build (full pipeline run) |
 
 ---
 
@@ -248,14 +253,14 @@ make migrate
 make dev
 ```
 
-Visit **http://localhost:5000** in your browser.
+Visit **https://localhost:7012** (or **http://localhost:5210**) in your browser.
 
 ---
 
 ## Adding a New Data Entity from DDL
 
-### Step 1: Create your SQL schema file
-File: `my-tables.sql`
+### Step 1: Update your SQL schema file
+File: `schema.sql`
 ```sql
 CREATE TABLE Authors (
     Id INT PRIMARY KEY IDENTITY(1,1),
@@ -273,31 +278,19 @@ CREATE TABLE Books (
 );
 ```
 
-### Step 2: Parse DDL to YAML
+### Step 2: Run the DDL → YAML → model pipeline
 ```bash
-cd DdlParser
-../dotnet-build.sh run -- ../my-tables.sql ../app.yaml
-cd ..
+make run-ddl-pipeline
 ```
 
 Output: `app.yaml` now contains `Author` and `Book` entities.
-
-### Step 3: Generate models and build
-```bash
-cd ModelGenerator
-../dotnet-build.sh run ../app.yaml
-cd ..
-
-make build
-```
 
 Generated files:
 - `Models/Generated/Author.cs`
 - `Models/Generated/Book.cs`
 
-### Step 4: Generate migration, apply schema, and run
+### Step 3: Apply migration and run
 ```bash
-make run-ddl-pipeline
 make migrate
 make dev
 ```
@@ -351,10 +344,10 @@ cd ..
 make build
 ```
 
-### Port 5000 already in use
+### Port 7012/5210 already in use
 ```bash
 # Change port in launchSettings.json or run on different port
-make dev  # Tries 5000, 5001, etc.
+make dev  # Uses ports from launchSettings.json
 ```
 
 ---
@@ -364,8 +357,9 @@ make dev  # Tries 5000, 5001, etc.
 | File | Purpose |
 |------|---------|
 | `app.yaml` | 📋 Generated data model (from SQL DDL) plus app metadata |
+| `schema.sql` | 📄 Source SQL DDL for the generation pipeline |
 | `Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
-| `Migrations/` | 📚 Generated schema history (ignored in repo) |
+| `Migrations/` | 📚 Generated schema history (current baseline checked in; pipeline regenerates) |
 | `seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
@@ -378,7 +372,7 @@ make dev  # Tries 5000, 5001, etc.
 
 1. **Parse your own database schema** → See "Adding a New Data Entity from DDL" above
 2. **Customize theme colors** → Edit `app.yaml` theme section
-3. **Add validation rules** → Edit `Models/Generated/` entity attributes
+3. **Add validation rules** → Update `ModelGenerator/EntityTemplate.scriban` (or `app.yaml` metadata) and regenerate
 4. **Create custom pages** → Add `.razor` files to `Components/Pages/`
 5. **Extend REST API** → Add custom controllers in `Controllers/`
 
@@ -398,7 +392,7 @@ make dev  # Tries 5000, 5001, etc.
 
 - Keep `SESSION_SUMMARY.md` up to date; it is the living status document between LLM sessions
 - `dotnet-build.sh` manages .NET SDK version conflicts; do not modify system .NET install
-- `ModelGenerator` is not part of `DotNetWebApp.sln` (run separately when regenerating models)
+- `DdlParser` and `ModelGenerator` are part of `DotNetWebApp.sln`; use `make run-ddl-pipeline` to regenerate models/migrations
 - Generated entities use nullable reference types (`#nullable enable`)
 - All value types for optional properties are nullable (`int?`, `decimal?`, etc.)
 

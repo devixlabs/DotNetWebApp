@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
+using DotNetWebApp.Models;
 using DotNetWebApp.Services;
 using DotNetWebApp.Tests.TestEntities;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace DotNetWebApp.Tests;
@@ -36,7 +38,11 @@ public class DataSeederTests
             await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
             await context.Database.EnsureCreatedAsync();
 
-            var seeder = new DataSeeder(context, new TestHostEnvironment(tempDir), NullLogger<DataSeeder>.Instance);
+            var seeder = new DataSeeder(
+                context,
+                new TestHostEnvironment(tempDir),
+                NullLogger<DataSeeder>.Instance,
+                Options.Create(new DataSeederOptions { SeedFileName = SeedFileName }));
             await seeder.SeedAsync();
 
             var seeded = await context.Set<Category>().SingleOrDefaultAsync(c => c.Name == "Seeded");
@@ -63,7 +69,11 @@ public class DataSeederTests
             await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
             await context.Database.EnsureCreatedAsync();
 
-            var seeder = new DataSeeder(context, new TestHostEnvironment(tempDir), NullLogger<DataSeeder>.Instance);
+            var seeder = new DataSeeder(
+                context,
+                new TestHostEnvironment(tempDir),
+                NullLogger<DataSeeder>.Instance,
+                Options.Create(new DataSeederOptions { SeedFileName = SeedFileName }));
             await seeder.SeedAsync();
 
             var count = await context.Set<Category>().CountAsync();

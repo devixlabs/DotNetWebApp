@@ -27,7 +27,7 @@ ModelGenerator (Scriban templates)
 AppDbContext (reflection-based entity discovery)
     → DbSet<TEntity> auto-registration
     ↓
-Controllers (GenericController<T>, EntitiesController)
+Controllers (EntitiesController)
     → REST API endpoints
     ↓
 Blazor Components (DynamicDataGrid, GenericEntityPage)
@@ -86,11 +86,11 @@ Blazor Components (DynamicDataGrid, GenericEntityPage)
   - `Program.cs` (service registration)
 
 #### 4. Dynamic REST API: **KEEP WITH IMPROVEMENTS**
-- **Current:** Custom GenericController<T> + EntitiesController
+- **Current:** EntitiesController (dynamic, YAML-driven)
 - **Alternatives:** OData (over-engineered), ServiceStack AutoQuery (commercial), EasyData (less flexible)
 - **Verdict:** ✅ Current approach is simpler than OData, more flexible than EasyData
 - **Improvement needed:** Extract reflection logic to IEntityOperationService
-- **NOTE:** GenericController<T> has been deleted (git commit verified). See TODO.txt #2 for details.
+- **NOTE:** GenericController<T> has been removed; EntitiesController is the active pattern.
 
 #### 5. Dynamic Blazor UI: **KEEP CURRENT**
 - **Current:** Radzen Blazor + custom DynamicDataGrid
@@ -144,7 +144,6 @@ public interface IEntityOperationService
 
 **Files affected:**
 - `/Controllers/EntitiesController.cs` (CreateEntity, UpdateEntity methods)
-- `/Controllers/GenericController.cs` (Post method)
 
 **Solution:** Add FluentValidation or Data Annotations validation middleware
 
@@ -198,7 +197,6 @@ public async Task<ActionResult> CreateEntity(string entityName)
 
 **Files affected:**
 - `/Controllers/EntitiesController.cs`
-- `/Controllers/GenericController.cs`
 - New files: `/Repositories/IRepository.cs`, `/Repositories/GenericRepository.cs`
 
 **Solution:** Create generic repository abstraction
@@ -244,19 +242,19 @@ public class AppDefinition
 
 #### 6. Consolidate Configuration Sources
 
-**AUDIT COMPLETE:** See TODO.txt #4 for configuration consolidation audit findings.
+**AUDIT COMPLETE:** Configuration consolidation items are resolved.
 
 **Summary:**
-- ✅ TenantSchemaOptions: Already properly configured (defaults overridden by appsettings.json)
-- ✅ DdlParser YamlGenerator: Defaults are appropriate for code generation tool
-- ❌ DataSeeder.SeedFileName: NEEDS FIX - move from const to appsettings.json configuration
+- ✅ TenantSchemaOptions: Properly configured (defaults overridden by appsettings.json)
+- ✅ DdlParser YamlGenerator: Defaults are appropriate for the generation tool
+- ✅ DataSeeder.SeedFileName: Configured via `DataSeeder` section in appsettings.json
 
 **Problem:** Configuration scattered across appsettings.json, app.yaml, and hard-coded constants.
 
 **Files affected:**
-- `appsettings.json`
-- `/Data/DataSeeder.cs` (hard-coded "seed.sql") - **NEEDS CONFIGURATION EXTRACTION**
-- `/Data/Tenancy/TenantSchemaOptions.cs` (hard-coded defaults) - **OK, no change needed**
+- `appsettings.json` (DataSeeder section added)
+- `/Services/DataSeeder.cs` (reads `DataSeederOptions` instead of const)
+- `/Models/DataSeederOptions.cs` (new options class)
 
 **Solution:** Move all hard-coded values to configuration
 
@@ -316,7 +314,6 @@ public class AppDefinition
 
 ### Tier 2 - Controllers (Extract Logic)
 4. `/Controllers/EntitiesController.cs` - Reflection-heavy dynamic API
-5. ~~`/Controllers/GenericController.cs`~~ - **DELETED** (see TODO.txt #2 for architecture clarification)
 
 **NOTE:** Existing services (EntityApiService, DashboardService, SpaSectionService) do NOT require changes during refactoring. See TODO.txt #3 for service layer integration analysis.
 
@@ -463,21 +460,15 @@ After refactoring:
 
 ## Source Code Verification Status
 
-This refactoring plan has been verified against the actual source code. See **TODO.txt** for detailed findings:
-- **TODO #1**: Missing CRUD Operations in EntitiesController (blocking Phase 1)
-- **TODO #2**: Controller Architecture Clarification (GenericController deleted, verified)
-- **TODO #3**: Service Layer Integration (no changes needed, verified)
-- **TODO #4**: Configuration Consolidation Audit (DataSeeder needs fix, verified)
-
-These verification notes are cross-referenced in relevant sections of this document.
+This refactoring plan has been verified against the actual source code. Prior verification items
+(controller architecture, service layer integration, and configuration consolidation) are resolved.
 
 ## Recommended Next Steps
 
-1. **Priority #1: Implement Missing CRUD Operations** (TODO #1) - Required blocker for Phase 1
-2. **Discuss refactoring priorities** - Which refactoring areas matter most?
-3. **Choose migration path** - Incremental (phase by phase) or comprehensive (all at once)?
-4. **Finbuckle decision** - Confirm multi-tenant migration is desired
-5. **Repository pattern** - Confirm this abstraction adds value for your use case
-6. **Timeline** - Estimate ~7-10 days for full refactoring (all phases) assuming TODO #1 is completed
+1. **Discuss refactoring priorities** - Which refactoring areas matter most?
+2. **Choose migration path** - Incremental (phase by phase) or comprehensive (all at once)?
+3. **Finbuckle decision** - Confirm multi-tenant migration is desired
+4. **Repository pattern** - Confirm this abstraction adds value for your use case
+5. **Timeline** - Estimate ~7-10 days for full refactoring (all phases)
 
-After plan approval, implementation can begin with Phase 1 (Extract Reflection Logic) as it's low-risk and high-value, **but only after completing TODO #1 (missing CRUD operations)**.
+After plan approval, implementation can begin with Phase 1 (Extract Reflection Logic) as it's low-risk and high-value.

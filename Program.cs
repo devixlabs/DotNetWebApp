@@ -21,6 +21,8 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddRadzenComponents();
 builder.Services.Configure<AppCustomizationOptions>(
     builder.Configuration.GetSection("AppCustomization"));
+builder.Services.Configure<DataSeederOptions>(
+    builder.Configuration.GetSection(DataSeederOptions.SectionName));
 builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
 builder.Services.AddHttpContextAccessor();

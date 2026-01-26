@@ -6,27 +6,32 @@
 - `Controllers/`: Web API endpoints (generic and entity controllers).
 - `Services/`: Business logic and DI services.
 - `Data/`: `AppDbContext`, tenancy helpers, and EF configuration.
+- `DdlParser/`: SQL DDL → `app.yaml` converter used in the pipeline.
 - `Models/` and `Models/Generated/`: Entity models; generated types come from `ModelGenerator`.
 - `ModelGenerator/`: Reads `app.yaml` and produces generated models.
-- `Migrations/`: Generated EF Core migration files (kept empty in repo).
+- `Migrations/`: Generated EF Core migration files (current baseline checked in; pipeline regenerates).
 - `wwwroot/`: Static assets (CSS, images, JS).
 
 ## Build, Test, and Development Commands
 
-- `make check`: Runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build`: Release builds for `DotNetWebApp` and `ModelGenerator` (not the full solution).
-- `make migrate`: Applies the generated EF Core migration after running the DDL pipeline (SQL Server must be running).
+- `make check`: Runs `shellcheck` on `setup.sh`, `dotnet-build.sh`, and `Makefile`, then restores and builds.
+- `make restore`: Restores app, generator, parser, and test projects.
+- `make build`: Builds `DotNetWebApp`, `ModelGenerator`, and `DdlParser` (default `BUILD_CONFIGURATION=Debug`).
+- `make build-all`: Builds the full solution, including tests.
+- `make build-release`: Release builds for main projects only.
+- `make run-ddl-pipeline`: DDL → YAML → models → migration pipeline, then build.
+- `make migrate`: Applies the current EF Core migration (SQL Server must be running).
 - `make dev`: Runs with hot reload (`dotnet watch`).
 - `make run`: Runs once without hot reload.
-- `make test`: Builds and runs `dotnet test` in Release for `tests/DotNetWebApp.Tests`.
+- `make test`: Builds and runs `dotnet test` for `tests/DotNetWebApp.Tests` and `tests/ModelGenerator.Tests` (uses `BUILD_CONFIGURATION`).
 - `make seed`: Runs the app in seed mode to apply `seed.sql` via EF (`-- --seed`).
 - Docker DB helpers: `make db-start`, `make db-stop`, `make db-logs`, `make db-drop`.
+- Local SQL Server helpers: `make ms-status`, `make ms-start`, `make ms-logs`, `make ms-drop`.
 
 ## Project Goal & Session Notes
 
 - **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
-<<<<<<< HEAD
-- **Current State:** YAML drives generated models, API routes, and UI navigation; database schema should be created from the DDL pipeline before seeding. Seed data lives in `seed.sql` and is applied via `make seed`.
+- **Current State:** DDL → YAML → models → migration pipeline drives generated models and schema; run `make run-ddl-pipeline` before `make migrate`/`make seed` when the DDL changes. Seed data lives in `seed.sql` and is applied via `make seed`.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
 
 ## Coding Style & Naming Conventions

@@ -13,7 +13,7 @@
 1. **YAML-Driven Configuration:** Application loads app metadata, theme, and data model from `app.yaml`.
 2. **Dynamic Model Generation:** `ModelGenerator` reads `app.yaml` and generates entity classes in `Models/Generated` with nullable value types for optional fields.
 3. **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` -> `Products`).
-4. **Generic API:** `GenericController<T>` powers entity endpoints with singular names matching entity names.
+4. **Dynamic Entity API:** `EntitiesController` powers `/api/entities/{entityName}` endpoints for all entities.
 5. **Dynamic UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render entities from YAML; `NavMenu.razor` provides dynamic navigation.
 6. **DDL to YAML Parser Pipeline:** ✅ **COMPLETE**
    - **DdlParser** console project converts SQL Server DDL files to `app.yaml` format
