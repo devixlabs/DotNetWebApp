@@ -12,6 +12,25 @@ You're an expert .NET/C# engineer with deep knowledge of:
 ## Project Overview
 This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQL DDL-driven data model/branding configuration.
 
+## 🚨 IMPORTANT: Architecture Documentation (READ FIRST)
+
+**Before starting any refactoring or architectural work, read these documents in order:**
+
+1. **ARCHITECTURE_SUMMARY.md** - Quick overview of architecture decisions and current state
+2. **REFACTOR.md** - Complete 5-phase refactoring plan (Phases 1-5)
+3. **PHASE2_VIEW_PIPELINE.md** - Detailed implementation guide for SQL-first view pipeline
+4. **HYBRID_ARCHITECTURE.md** - EF Core + Dapper architecture reference
+
+**Key Architectural Decisions (2026-01-26):**
+- ✅ **Hybrid data access:** EF Core for writes (200+ entities), Dapper for complex reads (SQL-first views)
+- ✅ **SQL-first everything:** Both entities (DDL) and views (SELECT queries) start as SQL
+- ✅ **Single-project organization:** Namespace-based separation (NOT 4 separate projects)
+- ✅ **Multi-tenancy:** Finbuckle.MultiTenant with automatic schema inheritance for Dapper
+- ✅ **No Repository Pattern:** `IEntityOperationService` + `IViewService` provide sufficient abstraction
+- ✅ **Scale target:** 200+ entities, multiple schemas, small team
+
+**Current Phase:** Ready to begin Phase 1 (Extract Reflection Logic to IEntityOperationService)
+
 ## Project Goal & Session Notes
 - **Primary Goal:** Use SQL DDL as the source of truth, generating `app.yaml` and C# models for dynamic customization.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
@@ -25,7 +44,9 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 - Run (dev): `make dev` (with hot reload - use for active development)
 - Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test` (build and run tests sequentially - 10-15 min)
-- Run DDL Pipeline: `make run-ddl-pipeline`
+- Run DDL Pipeline: `make run-ddl-pipeline` (generate entity models from schema.sql)
+- Run View Pipeline: `make run-view-pipeline` (generate view models from views.yaml) **[Phase 2]**
+- Run All Pipelines: `make run-all-pipelines` (both entity and view generation) **[Phase 2]**
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
 - Clean: `make clean`
@@ -46,15 +67,24 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 ## Project Structure
 ```
 DotNetWebApp/
-├── Controllers/                   # API endpoints (EntitiesController, etc.)
+├── sql/
+│   ├── schema.sql                # 📋 SQL DDL source (entities)
+│   └── views/                    # 🆕 SQL SELECT queries for complex views (Phase 2)
+│       ├── ProductSalesView.sql
+│       └── ...
+├── Controllers/                  # API endpoints (EntitiesController, etc.)
 ├── Components/
 │   ├── Pages/                    # Routable Blazor pages (Home.razor, SpaApp.razor)
 │   └── Sections/                 # SPA components (Dashboard, Settings, Entity, etc.)
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
-│   └── DataSeeder.cs       # Executes seed.sql via EF
+│   ├── DataSeeder.cs             # Executes seed.sql via EF
+│   └── Dapper/                   # 🆕 Dapper infrastructure (Phase 2)
+│       ├── IDapperQueryService.cs
+│       └── DapperQueryService.cs
 ├── DotNetWebApp.Models/          # 🔄 Separate models assembly (extracted from main project)
 │   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
+│   ├── ViewModels/               # 🆕 Auto-generated view models from views.yaml (Phase 2)
 │   ├── AppDictionary/            # YAML model classes (AppDefinition.cs, Entity.cs, Property.cs, etc.)
 │   ├── AppCustomizationOptions.cs  # App customization settings
 │   ├── DashboardSummary.cs       # Dashboard data model
@@ -65,27 +95,41 @@ DotNetWebApp/
 ├── Services/
 │   ├── AppDictionaryService.cs   # Loads and caches app.yaml
 │   ├── IEntityMetadataService.cs # Maps YAML entities to CLR types
-│   └── EntityMetadataService.cs  # Implementation
-├── Migrations/                   # Generated EF Core migrations (current baseline checked in; pipeline regenerates)
+│   ├── EntityMetadataService.cs  # Implementation
+│   ├── IEntityOperationService.cs # 🆕 EF CRUD operations (Phase 1)
+│   ├── EntityOperationService.cs  # 🆕 Implementation (Phase 1)
+│   └── Views/                    # 🆕 Dapper view services (Phase 2)
+│       ├── IViewRegistry.cs
+│       ├── ViewRegistry.cs
+│       ├── IViewService.cs
+│       └── ViewService.cs
+├── Migrations/                   # Generated EF Core migrations
 ├── Pages/                        # Blazor host pages (_Host.cshtml, _Layout.cshtml)
 ├── Shared/                       # Shared Blazor components (MainLayout.razor, NavMenu.razor, GenericEntityPage.razor, DynamicDataGrid.razor)
-├── DdlParser/                    # 🆕 SQL DDL → YAML converter (separate console project)
+├── DdlParser/                    # SQL DDL → YAML converter (separate console project)
 │   ├── Program.cs
 │   ├── SqlDdlParser.cs
 │   ├── CreateTableVisitor.cs
 │   ├── TypeMapper.cs
 │   └── YamlGenerator.cs
-├── ModelGenerator/               # YAML → C# entity generator (separate console project)
+├── ModelGenerator/               # YAML → C# generator (separate console project)
+│   ├── EntityGenerator.cs        # Entities from app.yaml (existing)
+│   └── ViewModelGenerator.cs     # 🆕 Views from views.yaml (Phase 2)
 ├── tests/
 │   ├── DotNetWebApp.Tests/       # Unit/integration tests
 │   └── ModelGenerator.Tests/     # Model generator path resolution tests
 ├── wwwroot/                      # Static files (CSS, JS, images)
 ├── _Imports.razor                # Global Blazor using statements
-├── app.yaml                      # 📋 Generated data model and theme metadata (from SQL DDL)
-├── schema.sql             # Sample SQL DDL for testing DDL parser
-├── seed.sql               # Sample seed data (Categories, Products)
+├── app.yaml                      # 📋 Entity definitions (from SQL DDL)
+├── views.yaml                    # 🆕 View definitions (from SQL SELECT queries) (Phase 2)
+├── schema.sql                    # Sample SQL DDL for testing DDL parser
+├── seed.sql                      # Sample seed data (Categories, Products)
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
+├── REFACTOR.md                   # 🆕 Complete 5-phase refactoring plan
+├── PHASE2_VIEW_PIPELINE.md       # 🆕 Detailed Phase 2 implementation guide
+├── HYBRID_ARCHITECTURE.md        # 🆕 EF+Dapper architecture reference
+├── ARCHITECTURE_SUMMARY.md       # 🆕 Quick architecture overview
 ├── DotNetWebApp.sln              # Solution file (includes all projects)
 └── DotNetWebApp.csproj           # Main project file
 ```

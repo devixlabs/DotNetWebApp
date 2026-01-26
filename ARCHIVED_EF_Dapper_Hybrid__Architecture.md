@@ -8,12 +8,11 @@
 
 ### TASK: Implement Hybrid .NET 8/9 Clean Architecture (EF Core \+ Dapper)
 
-## **1. PRE-REQUISITES**  
-- Create a new directory and execute all shell commands from the root.  
-- Ensure .NET SDK 8.0 or higher is installed.
+## **1. PRE-REQUISITES**
+- @REFACTOR.md MUST be implemented and completed first!
 
 ## **2. PROJECT INITIALIZATION (CLI)**  
-Execute these commands to build the four-tier architecture:
+Execute these commands to build the four-tier architecture (HybridSystem is a "placeholder" for your project):
 
 ```bash  
 dotnet new sln -n HybridSystem  

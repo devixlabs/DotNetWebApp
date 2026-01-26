@@ -138,7 +138,80 @@ public interface IEntityOperationService
 
 **Benefit:** Reduces EntitiesController from 369 lines to ~150-180 lines; centralizes reflection logic for reuse and testing.
 
-#### 2. Add Input Validation Pipeline
+#### 2. SQL-First View Pipeline (NEW: Dapper for Complex Reads)
+
+**CONTEXT:** With 200+ entities and multiple database schemas, we need a scalable way to handle complex SQL queries (JOINs, aggregations, reports) without hand-writing services for each view. Legacy SQL queries should be the source of truth for UI features.
+
+**Problem:**
+- Blazor/Radzen components need complex multi-table queries
+- Hand-writing Dapper services for 200+ entities is not scalable
+- Legacy SQL queries exist but have no C# type safety
+- Need to avoid bloated JavaScript/AJAX on front-end
+
+**Solution:** Create SQL-first view generation pipeline (mirrors existing DDL-first entity pipeline)
+
+**Architecture:**
+```
+ENTITY MODELS (200+ tables)
+SQL DDL → app.yaml → Models/Generated/*.cs → EF Core CRUD (existing)
+
+VIEW MODELS (complex queries)
+SQL SELECT → views.yaml → Models/ViewModels/*.cs → Dapper reads (NEW)
+```
+
+**Files to create:**
+- `views.yaml` - YAML registry of SQL views
+- `sql/views/*.sql` - SQL query files
+- `ModelGenerator/ViewModelGenerator.cs` - Scriban-based view model generator
+- `Services/Views/IViewRegistry.cs` - View definition registry (singleton)
+- `Services/Views/ViewRegistry.cs` - Implementation
+- `Services/Views/IViewService.cs` - View execution service
+- `Services/Views/ViewService.cs` - Implementation
+- `Data/Dapper/IDapperQueryService.cs` - Read-only Dapper abstraction
+- `Data/Dapper/DapperQueryService.cs` - Implementation (shares EF connection)
+- `Models/ViewModels/*.cs` - Generated view models (auto-generated)
+
+**Implementation steps:**
+1. Create `views.yaml` schema and example SQL view files
+2. Extend `ModelGenerator` to support view mode (`--mode=views`)
+3. Create `ViewRegistry` service (loads views.yaml at startup)
+4. Create `DapperQueryService` (shares EF Core's connection for automatic tenant schema)
+5. Create `ViewService` (executes views by name)
+6. Update `Program.cs` DI registration
+7. Update Makefile with `run-view-pipeline` target
+8. Create example Blazor component using `IViewService`
+
+**Usage in Blazor components:**
+```csharp
+@inject IViewService ViewService
+
+@code {
+    private IEnumerable<ProductSalesView>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Execute registered view (SQL loaded from views.yaml)
+        products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+            "ProductSalesView",
+            new { TopN = 50 });
+    }
+}
+```
+
+**Benefits:**
+- ✅ Legacy SQL as source of truth for complex features
+- ✅ Generated C# models (type-safe, no manual writing)
+- ✅ YAML registry for documentation and versioning
+- ✅ Automatic multi-tenant schema isolation (via Finbuckle + shared EF connection)
+- ✅ Scalable to 200+ entities
+- ✅ No JavaScript/AJAX needed (server-side C# event handlers)
+- ✅ Dapper used ONLY for complex reads (EF Core handles all writes via IEntityOperationService)
+
+**Detailed plan:** See `PHASE2_VIEW_PIPELINE.md` for complete implementation guide.
+
+**Duration:** 1-2 weeks
+
+#### 3. Add Input Validation Pipeline
 
 **Problem:** Controllers deserialize JSON without schema validation.
 
@@ -169,7 +242,7 @@ public async Task<ActionResult> CreateEntity(string entityName)
 
 **Benefit:** Prevents invalid data from reaching the database; respects [Required], [MaxLength], etc. attributes on generated models.
 
-#### 3. Migrate to Finbuckle.MultiTenant
+#### 4. Migrate to Finbuckle.MultiTenant
 
 **Problem:** Custom multi-tenant implementation lacks advanced features and maintenance support.
 
@@ -191,16 +264,17 @@ public async Task<ActionResult> CreateEntity(string entityName)
 
 ### MEDIUM PRIORITY
 
-#### 4. Implement Repository Pattern
+#### 5. Implement Repository Pattern (OPTIONAL - DEFERRED)
 
-**Problem:** Controllers tightly coupled to EF Core DbContext.
+**DECISION:** SKIP this for now. The combination of `IEntityOperationService` (Phase 1) for EF Core writes and `IViewService` (Phase 2) for Dapper reads provides sufficient abstraction without adding a repository layer.
 
-**Files affected:**
-- `/Controllers/EntitiesController.cs`
-- New files: `/Repositories/IRepository.cs`, `/Repositories/GenericRepository.cs`
+**Rationale:**
+- `IEntityOperationService` already centralizes EF Core operations
+- Repository Pattern would add redundant abstraction
+- Can be added later if needed (e.g., for unit testing with mocks)
+- Small team benefits from simpler architecture
 
-**Solution:** Create generic repository abstraction
-
+**If implemented later:**
 ```csharp
 public interface IRepository<TEntity> where TEntity : class
 {
@@ -213,9 +287,7 @@ public interface IRepository<TEntity> where TEntity : class
 }
 ```
 
-**Benefit:** Decouples from EF Core, easier to test with mocks, enables future ORM flexibility.
-
-#### 5. Make YAML Models Immutable
+#### 6. Make YAML Models Immutable
 
 **Problem:** AppDefinition, Entity, Property classes and related nested classes use mutable properties.
 
@@ -235,7 +307,7 @@ public class AppDefinition
 
 **Benefit:** Prevents accidental mutation after deserialization; better thread safety; clearer intent.
 
-#### 6. Consolidate Configuration Sources
+#### 7. Consolidate Configuration Sources
 
 **AUDIT COMPLETE:** Configuration consolidation items are resolved.
 
@@ -270,7 +342,7 @@ public class AppDefinition
 
 ### NICE-TO-HAVE (Future Enhancements)
 
-#### 7. Add Dynamic Form Generation
+#### 8. Add Dynamic Form Generation
 
 **Enhancement:** Add BlazorDynamicForm or MudBlazor.Forms for Create/Edit operations.
 
@@ -279,7 +351,7 @@ public class AppDefinition
 
 **Benefit:** Complete CRUD UI without manual form coding.
 
-#### 8. Expression-Based Queries
+#### 9. Expression-Based Queries
 
 **Enhancement:** Replace reflection with expression trees for better performance.
 
@@ -310,27 +382,46 @@ public class AppDefinition
 9. `/DotNetWebApp.Models/AppDictionary/AppDefinition.cs` (all nested classes)
 
 ### Tier 5 - Services (New Abstractions)
-12. NEW: `/Services/IEntityOperationService.cs`
-13. NEW: `/Services/EntityOperationService.cs`
-14. NEW: `/Repositories/IRepository.cs`
-15. NEW: `/Repositories/GenericRepository.cs`
+10. NEW: `/Services/IEntityOperationService.cs` (Phase 1)
+11. NEW: `/Services/EntityOperationService.cs` (Phase 1)
+12. NEW: `/Services/Views/IViewRegistry.cs` (Phase 2)
+13. NEW: `/Services/Views/ViewRegistry.cs` (Phase 2)
+14. NEW: `/Services/Views/IViewService.cs` (Phase 2)
+15. NEW: `/Services/Views/ViewService.cs` (Phase 2)
+16. NEW: `/Data/Dapper/IDapperQueryService.cs` (Phase 2)
+17. NEW: `/Data/Dapper/DapperQueryService.cs` (Phase 2)
+18. NEW: `ModelGenerator/ViewModelGenerator.cs` (Phase 2)
 
 ## Part 5: Implementation Sequence
 
-### Phase 1: Extract Reflection Logic (1-2 days)
+### Phase 1: Extract Reflection Logic (1-2 weeks)
 1. Create `IEntityOperationService` interface
 2. Implement `EntityOperationService` with all reflection logic
 3. Update `EntitiesController` to use service
 4. Add unit tests for `EntityOperationService`
 5. Verify existing functionality unchanged
 
-### Phase 2: Add Validation (1 day)
+### Phase 2: SQL-First View Pipeline (1-2 weeks) **[NEW]**
+1. Create `views.yaml` schema definition and example SQL view files
+2. Extend `ModelGenerator` to support view generation mode
+3. Create `ViewRegistry` service (loads views.yaml)
+4. Create `DapperQueryService` (shares EF Core connection)
+5. Create `ViewService` (executes views by name)
+6. Update `Program.cs` DI registration
+7. Update Makefile with `run-view-pipeline` target
+8. Create example Blazor component using `IViewService`
+9. Add integration tests for view pipeline
+10. Test with multiple tenant schemas
+
+**Detailed plan:** See `PHASE2_VIEW_PIPELINE.md`
+
+### Phase 3: Add Validation (1 day)
 1. Add FluentValidation NuGet package (or use built-in Data Annotations)
 2. Create validation pipeline in controllers
 3. Add integration tests for validation scenarios
 4. Verify invalid entities are rejected
 
-### Phase 3: Migrate to Finbuckle.MultiTenant (2-3 days)
+### Phase 4: Migrate to Finbuckle.MultiTenant (2-3 days)
 1. Install `Finbuckle.MultiTenant.AspNetCore` NuGet package
 2. Create `TenantInfo` class implementing `ITenantInfo`
 3. Configure header-based tenant resolution
@@ -338,13 +429,7 @@ public class AppDefinition
 5. Update `Program.cs` service registration
 6. Remove custom tenant accessor classes
 7. Test multi-tenant scenarios (different schemas via headers)
-
-### Phase 4: Repository Pattern (2 days)
-1. Create `IRepository<TEntity>` interface
-2. Implement `GenericRepository<TEntity>`
-3. Update controllers to use repository instead of DbContext
-4. Add repository unit tests with mocked DbContext
-5. Verify functionality unchanged
+8. Verify Dapper queries inherit tenant schema automatically (via shared EF connection)
 
 ### Phase 5: Configuration & Immutability (1 day)
 1. Move hard-coded values to `appsettings.json`
@@ -356,16 +441,20 @@ public class AppDefinition
 
 ### Unit Tests (New)
 - `EntityOperationService` - All reflection methods (GetAllAsync, CreateAsync, etc.)
-- `GenericRepository<T>` - CRUD operations with mocked DbContext
+- `ViewRegistry` - YAML loading and SQL file resolution
+- `ViewService` - View execution with parameters
+- `DapperQueryService` - Query execution with shared connection
 - `ValidationPipeline` - Valid/invalid entity scenarios
 
 ### Integration Tests (Update)
-- Multi-tenant scenarios with Finbuckle (different schemas)
+- Multi-tenant scenarios with Finbuckle (different schemas for EF + Dapper)
 - End-to-end API tests with validation
-- DynamicDataGrid rendering with new service layer
+- View pipeline: SQL query → view model generation → Blazor component rendering
+- Verify Dapper queries respect tenant schema automatically
 
 ### Regression Tests
-- Verify DDL pipeline still generates correct models
+- Verify DDL pipeline still generates correct models (existing)
+- Verify View pipeline generates correct view models (new)
 - Verify existing API endpoints return same results
 - Verify Blazor UI still renders correctly
 
@@ -374,24 +463,29 @@ public class AppDefinition
 | Change | Risk | Mitigation |
 |--------|------|------------|
 | Extract reflection logic | Low | Good test coverage; logic unchanged |
+| View pipeline (SQL-first) | Low-Medium | Similar to existing DDL pipeline; test with multiple schemas |
 | Add validation | Low | Existing data annotations already defined |
-| Finbuckle migration | Medium | Test multi-tenant scenarios thoroughly; staged rollout |
-| Repository pattern | Medium | Maintain parallel DbContext access during migration |
+| Finbuckle migration | Medium | Test multi-tenant scenarios thoroughly; staged rollout; verify Dapper inherits schema |
 | Immutable YAML models | Low | YamlDotNet handles `init` properties correctly |
+| Dapper shared connection | Low | EF connection sharing is standard pattern; test transaction scenarios |
 
 ## Part 8: Success Criteria
 
 After refactoring:
 - ✅ EntitiesController reduced from 369 lines to ~150-180 lines
 - ✅ Reflection logic centralized in EntityOperationService
+- ✅ **SQL-first view pipeline operational (views.yaml → ViewModels/*.cs → IViewService)** [NEW]
+- ✅ **Legacy SQL queries used as source of truth for complex UI features** [NEW]
+- ✅ **Dapper integrated for complex reads; EF Core handles all writes** [NEW]
 - ✅ All API endpoints validate input before persistence
 - ✅ Multi-tenancy powered by Finbuckle.MultiTenant
-- ✅ Controllers decoupled from EF Core via repository pattern
+- ✅ **Dapper queries automatically respect tenant schema (via shared EF connection)** [NEW]
 - ✅ YAML models immutable (init accessors)
 - ✅ All hard-coded values in configuration
 - ✅ All existing tests passing
-- ✅ Code coverage increased (new service/repository tests)
-- ✅ Architecture documented in updated REFACTOR.md
+- ✅ Code coverage increased (new service/view tests)
+- ✅ **Blazor components use server-side C# event handlers (no JavaScript/AJAX)** [NEW]
+- ✅ Architecture documented in updated REFACTOR.md + PHASE2_VIEW_PIPELINE.md
 
 ## Part 9: Architectural Strengths to Preserve
 
@@ -407,36 +501,45 @@ After refactoring:
 
 ## Part 10: Future Considerations (Beyond Current Scope)
 
-1. **Row-Level Security:** Add tenant-aware query filters in DbContext
-2. **Caching Layer:** Add IMemoryCache for EntityMetadataService lookups
-3. **Rate Limiting:** Add ASP.NET Core rate limiting middleware
-4. **API Versioning:** Support versioned endpoints for breaking changes
-5. **Audit Logging:** Track entity changes (created, modified, deleted)
-6. **Soft Deletes:** Add IsDeleted flag and query filters
-7. **Background Jobs:** Use Hangfire/Quartz for async data processing
-8. **Event Sourcing:** Track all entity state changes
-9. **Database Migrations per Tenant:** Automate schema migrations for multi-tenant databases
+1. **SQL-to-YAML Auto-Discovery Tool:** Automatically generate views.yaml from legacy SQL files (reduces manual YAML writing)
+2. **View Parameter Validation:** Add parameter validation for SQL views (prevent SQL injection via parameters)
+3. **Compiled Queries:** Add EF compiled queries for frequently executed operations (performance optimization)
+4. **View Caching:** Add IMemoryCache for ViewRegistry SQL cache (reduce file I/O)
+5. **Row-Level Security:** Add tenant-aware query filters in DbContext
+6. **Rate Limiting:** Add ASP.NET Core rate limiting middleware
+7. **API Versioning:** Support versioned endpoints for breaking changes
+8. **Audit Logging:** Track entity changes (created, modified, deleted)
+9. **Soft Deletes:** Add IsDeleted flag and query filters
+10. **Background Jobs:** Use Hangfire/Quartz for async data processing
+11. **Event Sourcing:** Track all entity state changes
+12. **Database Migrations per Tenant:** Automate schema migrations for multi-tenant databases
 
 ## Verification Plan
 
 ### Manual Testing
-1. Run `make run-ddl-pipeline` - verify models generated correctly
-2. Run `make migrate` - verify EF Core migrations work
-3. Run `make dev` - verify app starts and API endpoints respond
-4. Test `/api/entities/Product` with different `X-Customer-Schema` headers
-5. Verify DynamicDataGrid renders correctly in Blazor UI
-6. Verify Create/Edit operations with valid and invalid data
+1. Run `make run-ddl-pipeline` - verify entity models generated correctly
+2. **Run `make run-view-pipeline` - verify view models generated correctly** [NEW]
+3. Run `make migrate` - verify EF Core migrations work
+4. Run `make dev` - verify app starts and API endpoints respond
+5. Test `/api/entities/Product` with different `X-Customer-Schema` headers
+6. **Test view execution with different `X-Customer-Schema` headers (verify Dapper inherits schema)** [NEW]
+7. Verify DynamicDataGrid renders correctly in Blazor UI
+8. **Verify Blazor components using IViewService render correctly** [NEW]
+9. Verify Create/Edit operations with valid and invalid data
 
 ### Automated Testing
 1. Run `make test` - verify all unit and integration tests pass
 2. Run new EntityOperationService tests
-3. Run new GenericRepository tests
-4. Run multi-tenant integration tests with Finbuckle
+3. **Run new ViewRegistry tests** [NEW]
+4. **Run new ViewService tests** [NEW]
+5. **Run new DapperQueryService tests** [NEW]
+6. Run multi-tenant integration tests with Finbuckle (EF + Dapper)
 
 ### Performance Testing
 1. Benchmark EntityOperationService vs direct reflection (should be equivalent)
-2. Verify no performance regression in API response times
-3. Verify DbContext pooling still effective with Finbuckle
+2. **Benchmark Dapper vs EF for complex JOIN queries (expect 2-5x improvement)** [NEW]
+3. Verify no performance regression in API response times
+4. Verify DbContext pooling still effective with Finbuckle
 
 ---
 
@@ -447,10 +550,33 @@ This refactoring plan has been verified against the actual source code. Prior ve
 
 ## Recommended Next Steps
 
-1. **Discuss refactoring priorities** - Which refactoring areas matter most?
-2. **Choose migration path** - Incremental (phase by phase) or comprehensive (all at once)?
-3. **Finbuckle decision** - Confirm multi-tenant migration is desired
-4. **Repository pattern** - Confirm this abstraction adds value for your use case
-5. **Timeline** - Estimate ~7-10 days for full refactoring (all phases)
+**UPDATED for 200+ entities + multiple schemas + small team:**
 
-After plan approval, implementation can begin with Phase 1 (Extract Reflection Logic) as it's low-risk and high-value.
+1. **Phase 1 (CRITICAL):** Extract Reflection Logic to IEntityOperationService (1-2 weeks)
+   - Centralizes CRUD for all 200+ generated entities
+   - Reduces controller complexity
+   - Foundation for all subsequent work
+
+2. **Phase 2 (CRITICAL):** Implement SQL-First View Pipeline (1-2 weeks)
+   - Enables legacy SQL queries as source of truth
+   - Generates type-safe view models
+   - Powers complex Blazor/Radzen components
+   - **See PHASE2_VIEW_PIPELINE.md for detailed plan**
+
+3. **Phase 3 (HIGH):** Add Validation Pipeline (1 day)
+   - Prevents invalid data entry
+   - Respects data annotations
+
+4. **Phase 4 (HIGH):** Migrate to Finbuckle.MultiTenant (2-3 days)
+   - Essential for multiple schema management at scale
+   - Automatic tenant isolation for EF + Dapper
+
+5. **Phase 5 (MEDIUM):** Configuration & Immutability (1 day)
+   - Code quality and maintainability improvements
+
+**Total timeline:** 3-4 weeks for Phases 1-5
+
+**Incremental approach recommended:**
+- Implement phases sequentially
+- Test thoroughly between phases
+- Don't skip Phase 1 and Phase 2 (foundation for scale)
