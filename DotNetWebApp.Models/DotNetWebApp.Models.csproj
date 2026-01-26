@@ -7,6 +7,5 @@
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="8.*" />
   </ItemGroup>
 </Project>

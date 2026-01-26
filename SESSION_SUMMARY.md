@@ -2,80 +2,65 @@
 
 **Primary Goal:** Abstract the application's data model, configuration, and branding into a single `app.yaml` file for dynamic customization.
 
-**Current Needs:** Below are the current needs by the developer team (if empty, ask for a task or wait for next prompt):
- 1. Data Model should be driven by @sample-schema.sql first, then by @app.yaml
- 2. Some clients using this project will have minimal programming experience, so we will need Claude Code SKILLS.md files throughout the project for each application layer via DDL/Data Pipleline (see @Makefile), e.g. Database, SQL, application yaml/configs, .NET/C# Data/ORM/Entity source code, API/Controller/Service source code, and front-end Blazor and Radzen UI components.
- 3. All .NET/C# should be in proper modules and follow best practices for maintaining, extending, and unit testing. Refactor as needed to decouple application layers, reduce source code complexity, and make maintainability easier.
+---
 
+## Documentation Index
 
-**Major Accomplishments:**
+This project is documented across multiple files. Refer to the appropriate document for your needs:
 
-1. **YAML-Driven Configuration:** Application loads app metadata, theme, and data model from `app.yaml`.
-2. **Dynamic Model Generation:** `ModelGenerator` reads `app.yaml` and generates entity classes in `Models/Generated` with nullable value types for optional fields.
-3. **Dynamic Data Layer:** `AppDbContext` discovers entities via reflection and pluralizes table names (e.g., `Product` -> `Products`).
-4. **Dynamic Entity API:** `EntitiesController` powers `/api/entities/{entityName}` endpoints for all entities.
-5. **Dynamic UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render entities from YAML; `NavMenu.razor` provides dynamic navigation.
-6. **DDL to YAML Parser Pipeline:** ✅ **COMPLETE**
-   - **DdlParser** console project converts SQL Server DDL files to `app.yaml` format
-   - Uses `Microsoft.SqlServer.TransactSql.ScriptDom` (170.147.0) for robust T-SQL parsing
-   - Extracts: table definitions, column metadata (type, nullability, constraints), foreign keys, IDENTITY columns, DEFAULT values
-   - Handles: VARCHAR/NVARCHAR max lengths, DECIMAL precision/scale, PRIMARY KEY and FOREIGN KEY constraints
-   - Pipeline: `database.sql → DdlParser → app.yaml → ModelGenerator → Models/Generated/*.cs`
-   - Makefile target: `make run-ddl-pipeline` orchestrates full workflow with validation
-   - Test files: `sample-schema.sql` demonstrates Categories/Products schema; generates `app-test.yaml`
-   - All nullable reference warnings (CS8601) resolved with null-coalescing defaults
-7. **ModelGenerator Path Bug Fixed:** ✅ **COMPLETE (2026-01-21)**
-   - Fixed nested directory bug: line 32 changed from `../DotNetWebApp/Models/Generated` to `../Models/Generated`
-   - Created `ModelGenerator.Tests` project with 3 unit tests validating path resolution
-   - Tests prevent regression by verifying correct output path and detecting nested structure
-   - All tests passing; files now correctly generate to `Models/Generated/` (not nested)
-8. **Developer Context Updated:** ✅ **COMPLETE (2026-01-21)**
-   - `CLAUDE.md` fully updated with current project state from git logs, source code, and documentation
-   - Restructured "Current State" into ✅ Completed Features, ⚠️ Limitations, 🔧 Development Status
-   - Expanded "Architecture Notes" with detailed technical descriptions
-   - Added "Key Files and Their Purposes" table and "Recent Development History" section
-9. **Makefile Shellcheck Clean:** ✅ **COMPLETE**
-   - Quoted `$(BUILD_CONFIGURATION)` in `Makefile` commands to satisfy `shellcheck` in `make check`
-10. **DDL Pipeline Runtime Fix:** ✅ **COMPLETE**
-   - Restored runtime project references so `DdlParser` and `ModelGenerator` can load `DotNetWebApp` during `make run-ddl-pipeline`
-11. **Native MSSQL Log Helper:** ✅ **COMPLETE**
-   - Added `make ms-logs` to tail systemd and `/var/opt/mssql/log/errorlog` for native Linux installs
-12. **SPA Example Cleanup + Dynamic Sections:** ✅ **COMPLETE (2026-01-21)**
-    - `SpaSectionService` now builds sections from `app.yaml` entities and supports a new `EnableSpaExample` flag
-    - Product/category controllers, services, and SPA section removed in favor of entity-driven UI
-    - Nav menu hides the SPA group when disabled and Home can link directly to the first entity
-    - Docs updated with dynamic API routes and SPA flag information
+| Document | Purpose |
+|----------|---------|
+| [CLAUDE.md](CLAUDE.md) | Developer context, project overview, completed features, architecture, build commands |
+| [README.md](README.md) | Quick start guide, feature overview, project structure, commands reference, troubleshooting |
+| [SKILLS.md](SKILLS.md) | Skill guides for developers (Database & DDL, SQL Operations, App Configuration & YAML, Blazor/Radzen, pending: .NET/C# Data Layer, .NET/C# API & Services) |
+| [REFACTOR.md](REFACTOR.md) | Comprehensive refactoring plan with 5 prioritized phases, architecture assessment, risk analysis, testing strategy |
+| [TODO.txt](TODO.txt) | Actionable next steps and work items |
 
-**Build / Tooling:**
-- `make check` runs `shellcheck` on `setup.sh` and `dotnet-build.sh`, then restores and builds.
-- `make build` is clean; `make run-ddl-pipeline` runs DDL→YAML→Models→Migration→Build workflow and now rebuilds `DotNetWebApp` before generating migrations to avoid stale assemblies.
-- `make migrate` requires SQL Server running and a generated migration from the DDL pipeline.
-- `dotnet-build.sh` sets `DOTNET_ROOT` for global tools and bypasses `global.json` locally.
-- **DdlParser** integrated into `DotNetWebApp.sln` as separate console project (excludes from main project compilation).
-- `DotNetWebApp.Tests` now covers `SampleDataSeeder` via SQLite-backed integration tests so `make test` (Release) can validate the seed script and missing-file paths.
-- **ModelGenerator.Tests** (2026-01-21) validates path resolution with 3 unit tests; prevents nested directory regression.
-- `make test` runs all 5 tests (2 DotNetWebApp.Tests + 3 ModelGenerator.Tests) - all passing.
-- `make dev` now scopes `dotnet watch` to `DotNetWebApp.csproj` to avoid building test projects during hot reload.
+---
 
-**Database State / Migrations:**
-- Database schema is generated from SQL DDL via `make run-ddl-pipeline`, which regenerates `app.yaml`, models, and a fresh migration in `Migrations/` (ignored in repo).
-- Apply the generated migration with `make migrate` (requires SQL Server running via `make db-start`).
-- `sample-seed.sql` provides example rows for the default schema; it now guards against duplicates and is executed by `SampleDataSeeder`.
-- `make seed` invokes `dotnet run --project DotNetWebApp.csproj -- --seed`, which applies the generated migration via `Database.MigrateAsync()` and then executes `sample-seed.sql` via `ExecuteSqlRawAsync`; ensure the migration is generated from the DDL pipeline first.
-- README documents how to install `mssql-tools` inside the SQL Server Docker container and how to query sample data after running `make seed`.
+## Major Accomplishments (Completed)
 
-**Tenant Schema:** Schema selection via `X-Customer-Schema` header (defaults to `dbo`).
+See [CLAUDE.md](CLAUDE.md#completed-features) for full details. Summary:
 
-**Current Task Status:** ✅ **READY FOR NEXT PHASE**
-- All core features implemented and tested (5/5 tests passing)
-- DDL pipeline fully functional: `SQL → app.yaml → Models → Migration → Build`
-- SPA sections are entity-driven and optional via `AppCustomization:EnableSpaExample` config
-- Foundation complete: `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
-- See `CLAUDE.md` for detailed architecture, current features, and limitations
-- See `README.md` for DDL parser usage and project structure
-- See `TODO.txt` for incomplete actionable items
+- ✅ YAML-Driven Configuration
+- ✅ Dynamic Model Generation
+- ✅ Dynamic Data Layer (EF Core with reflection-based entity discovery)
+- ✅ Dynamic Entity API (`/api/entities/{entityName}`)
+- ✅ Dynamic UI (GenericEntityPage + DynamicDataGrid)
+- ✅ DDL to YAML Parser Pipeline
+- ✅ ModelGenerator with proper nullable types
+- ✅ Complete test coverage (5 unit/integration tests)
+- ✅ Build optimizations (30+ min → 2-5 min)
+- ✅ Shell script linting (shellcheck)
+- ✅ Docker support and deployment
+- ✅ Multi-tenant schema switching via headers
 
-**Next Steps (from TODO.txt):**
-a) Explore dotnet aspnet codegenerator scaffolding for code generation
-b) Break project reference cycle by extracting DotNetWebApp.Models to separate project
-c) Add more SQL types to TypeMapper or refactor as needed for production MSSQL Server database
+---
+
+## Active Work: Refactoring Initiative
+
+See [REFACTOR.md](REFACTOR.md) for comprehensive analysis and implementation details.
+
+**5 Priority Phases (estimated 7-10 days total):**
+
+1. **Phase 1: Extract Reflection Logic** (1-2 days) - HIGH PRIORITY
+   - Create `IEntityOperationService` to encapsulate EntitiesController logic
+
+2. **Phase 2: Add Input Validation** (1 day) - HIGH PRIORITY
+   - Validate entity deserialization before database persistence
+
+3. **Phase 3: Migrate to Finbuckle.MultiTenant** (2-3 days) - HIGH PRIORITY
+   - Replace custom tenant implementation with mature library
+
+4. **Phase 4: Implement Repository Pattern** (2 days) - MEDIUM PRIORITY
+   - Decouple controllers from EF Core via `IRepository<T>`
+
+5. **Phase 5: Configuration & Immutability** (1 day) - MEDIUM PRIORITY
+   - Move hard-coded values to `appsettings.json`
+   - Make YAML models immutable with `init` accessors
+
+---
+
+## Orphans
+- Add more SQL types to TypeMapper
+

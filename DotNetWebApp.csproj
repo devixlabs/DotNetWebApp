@@ -16,11 +16,21 @@
     </PackageReference>
     <PackageReference Include="Radzen.Blazor" Version="7.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="DotNetWebApp.Models\DotNetWebApp.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DotNetWebApp.Models\**" />
+    <Content Remove="DotNetWebApp.Models\**" />
+    <EmbeddedResource Remove="DotNetWebApp.Models\**" />
+    <None Remove="DotNetWebApp.Models\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
 using DotNetWebApp.Data.Tenancy;
+using DotNetWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Reflection;
@@ -24,7 +25,9 @@ namespace DotNetWebApp.Data
             }
 
             // Dynamically register all entities in the Generated namespace
-            var entityTypes = Assembly.GetExecutingAssembly().GetTypes()
+            // Scan the Models assembly instead of the executing assembly to support separated project structure
+            var modelsAssembly = typeof(EntityMetadata).Assembly;
+            var entityTypes = modelsAssembly.GetTypes()
                 .Where(t => t.IsClass && t.Namespace == "DotNetWebApp.Models.Generated");
 
             foreach (var type in entityTypes)

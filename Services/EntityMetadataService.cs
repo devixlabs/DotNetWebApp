@@ -11,7 +11,8 @@ public sealed class EntityMetadataService : IEntityMetadataService
     public EntityMetadataService(IAppDictionaryService appDictionary)
     {
         var entityDefinitions = appDictionary.AppDefinition.DataModel?.Entities ?? new List<Entity>();
-        var assembly = typeof(Program).Assembly;
+        // Scan the Models assembly instead of the web app assembly to support separated project structure
+        var assembly = typeof(EntityMetadata).Assembly;
         var entities = new List<EntityMetadata>(entityDefinitions.Count);
 
         foreach (var entity in entityDefinitions)

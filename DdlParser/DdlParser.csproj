@@ -8,10 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.147.0" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DotNetWebApp.csproj" />
+    <ProjectReference Include="..\DotNetWebApp.Models\DotNetWebApp.Models.csproj" />
   </ItemGroup>
 </Project>

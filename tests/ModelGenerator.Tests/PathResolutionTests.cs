@@ -17,8 +17,8 @@ namespace ModelGenerator.Tests
 
             var modelGeneratorExe = Path.Combine(repoRoot, "ModelGenerator", "bin", "Release", "net8.0", "ModelGenerator.dll");
             var testYamlPath = Path.Combine(repoRoot, "app.yaml");
-            var expectedOutputDir = Path.Combine(repoRoot, "Models", "Generated");
-            var incorrectOutputDir = Path.Combine(repoRoot, "DotNetWebApp", "Models", "Generated");
+            var expectedOutputDir = Path.Combine(repoRoot, "DotNetWebApp.Models", "Generated");
+            var incorrectOutputDir = Path.Combine(repoRoot, "Models", "Generated");
 
             // Act: Run ModelGenerator
             var processInfo = new ProcessStartInfo
@@ -69,40 +69,32 @@ namespace ModelGenerator.Tests
 
             var modelGeneratorDir = Path.Combine(repoRoot, "ModelGenerator");
 
-            // Act: Resolve the correct path "../Models/Generated" from ModelGenerator/
-            var correctRelativePath = "../Models/Generated";
+            // Act: Resolve the correct path "../DotNetWebApp.Models/Generated" from ModelGenerator/
+            var correctRelativePath = "../DotNetWebApp.Models/Generated";
             var resolvedCorrectPath = Path.GetFullPath(Path.Combine(modelGeneratorDir, correctRelativePath));
 
-            // Assert: Should resolve to DotNetWebApp/Models/Generated
-            Assert.EndsWith(Path.Combine("Models", "Generated"), resolvedCorrectPath);
-            Assert.DoesNotContain(Path.Combine("DotNetWebApp", "DotNetWebApp"), resolvedCorrectPath);
+            // Assert: Should resolve to DotNetWebApp.Models/Generated
+            Assert.EndsWith(Path.Combine("DotNetWebApp.Models", "Generated"), resolvedCorrectPath);
+            // Verify it resolves to the expected location, not to nested DotNetWebApp/DotNetWebApp/...
+            Assert.Contains("DotNetWebApp.Models", resolvedCorrectPath);
         }
 
         [Fact]
-        public void PathResolution_IncorrectPathWouldCreateNestedStructure()
+        public void PathResolution_IncorrectPathWouldOutputToWrongLocation()
         {
-            // Arrange: Simulate the BUG scenario
+            // Arrange: Simulate the scenario with wrong path
             var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
             Assert.NotNull(repoRoot);
 
             var modelGeneratorDir = Path.Combine(repoRoot, "ModelGenerator");
 
-            // Act: Resolve the INCORRECT path "../DotNetWebApp/Models/Generated"
-            var incorrectRelativePath = "../DotNetWebApp/Models/Generated";
+            // Act: Resolve the old INCORRECT path "../Models/Generated" (before extraction to DotNetWebApp.Models/)
+            var incorrectRelativePath = "../Models/Generated";
             var resolvedIncorrectPath = Path.GetFullPath(Path.Combine(modelGeneratorDir, incorrectRelativePath));
 
-            // Assert: This WOULD create nested DotNetWebApp/DotNetWebApp (demonstrating the bug)
-            Assert.Contains(Path.Combine("DotNetWebApp", "Models", "Generated"), resolvedIncorrectPath);
-
-            // Verify this is actually creating a nested structure by checking if "DotNetWebApp" appears twice in path
-            var pathParts = resolvedIncorrectPath.Split(Path.DirectorySeparatorChar);
-            var dotNetWebAppCount = 0;
-            foreach (var part in pathParts)
-            {
-                if (part == "DotNetWebApp") dotNetWebAppCount++;
-            }
-            Assert.True(dotNetWebAppCount >= 2,
-                "Incorrect path should contain 'DotNetWebApp' at least twice (nested structure)");
+            // Assert: The old path would output to the repository root Models/, not DotNetWebApp.Models/
+            Assert.EndsWith(Path.Combine("Models", "Generated"), resolvedIncorrectPath);
+            Assert.DoesNotContain("DotNetWebApp.Models", resolvedIncorrectPath);
         }
 
         private static string? FindRepositoryRoot(string startPath)

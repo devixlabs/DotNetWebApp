@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034,SC1089,SC2288
+# shellcheck disable=SC2034,SC1089,SC2288,SC2046
 DOTNET=./dotnet-build.sh
 # shellcheck disable=SC2034
 IMAGE_NAME=dotnetwebapp
@@ -19,15 +19,22 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline docker-build run dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs
 
 clean:
 	rm -f msbuild.binlog
+	$(DOTNET) clean DotNetWebApp.Models/DotNetWebApp.Models.csproj
 	$(DOTNET) clean DotNetWebApp.csproj
 	$(DOTNET) clean ModelGenerator/ModelGenerator.csproj
 	$(DOTNET) clean DdlParser/DdlParser.csproj
 	$(DOTNET) clean tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
 	$(DOTNET) clean tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
+	@$(MAKE) cleanup-nested-dirs
+
+# Internal helper: Remove nested project directories created by MSBuild during test/build-all
+# Prevents inotify watch exhaustion on Linux (limit: 65,536)
+cleanup-nested-dirs:
+	@find . -type d -path "*/bin/*/tests" -o -path "*/bin/*/DotNetWebApp.Models" -o -path "*/bin/*/ModelGenerator" -o -path "*/bin/*/DdlParser" | xargs rm -rf 2>/dev/null || true
 
 https:
 	$(DOTNET) dev-certs https
@@ -41,6 +48,7 @@ check:
 	$(MAKE) build
 
 restore:
+	$(DOTNET) restore DotNetWebApp.Models/DotNetWebApp.Models.csproj
 	$(DOTNET) restore DotNetWebApp.csproj
 	$(DOTNET) restore ModelGenerator/ModelGenerator.csproj
 	$(DOTNET) restore DdlParser/DdlParser.csproj
@@ -50,19 +58,23 @@ restore:
 # Build with configurable configuration (Debug by default for fast dev iteration)
 # Builds main projects only (excludes test projects to avoid OOM on memory-limited systems)
 # Note: Reduced parallelism (-maxcpucount:2) to prevent memory exhaustion
-# If error(s) contain "Run a NuGet package restore", try 'make restore' 
+# If error(s) contain "Run a NuGet package restore", try 'make restore'
 build:
+	$(DOTNET) build DotNetWebApp.Models/DotNetWebApp.Models.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DdlParser/DdlParser.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 
 # Build everything including test projects (higher memory usage)
+# Note: Cleans up nested project directories after build to prevent inotify exhaustion on Linux
 build-all:
 	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	@$(MAKE) cleanup-nested-dirs
 
 # Build with Release configuration for production deployments
 # This target always uses Release regardless of BUILD_CONFIGURATION variable
 build-release:
+	$(DOTNET) build DotNetWebApp.Models/DotNetWebApp.Models.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DotNetWebApp.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) build DdlParser/DdlParser.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
@@ -75,11 +87,13 @@ seed: migrate
 
 # Run tests with same configuration as build target for consistency
 # Builds and runs test projects sequentially to avoid memory exhaustion
+# Note: Cleans up nested project directories after build to prevent inotify exhaustion on Linux
 test:
 	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	@$(MAKE) cleanup-nested-dirs
 
 # Run the complete DDL → YAML → Model generation pipeline
 run-ddl-pipeline: clean
