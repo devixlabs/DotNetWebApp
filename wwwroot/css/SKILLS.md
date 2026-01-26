@@ -10,6 +10,8 @@ This project uses **Radzen Blazor components and themes only**. Bootstrap is not
 
 **Goal**: Keep styling consistent with the active Radzen theme and avoid hardcoded colors on layout containers.
 
+<!-- FIXME: Branding colors and font are now set via CSS variables in MainLayout.razor from app.yaml; update guidance to reflect that workflow. -->
+
 ---
 
 ## CSS File Structure
@@ -27,6 +29,8 @@ wwwroot/css/
 - Page-level spacing (`.body-content`)
 - Any custom component tweaks
 - CSS animations (`@keyframes pulse`, `spin`, `slideIn`)
+
+<!-- FIXME: app.css now relies on CSS variables that are overridden per branding; document where those variables are set. -->
 
 **Rule**: Avoid hardcoded background or text colors on layout containers unless the Radzen theme is explicitly updated to match.
 
@@ -58,12 +62,13 @@ Radzen offers multiple theme families:
 
 ### Layout Structure
 
+<!-- FIXME: Add GenericEntityPage.razor and DynamicDataGrid.razor since dynamic entity pages now exist. -->
 ```
 Shared/
   MainLayout.razor        <- RadzenLayout, RadzenHeader, RadzenSidebar, RadzenBody, RadzenComponents
   NavMenu.razor           <- RadzenPanelMenu
 Components/Sections/
-  ProductsSection.razor   <- Product management UI with RadzenDataGrid
+  EntitySection.razor     <- Dynamic entity UI with RadzenDataGrid
   SettingsSection.razor   <- Settings UI with RadzenStack, RadzenCard, etc.
 ```
 
@@ -181,8 +186,10 @@ After making CSS changes, verify:
 
 This project includes several key section components for the SPA:
 
-- `Components/Sections/ProductsSection.razor` - Product management with RadzenDataGrid
+- `Components/Sections/EntitySection.razor` - Dynamic entity management with RadzenDataGrid
 - `Components/Sections/SettingsSection.razor` - Application settings interface
+
+<!-- FIXME: Missing DashboardSection.razor and the dynamic entity page/grid components. -->
 
 These are loaded dynamically by the main SPA page and styled with scoped CSS blocks.
 

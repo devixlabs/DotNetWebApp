@@ -1,5 +1,6 @@
+using System;
+using System.Linq;
 using DotNetWebApp.Data;
-using DotNetWebApp.Data.Plugins;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Services;
@@ -20,26 +21,51 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddRadzenComponents();
 builder.Services.Configure<AppCustomizationOptions>(
     builder.Configuration.GetSection("AppCustomization"));
+builder.Services.Configure<DataSeederOptions>(
+    builder.Configuration.GetSection(DataSeederOptions.SectionName));
 builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
     var navigationManager = sp.GetRequiredService<NavigationManager>();
-    return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        // Accept self-signed certificates in development
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+    }
+    return new HttpClient(handler) { BaseAddress = new Uri(navigationManager.BaseUri) };
 });
-builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
-builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
-builder.Services.AddScoped<ICustomerModelPlugin, DefaultProductModelPlugin>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
+builder.Services.AddSingleton<IAppDictionaryService>(sp =>
+{
+    var env = sp.GetRequiredService<IHostEnvironment>();
+    var yamlPath = Path.Combine(env.ContentRootPath, "app.yaml");
+    return new AppDictionaryService(yamlPath);
+});
+builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
+builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
+builder.Services.AddScoped<DataSeeder>();
 
+var seedMode = args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase));
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+if (seedMode)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync();
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

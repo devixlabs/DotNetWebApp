@@ -1,0 +1,36 @@
+<Project>
+  <PropertyGroup>
+    <!-- Prevent recursive output directory pollution -->
+    <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
+    <CopyOutputSymbolsToOutputDirectory>true</CopyOutputSymbolsToOutputDirectory>
+
+    <!-- Enable deterministic builds for better caching and reproducibility -->
+    <Deterministic>true</Deterministic>
+
+    <!-- Accelerate builds in Visual Studio with optimized compilation -->
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+
+    <!-- Disable analyzers during Debug builds for faster iteration -->
+    <!-- Analyzers still run in Release builds and CI/CD pipelines -->
+    <RunAnalyzersDuringBuild Condition="'$(Configuration)'=='Debug'">false</RunAnalyzersDuringBuild>
+
+    <!-- Enable parallel builds across projects -->
+    <BuildInParallel>true</BuildInParallel>
+
+    <!-- Enable incremental compilation for faster repeated builds -->
+    <UseIncrementalCompilation>true</UseIncrementalCompilation>
+
+    <!-- Reuse compiler processes across builds to reduce overhead -->
+    <UseSharedCompilation>true</UseSharedCompilation>
+
+    <!-- Improve incremental build performance -->
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+
+    <!-- Optimize package restore performance -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+
+    <!-- Enable faster PDB generation in Debug mode -->
+    <DebugType Condition="'$(Configuration)'=='Debug'">portable</DebugType>
+    <DebugType Condition="'$(Configuration)'=='Release'">embedded</DebugType>
+  </PropertyGroup>
+</Project>

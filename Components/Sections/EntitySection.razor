@@ -1,0 +1,71 @@
+@inject IEntityApiService EntityApiService
+@inject IEntityMetadataService EntityMetadataService
+
+<RadzenCard>
+    <RadzenStack Gap="16px">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter">
+                @errorMessage
+            </RadzenAlert>
+        }
+        else if (isLoading)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <RadzenText Text="Loading..." />
+            </RadzenStack>
+        }
+        else if (entities != null && entities.Count > 0)
+        {
+            <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
+        }
+        else
+        {
+            <RadzenText Text="No data available" TextStyle="TextStyle.Body2" />
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public string EntityName { get; set; } = string.Empty;
+
+    private IReadOnlyList<object>? entities;
+    private bool isLoading;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EntityName))
+        {
+            errorMessage = "Entity not specified.";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        entities = null;
+
+        try
+        {
+            var metadata = EntityMetadataService.Find(EntityName);
+            if (metadata == null)
+            {
+                errorMessage = $"Entity '{EntityName}' not found";
+                return;
+            }
+
+            var result = await EntityApiService.GetEntitiesAsync(metadata.Definition.Name);
+            entities = result.ToList().AsReadOnly();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading {EntityName}: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

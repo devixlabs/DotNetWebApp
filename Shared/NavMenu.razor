@@ -1,30 +1,51 @@
 @inject ISpaSectionService SpaSections
 @inject IOptions<AppCustomizationOptions> AppOptions
+@inject IAppDictionaryService AppDictionary
 
 <RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText" Multiple="false">
-    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Home" Icon="home" Path="/" />
-    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Application" Icon="apps" Expanded="true">
-        @foreach (var item in SpaSections.Sections)
+    <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Home" Icon="home" Path="@HomePath" />
+    @if (IsSpaEnabled && SpaSections.Sections.Count > 0)
+    {
+        <RadzenPanelMenuItem Text="@AppOptions.Value.Navigation.Application" Icon="apps" Expanded="true">
+            @foreach (var item in SpaSections.Sections)
+            {
+                <RadzenPanelMenuItem Text="@item.NavLabel" Icon="@GetSectionIcon(item.Section)" Path="@GetSectionPath(item)" />
+            }
+        </RadzenPanelMenuItem>
+    }
+    <RadzenPanelMenuItem Text="Data" Icon="table_chart" Expanded="true">
+        @foreach (var entity in AppDictionary.AppDefinition.DataModel.Entities)
         {
-            <RadzenPanelMenuItem Text="@item.NavLabel" Icon="@GetSectionIcon(item.Section)" Path="@GetSectionPath(item)" />
+            <RadzenPanelMenuItem Text="@entity.Name" Icon="data_object" Path="@entity.Name" />
         }
     </RadzenPanelMenuItem>
 </RadzenPanelMenu>
 
 @code {
+    private bool IsSpaEnabled => AppOptions.Value.EnableSpaExample;
+    private string HomePath => IsSpaEnabled ? "/" : GetDefaultEntityPath();
+
     private static string GetSectionIcon(SpaSection section)
     {
         return section switch
         {
             SpaSection.Dashboard => "dashboard",
-            SpaSection.Products => "inventory_2",
             SpaSection.Settings => "settings",
+            SpaSection.Entity => "table_chart",
             _ => "apps"
         };
     }
 
-    private static string GetSectionPath(SpaSectionInfo section)
+    private string GetSectionPath(SpaSectionInfo section)
     {
-        return section.Section == SpaSection.Dashboard ? "app" : $"app/{section.RouteSegment}";
+        return SpaSections.DefaultSection != null && section == SpaSections.DefaultSection
+            ? "app"
+            : $"app/{section.RouteSegment}";
+    }
+
+    private string GetDefaultEntityPath()
+    {
+        var entity = AppDictionary.AppDefinition.DataModel.Entities.FirstOrDefault();
+        return entity == null ? "/" : entity.Name;
     }
 }

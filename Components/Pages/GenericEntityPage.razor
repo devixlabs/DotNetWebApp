@@ -1,0 +1,67 @@
+@page "/{EntityName}"
+@inject IEntityApiService EntityApi
+@inject IEntityMetadataService EntityMetadataService
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p role="alert">@errorMessage</p>
+}
+else if (!string.IsNullOrWhiteSpace(EntityName))
+{
+    <h1>@EntityName</h1>
+
+    @if (entities != null)
+    {
+        <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
+    }
+}
+
+@code {
+    [Parameter]
+    public string? EntityName { get; set; }
+
+    private IReadOnlyList<object>? entities;
+
+    private bool isLoading;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        entities = null;
+
+        if (string.IsNullOrWhiteSpace(EntityName))
+        {
+            errorMessage = "Entity not specified.";
+            isLoading = false;
+            return;
+        }
+
+        var metadata = EntityMetadataService.Find(EntityName);
+        if (metadata == null || metadata.ClrType == null)
+        {
+            errorMessage = $"No model type found for '{EntityName}'.";
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await EntityApi.GetEntitiesAsync(metadata.Definition.Name);
+            entities = result.ToList().AsReadOnly();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load {metadata.Definition.Name} data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,57 @@
+# Application Dictionary for the .NET Web App Framework
+
+# Basic Application Metadata
+app:
+  name: "MyApp"
+  title: "My Application"
+  description: "A dynamic and configurable web application."
+  logoUrl: "/images/logo.png"
+
+# Theme and Branding
+theme:
+  primaryColor: "#007bff"
+  secondaryColor: "#6c757d"
+  backgroundColor: "#ffffff"
+  textColor: "#212529"
+
+# Data Model Definition
+dataModel:
+  entities:
+    - name: "Product"
+      properties:
+        - name: "Id"
+          type: "int"
+          isPrimaryKey: true
+          isIdentity: true
+        - name: "Name"
+          type: "string"
+          maxLength: 100
+          isRequired: true
+        - name: "Description"
+          type: "string"
+          maxLength: 500
+        - name: "Price"
+          type: "decimal"
+          precision: 18
+          scale: 2
+        - name: "CategoryId"
+          type: "int"
+        - name: "CreatedAt"
+          type: "datetime"
+          defaultValue: "CURRENT_TIMESTAMP"
+      relationships:
+        - type: "one-to-many"
+          targetEntity: "Category"
+          foreignKey: "CategoryId"
+          principalKey: "Id"
+
+    - name: "Category"
+      properties:
+        - name: "Id"
+          type: "int"
+          isPrimaryKey: true
+          isIdentity: true
+        - name: "Name"
+          type: "string"
+          maxLength: 50
+          isRequired: true

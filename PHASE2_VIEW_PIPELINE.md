@@ -1,0 +1,940 @@
+# Phase 2: SQL-First View Pipeline Implementation Plan
+
+**Status:** Ready to implement (after REFACTOR.md Phases 1, 2, 3, 5 complete)
+**Duration:** 1-2 weeks
+**Priority:** HIGH (enables legacy SQL integration for 200+ entities)
+
+---
+
+## Overview
+
+This phase implements a SQL-first view generation pipeline that mirrors the existing DDL-first entity generation pipeline. It enables developers to use legacy SQL queries as the source of truth for complex UI features (dashboards, reports, multi-table grids).
+
+### Architecture Vision
+
+```
+ENTITY MODELS (200+ tables)
+SQL DDL → app.yaml → Models/Generated/*.cs → EF Core CRUD
+          ↓
+     (existing pipeline - DO NOT CHANGE)
+
+VIEW MODELS (complex queries)
+SQL SELECT → views.yaml → Models/ViewModels/*.cs → Dapper reads
+             ↓
+        (NEW pipeline - Phase 2)
+
+BUSINESS LOGIC (user interactions)
+Blazor Server components → C# event handlers → IEntityOperationService (writes) + IViewService (reads)
+```
+
+---
+
+## Step 1: Create views.yaml Schema Definition (Day 1)
+
+### 1.1 Create views.yaml File
+
+**File:** `/home/jrade/code/devixlabs/DotNetWebApp/views.yaml`
+
+```yaml
+# views.yaml - SQL View Definitions for Complex UI Components
+#
+# This file defines Dapper-based read-only views for Blazor/Radzen components.
+# Each view corresponds to a SQL query file and generates a C# DTO class.
+#
+# Generation command: make run-view-pipeline
+# Generated output: DotNetWebApp.Models/ViewModels/*.cs
+
+views:
+  - name: ProductSalesView
+    description: "Product sales summary with category and order totals"
+    sql_file: "sql/views/ProductSalesView.sql"
+    parameters:
+      - name: TopN
+        type: int
+        nullable: false
+        default: 10
+    properties:
+      - name: Id
+        type: int
+        nullable: false
+      - name: Name
+        type: string
+        nullable: false
+      - name: Price
+        type: decimal
+        nullable: false
+      - name: CategoryName
+        type: string
+        nullable: true
+      - name: TotalSold
+        type: int
+        nullable: false
+      - name: TotalRevenue
+        type: decimal
+        nullable: false
+
+  # Add more views as needed...
+```
+
+### 1.2 Create sql/views/ Directory Structure
+
+```bash
+mkdir -p sql/views
+```
+
+### 1.3 Create Example SQL View File
+
+**File:** `sql/views/ProductSalesView.sql`
+
+```sql
+-- ProductSalesView.sql
+-- Product sales summary with category and order totals
+-- Parameters: @TopN (default: 10)
+
+SELECT
+    p.Id,
+    p.Name,
+    p.Price,
+    c.Name AS CategoryName,
+    ISNULL(SUM(od.Quantity), 0) AS TotalSold,
+    ISNULL(SUM(od.Quantity * p.Price), 0) AS TotalRevenue
+FROM Products p
+LEFT JOIN Categories c ON p.CategoryId = c.Id
+LEFT JOIN OrderDetails od ON p.Id = od.ProductId
+GROUP BY p.Id, p.Name, p.Price, c.Name
+ORDER BY TotalSold DESC
+OFFSET 0 ROWS FETCH NEXT @TopN ROWS ONLY;
+```
+
+**Deliverable:** `views.yaml` schema file + example SQL view
+
+---
+
+## Step 2: Extend ModelGenerator for View Models (Days 2-3)
+
+### 2.1 Create ViewModelGenerator Class
+
+**File:** `ModelGenerator/ViewModelGenerator.cs`
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Scriban;
+using YamlDotNet.Serialization;
+
+namespace ModelGenerator
+{
+    public class ViewModelGenerator
+    {
+        private readonly string _viewsYamlPath;
+        private readonly string _outputPath;
+        private readonly ILogger _logger;
+
+        public ViewModelGenerator(string viewsYamlPath, string outputPath, ILogger logger)
+        {
+            _viewsYamlPath = viewsYamlPath;
+            _outputPath = outputPath;
+            _logger = logger;
+        }
+
+        public async Task GenerateAsync()
+        {
+            _logger.LogInformation("Loading views from {Path}", _viewsYamlPath);
+
+            if (!File.Exists(_viewsYamlPath))
+            {
+                _logger.LogWarning("views.yaml not found at {Path}. Skipping view generation.", _viewsYamlPath);
+                return;
+            }
+
+            // Deserialize views.yaml
+            var deserializer = new DeserializerBuilder().Build();
+            var yamlContent = await File.ReadAllTextAsync(_viewsYamlPath);
+            var viewDefinitions = deserializer.Deserialize<ViewsDefinition>(yamlContent);
+
+            if (viewDefinitions?.Views == null || !viewDefinitions.Views.Any())
+            {
+                _logger.LogWarning("No views found in {Path}", _viewsYamlPath);
+                return;
+            }
+
+            _logger.LogInformation("Generating {Count} view models...", viewDefinitions.Views.Count);
+
+            // Ensure output directory exists
+            Directory.CreateDirectory(_outputPath);
+
+            foreach (var view in viewDefinitions.Views)
+            {
+                await GenerateViewModelAsync(view);
+            }
+
+            _logger.LogInformation("View model generation complete. Output: {OutputPath}", _outputPath);
+        }
+
+        private async Task GenerateViewModelAsync(ViewDefinition view)
+        {
+            var template = Template.Parse(GetViewModelTemplate());
+            var output = await template.RenderAsync(new
+            {
+                View = view,
+                GeneratedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                HasParameters = view.Parameters?.Any() ?? false
+            });
+
+            var outputFile = Path.Combine(_outputPath, $"{view.Name}.cs");
+            await File.WriteAllTextAsync(outputFile, output);
+
+            _logger.LogInformation("Generated view model: {FileName}", Path.GetFileName(outputFile));
+        }
+
+        private string GetViewModelTemplate()
+        {
+            return @"// <auto-generated>
+//     This code was generated by ModelGenerator on {{ GeneratedDate }} UTC.
+//     SQL Source: {{ View.SqlFile }}
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+
+using System;
+using System.Collections.Generic;
+
+namespace DotNetWebApp.Models.ViewModels
+{
+    /// <summary>
+    /// {{ View.Description }}
+    /// </summary>
+    /// <remarks>
+    /// SQL Source: {{ View.SqlFile }}
+    {{~ if HasParameters ~}}
+    /// Parameters:
+    {{~ for param in View.Parameters ~}}
+    ///   - @{{ param.Name }} ({{ param.Type }}{{ if param.Nullable }}?{{ end }}){{ if param.Default }} = {{ param.Default }}{{ end }}
+    {{~ end ~}}
+    {{~ end ~}}
+    /// </remarks>
+    public class {{ View.Name }}
+    {
+        {{~ for property in View.Properties ~}}
+        public {{ property.Type }}{{ if property.Nullable }}?{{ end }} {{ property.Name }} { get; set; }}{{ if !property.Nullable && property.Type == 'string' }} = null!;{{ end }}
+        {{~ end ~}}
+    }
+}
+";
+        }
+    }
+
+    // YAML Model Classes
+    public class ViewsDefinition
+    {
+        public List<ViewDefinition> Views { get; set; } = new();
+    }
+
+    public class ViewDefinition
+    {
+        public string Name { get; set; } = null!;
+        public string Description { get; set; } = null!;
+        public string SqlFile { get; set; } = null!;
+        public List<ViewParameter>? Parameters { get; set; }
+        public List<ViewProperty> Properties { get; set; } = new();
+    }
+
+    public class ViewParameter
+    {
+        public string Name { get; set; } = null!;
+        public string Type { get; set; } = null!;
+        public bool Nullable { get; set; }
+        public string? Default { get; set; }
+    }
+
+    public class ViewProperty
+    {
+        public string Name { get; set; } = null!;
+        public string Type { get; set; } = null!;
+        public bool Nullable { get; set; }
+    }
+}
+```
+
+### 2.2 Update ModelGenerator Program.cs
+
+**File:** `ModelGenerator/Program.cs` (add view generation mode)
+
+```csharp
+// Add to existing Program.cs
+
+var mode = args.FirstOrDefault(a => a.StartsWith("--mode="))?.Split('=')[1] ?? "entities";
+
+if (mode == "views")
+{
+    // View generation mode
+    var viewsYamlPath = args.FirstOrDefault(a => a.StartsWith("--views-yaml="))?.Split('=')[1]
+        ?? "views.yaml";
+    var outputDir = args.FirstOrDefault(a => a.StartsWith("--output-dir="))?.Split('=')[1]
+        ?? "DotNetWebApp.Models/ViewModels";
+
+    var viewGenerator = new ViewModelGenerator(viewsYamlPath, outputDir, logger);
+    await viewGenerator.GenerateAsync();
+}
+else
+{
+    // Existing entity generation mode
+    // ... existing code ...
+}
+```
+
+**Deliverable:** ViewModelGenerator class + updated Program.cs
+
+---
+
+## Step 3: Create View Registry Service (Days 4-5)
+
+### 3.1 Create IViewRegistry Interface
+
+**File:** `Services/Views/IViewRegistry.cs`
+
+```csharp
+using DotNetWebApp.Models.ViewModels;
+
+namespace DotNetWebApp.Services.Views
+{
+    /// <summary>
+    /// Registry for SQL view definitions loaded from views.yaml
+    /// </summary>
+    public interface IViewRegistry
+    {
+        /// <summary>
+        /// Gets the SQL query for a registered view
+        /// </summary>
+        /// <param name="viewName">Name of the view (e.g., "ProductSalesView")</param>
+        /// <returns>SQL query text</returns>
+        Task<string> GetViewSqlAsync(string viewName);
+
+        /// <summary>
+        /// Gets the view definition metadata
+        /// </summary>
+        /// <param name="viewName">Name of the view</param>
+        /// <returns>View definition</returns>
+        ViewDefinition GetViewDefinition(string viewName);
+
+        /// <summary>
+        /// Gets all registered view names
+        /// </summary>
+        IEnumerable<string> GetAllViewNames();
+    }
+}
+```
+
+### 3.2 Create ViewRegistry Implementation
+
+**File:** `Services/Views/ViewRegistry.cs`
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using YamlDotNet.Serialization;
+
+namespace DotNetWebApp.Services.Views
+{
+    /// <summary>
+    /// Singleton service that loads and caches SQL view definitions
+    /// </summary>
+    public class ViewRegistry : IViewRegistry
+    {
+        private readonly Dictionary<string, ViewDefinition> _views;
+        private readonly Dictionary<string, string> _sqlCache;
+        private readonly string _sqlBasePath;
+        private readonly ILogger<ViewRegistry> _logger;
+
+        public ViewRegistry(string viewsYamlPath, ILogger<ViewRegistry> logger)
+        {
+            _logger = logger;
+            _views = new Dictionary<string, ViewDefinition>(StringComparer.OrdinalIgnoreCase);
+            _sqlCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _sqlBasePath = Path.GetDirectoryName(viewsYamlPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+
+            LoadViews(viewsYamlPath);
+        }
+
+        private void LoadViews(string yamlPath)
+        {
+            if (!File.Exists(yamlPath))
+            {
+                _logger.LogWarning("views.yaml not found at {Path}. No views registered.", yamlPath);
+                return;
+            }
+
+            _logger.LogInformation("Loading views registry from {Path}", yamlPath);
+
+            var deserializer = new DeserializerBuilder().Build();
+            var yamlContent = File.ReadAllText(yamlPath);
+            var viewDef = deserializer.Deserialize<ViewsDefinition>(yamlContent);
+
+            if (viewDef?.Views == null)
+            {
+                _logger.LogWarning("No views found in {Path}", yamlPath);
+                return;
+            }
+
+            foreach (var view in viewDef.Views)
+            {
+                _views[view.Name] = view;
+                _logger.LogDebug("Registered view: {ViewName} (SQL: {SqlFile})", view.Name, view.SqlFile);
+            }
+
+            _logger.LogInformation("Loaded {Count} views into registry", _views.Count);
+        }
+
+        public async Task<string> GetViewSqlAsync(string viewName)
+        {
+            if (_sqlCache.TryGetValue(viewName, out var cachedSql))
+            {
+                return cachedSql;
+            }
+
+            if (!_views.TryGetValue(viewName, out var view))
+            {
+                throw new InvalidOperationException($"View '{viewName}' not found in registry. Registered views: {string.Join(", ", _views.Keys)}");
+            }
+
+            // Resolve SQL file path (relative to views.yaml location)
+            var sqlPath = Path.IsPathRooted(view.SqlFile)
+                ? view.SqlFile
+                : Path.Combine(_sqlBasePath, view.SqlFile);
+
+            if (!File.Exists(sqlPath))
+            {
+                throw new FileNotFoundException($"SQL file not found for view '{viewName}': {sqlPath}");
+            }
+
+            var sql = await File.ReadAllTextAsync(sqlPath);
+            _sqlCache[viewName] = sql;
+
+            _logger.LogDebug("Loaded SQL for view {ViewName} from {SqlPath}", viewName, sqlPath);
+            return sql;
+        }
+
+        public ViewDefinition GetViewDefinition(string viewName)
+        {
+            if (!_views.TryGetValue(viewName, out var view))
+            {
+                throw new InvalidOperationException($"View '{viewName}' not found in registry");
+            }
+            return view;
+        }
+
+        public IEnumerable<string> GetAllViewNames()
+        {
+            return _views.Keys;
+        }
+    }
+}
+```
+
+**Deliverable:** IViewRegistry + ViewRegistry implementation
+
+---
+
+## Step 4: Create Dapper Query Service (Day 5)
+
+### 4.1 Create IDapperQueryService Interface
+
+**File:** `Data/Dapper/IDapperQueryService.cs`
+
+```csharp
+namespace DotNetWebApp.Data.Dapper
+{
+    /// <summary>
+    /// Read-only Dapper query service for complex SQL views
+    /// </summary>
+    public interface IDapperQueryService
+    {
+        /// <summary>
+        /// Executes a query and returns multiple results
+        /// </summary>
+        Task<IEnumerable<T>> QueryAsync<T>(string sql, object? param = null);
+
+        /// <summary>
+        /// Executes a query and returns a single result or default
+        /// </summary>
+        Task<T?> QuerySingleAsync<T>(string sql, object? param = null);
+    }
+}
+```
+
+### 4.2 Create DapperQueryService Implementation
+
+**File:** `Data/Dapper/DapperQueryService.cs`
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace DotNetWebApp.Data.Dapper
+{
+    /// <summary>
+    /// Read-only Dapper service that shares EF Core's connection
+    /// Automatically inherits tenant schema from EF Core context
+    /// </summary>
+    public class DapperQueryService : IDapperQueryService
+    {
+        private readonly AppDbContext _dbContext;
+        private readonly ILogger<DapperQueryService> _logger;
+
+        public DapperQueryService(AppDbContext dbContext, ILogger<DapperQueryService> logger)
+        {
+            _dbContext = dbContext;
+            _logger = logger;
+        }
+
+        public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? param = null)
+        {
+            var connection = _dbContext.Database.GetDbConnection();
+
+            try
+            {
+                _logger.LogDebug("Executing Dapper query (Schema: {Schema}): {Sql}",
+                    _dbContext.Schema, TruncateSql(sql));
+
+                // Connection state may be closed; Dapper will handle it
+                return await connection.QueryAsync<T>(sql, param);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Dapper query failed (Schema: {Schema}): {Sql}",
+                    _dbContext.Schema, TruncateSql(sql));
+                throw new InvalidOperationException($"Query execution failed: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<T?> QuerySingleAsync<T>(string sql, object? param = null)
+        {
+            var connection = _dbContext.Database.GetDbConnection();
+
+            try
+            {
+                _logger.LogDebug("Executing Dapper single query (Schema: {Schema}): {Sql}",
+                    _dbContext.Schema, TruncateSql(sql));
+
+                return await connection.QuerySingleOrDefaultAsync<T>(sql, param);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Dapper single query failed (Schema: {Schema}): {Sql}",
+                    _dbContext.Schema, TruncateSql(sql));
+                throw new InvalidOperationException($"Query execution failed: {ex.Message}", ex);
+            }
+        }
+
+        private static string TruncateSql(string sql)
+        {
+            return sql.Length > 100 ? sql.Substring(0, 100) + "..." : sql;
+        }
+    }
+}
+```
+
+**Deliverable:** IDapperQueryService + DapperQueryService implementation
+
+---
+
+## Step 5: Create View Service (Days 6-7)
+
+### 5.1 Create IViewService Interface
+
+**File:** `Services/Views/IViewService.cs`
+
+```csharp
+namespace DotNetWebApp.Services.Views
+{
+    /// <summary>
+    /// Service for executing registered SQL views with Dapper
+    /// </summary>
+    public interface IViewService
+    {
+        /// <summary>
+        /// Executes a registered view and returns multiple results
+        /// </summary>
+        /// <typeparam name="T">View model type</typeparam>
+        /// <param name="viewName">Name of the registered view</param>
+        /// <param name="parameters">Query parameters (optional)</param>
+        Task<IEnumerable<T>> ExecuteViewAsync<T>(string viewName, object? parameters = null);
+
+        /// <summary>
+        /// Executes a registered view and returns a single result
+        /// </summary>
+        /// <typeparam name="T">View model type</typeparam>
+        /// <param name="viewName">Name of the registered view</param>
+        /// <param name="parameters">Query parameters (optional)</param>
+        Task<T?> ExecuteViewSingleAsync<T>(string viewName, object? parameters = null);
+    }
+}
+```
+
+### 5.2 Create ViewService Implementation
+
+**File:** `Services/Views/ViewService.cs`
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using DotNetWebApp.Data.Dapper;
+using Microsoft.Extensions.Logging;
+
+namespace DotNetWebApp.Services.Views
+{
+    /// <summary>
+    /// Service that executes SQL views via Dapper using the view registry
+    /// </summary>
+    public class ViewService : IViewService
+    {
+        private readonly IDapperQueryService _dapper;
+        private readonly IViewRegistry _registry;
+        private readonly ILogger<ViewService> _logger;
+
+        public ViewService(
+            IDapperQueryService dapper,
+            IViewRegistry registry,
+            ILogger<ViewService> logger)
+        {
+            _dapper = dapper;
+            _registry = registry;
+            _logger = logger;
+        }
+
+        public async Task<IEnumerable<T>> ExecuteViewAsync<T>(string viewName, object? parameters = null)
+        {
+            var sql = await _registry.GetViewSqlAsync(viewName);
+            _logger.LogInformation("Executing view: {ViewName}", viewName);
+
+            try
+            {
+                return await _dapper.QueryAsync<T>(sql, parameters);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute view: {ViewName}", viewName);
+                throw new InvalidOperationException($"View execution failed: {viewName}", ex);
+            }
+        }
+
+        public async Task<T?> ExecuteViewSingleAsync<T>(string viewName, object? parameters = null)
+        {
+            var sql = await _registry.GetViewSqlAsync(viewName);
+            _logger.LogInformation("Executing view (single): {ViewName}", viewName);
+
+            try
+            {
+                return await _dapper.QuerySingleAsync<T>(sql, parameters);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute view (single): {ViewName}", viewName);
+                throw new InvalidOperationException($"View execution failed: {viewName}", ex);
+            }
+        }
+    }
+}
+```
+
+**Deliverable:** IViewService + ViewService implementation
+
+---
+
+## Step 6: Update Program.cs with DI Registration (Day 8)
+
+**File:** `Program.cs` (add after existing services)
+
+```csharp
+// AFTER existing services...
+
+// Dapper infrastructure (read-only, shares EF connection)
+builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
+
+// View registry (singleton, loaded once at startup)
+builder.Services.AddSingleton<IViewRegistry>(sp =>
+{
+    var env = sp.GetRequiredService<IHostEnvironment>();
+    var viewsYamlPath = Path.Combine(env.ContentRootPath, "views.yaml");
+    var logger = sp.GetRequiredService<ILogger<ViewRegistry>>();
+    return new ViewRegistry(viewsYamlPath, logger);
+});
+
+// View service (scoped, executes views)
+builder.Services.AddScoped<IViewService, ViewService>();
+
+_logger.LogInformation("View services registered");
+```
+
+**Deliverable:** Updated Program.cs with view services
+
+---
+
+## Step 7: Update Makefile (Day 8)
+
+**File:** `Makefile` (add new targets)
+
+```makefile
+# Add after existing targets
+
+.PHONY: run-view-pipeline
+run-view-pipeline:
+	@echo "Running view model generation pipeline..."
+	@$(DOTNET) run --project ModelGenerator -- \
+		--mode=views \
+		--views-yaml=views.yaml \
+		--output-dir=DotNetWebApp.Models/ViewModels
+	@echo "View models generated in DotNetWebApp.Models/ViewModels/"
+
+.PHONY: run-all-pipelines
+run-all-pipelines: run-ddl-pipeline run-view-pipeline
+	@echo "All generation pipelines complete"
+	@echo "  - Entities: DotNetWebApp.Models/Generated/"
+	@echo "  - Views: DotNetWebApp.Models/ViewModels/"
+```
+
+**Deliverable:** Updated Makefile with view pipeline targets
+
+---
+
+## Step 8: Create Example Blazor Component (Day 9)
+
+**File:** `Components/Pages/ProductDashboard.razor`
+
+```razor
+@page "/dashboard/products"
+@inject IViewService ViewService
+@inject ILogger<ProductDashboard> Logger
+
+<PageTitle>Product Sales Dashboard</PageTitle>
+
+<h3>Top Selling Products</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (products != null)
+{
+    <RadzenDataGrid Data="@products" TItem="ProductSalesView"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="20">
+        <Columns>
+            <RadzenDataGridColumn TItem="ProductSalesView" Property="Name" Title="Product" />
+            <RadzenDataGridColumn TItem="ProductSalesView" Property="CategoryName" Title="Category" />
+            <RadzenDataGridColumn TItem="ProductSalesView" Property="Price" Title="Price" FormatString="{0:C}" />
+            <RadzenDataGridColumn TItem="ProductSalesView" Property="TotalSold" Title="Units Sold" />
+            <RadzenDataGridColumn TItem="ProductSalesView" Property="TotalRevenue" Title="Revenue" FormatString="{0:C}" />
+        </Columns>
+    </RadzenDataGrid>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@code {
+    private IEnumerable<ProductSalesView>? products;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // Execute the registered view via IViewService
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = 50 });  // Pass parameters
+
+            Logger.LogInformation("Loaded {Count} products", products?.Count() ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load product dashboard");
+            errorMessage = "Failed to load dashboard data. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+```
+
+**Deliverable:** Example Blazor component using IViewService
+
+---
+
+## Step 9: Create ViewModels Directory Structure (Day 9)
+
+```bash
+mkdir -p DotNetWebApp.Models/ViewModels
+```
+
+Add to `.gitignore`:
+
+```gitignore
+# Generated view models
+DotNetWebApp.Models/ViewModels/*.cs
+!DotNetWebApp.Models/ViewModels/.gitkeep
+```
+
+Create `.gitkeep` file:
+
+```bash
+touch DotNetWebApp.Models/ViewModels/.gitkeep
+```
+
+**Deliverable:** ViewModels directory structure
+
+---
+
+## Step 10: Testing & Validation (Days 10)
+
+### 10.1 Create Integration Test
+
+**File:** `DotNetWebApp.Tests/ViewPipelineTests.cs`
+
+```csharp
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using DotNetWebApp.Services.Views;
+using Microsoft.Extensions.Logging;
+using Xunit;
+
+namespace DotNetWebApp.Tests
+{
+    public class ViewPipelineTests
+    {
+        [Fact]
+        public void ViewRegistry_LoadsViewsFromYaml()
+        {
+            // Arrange
+            var viewsYamlPath = Path.Combine(Directory.GetCurrentDirectory(), "views.yaml");
+            var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<ViewRegistry>();
+
+            // Act
+            var registry = new ViewRegistry(viewsYamlPath, logger);
+            var viewNames = registry.GetAllViewNames().ToList();
+
+            // Assert
+            Assert.NotEmpty(viewNames);
+            Assert.Contains("ProductSalesView", viewNames);
+        }
+
+        [Fact]
+        public async Task ViewRegistry_GetViewSqlAsync_ReturnsValidSql()
+        {
+            // Arrange
+            var viewsYamlPath = Path.Combine(Directory.GetCurrentDirectory(), "views.yaml");
+            var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<ViewRegistry>();
+            var registry = new ViewRegistry(viewsYamlPath, logger);
+
+            // Act
+            var sql = await registry.GetViewSqlAsync("ProductSalesView");
+
+            // Assert
+            Assert.NotNull(sql);
+            Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("FROM Products", sql, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+}
+```
+
+### 10.2 Manual Testing Checklist
+
+- [ ] Run `make run-view-pipeline` - verify ViewModels/*.cs generated
+- [ ] Check generated classes have correct properties
+- [ ] Start app with `make dev`
+- [ ] Navigate to `/dashboard/products` (or your test page)
+- [ ] Verify data loads correctly
+- [ ] Test with different tenant schemas (X-Customer-Schema header)
+- [ ] Verify logging shows correct view execution
+
+**Deliverable:** Integration tests + manual testing checklist
+
+---
+
+## Phase 2 Completion Checklist
+
+### Infrastructure
+- [ ] `views.yaml` created with schema definition
+- [ ] `sql/views/` directory structure created
+- [ ] Example SQL view file created
+- [ ] ViewModelGenerator class implemented
+- [ ] ModelGenerator updated with view mode
+- [ ] ViewModels directory structure created
+
+### Services
+- [ ] IViewRegistry interface created
+- [ ] ViewRegistry implementation created
+- [ ] IDapperQueryService interface created
+- [ ] DapperQueryService implementation created
+- [ ] IViewService interface created
+- [ ] ViewService implementation created
+
+### Integration
+- [ ] Program.cs updated with DI registration
+- [ ] Makefile updated with view pipeline targets
+- [ ] Example Blazor component created
+- [ ] Integration tests created
+- [ ] Manual testing complete
+
+### Documentation
+- [ ] README.md updated with view pipeline usage
+- [ ] REFACTOR.md updated with Phase 2 details
+- [ ] EF_Dapper_Hybrid__Architecture.md updated
+
+---
+
+## Success Criteria
+
+After Phase 2 completion:
+
+✅ Developers can drop legacy SQL files into `sql/views/`
+✅ `make run-view-pipeline` generates type-safe C# view models
+✅ Blazor components can consume views via `IViewService`
+✅ Multi-tenant schema isolation works automatically (via Finbuckle + shared connection)
+✅ No JavaScript/AJAX required (server-side C# event handlers)
+✅ All 200+ entities supported via this pattern
+
+---
+
+## Next Steps After Phase 2
+
+1. **Create more SQL views** for existing UI features
+2. **Migrate legacy JavaScript** to server-side C# event handlers
+3. **Build SQL-to-YAML auto-discovery tool** (Phase 3, optional)
+4. **Performance optimization** (query caching, compiled queries)
+
+---
+
+**End of Phase 2 Implementation Plan**

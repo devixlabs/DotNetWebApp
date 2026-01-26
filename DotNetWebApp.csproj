@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.*">
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.16" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.16" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.16">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -20,6 +20,50 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="DotNetWebApp.Models\DotNetWebApp.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DotNetWebApp.Models\**" />
+    <Compile Remove="research\**" />
+    <Content Remove="research\**" />
+    <EmbeddedResource Remove="research\**" />
+    <None Remove="research\**" />
+    <Content Remove="DotNetWebApp.Models\**" />
+    <EmbeddedResource Remove="DotNetWebApp.Models\**" />
+    <None Remove="DotNetWebApp.Models\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ModelGenerator\**" />
+    <Content Remove="ModelGenerator\**" />
+    <EmbeddedResource Remove="ModelGenerator\**" />
+    <None Remove="ModelGenerator\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DdlParser\**" />
+    <Content Remove="DdlParser\**" />
+    <EmbeddedResource Remove="DdlParser\**" />
+    <None Remove="DdlParser\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="tests\**\*.cs" />
+    <Content Remove="tests/**/*.cs" />
+    <Content Remove="tests\**\*.cs" />
+    <EmbeddedResource Remove="tests/**/*.cs" />
+    <EmbeddedResource Remove="tests\**\*.cs" />
+    <None Remove="tests/**/*.cs" />
+    <None Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="app.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
