@@ -294,17 +294,6 @@ public class AppDefinition
 
 **Benefit:** Better performance, compile-time type safety.
 
-#### 9. Support Multiple Database Providers
-
-**Enhancement:** Add PostgreSQL/MySQL support via multi-provider pattern.
-
-**Files affected:**
-- `/DdlParser/` (add PostgreSQL/MySQL parsers)
-- `/DdlParser/TypeMapper.cs` (database-specific type mappings)
-- `Program.cs` (conditional DbContext registration)
-
-**Benefit:** Broader adoption, cloud flexibility.
-
 ## Part 4: Critical Files for Refactoring
 
 ### Tier 1 - Core Abstractions (Modify First)
