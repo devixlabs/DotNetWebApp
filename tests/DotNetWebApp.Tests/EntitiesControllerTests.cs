@@ -33,7 +33,8 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var result = await controller.GetEntities("product");
 
@@ -59,7 +60,8 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var result = await controller.GetEntities("category");
 
@@ -80,7 +82,8 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var result = await controller.GetEntities("invalid");
 
@@ -108,7 +111,8 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var result = await controller.GetEntityCount("product");
 
@@ -127,7 +131,8 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var result = await controller.GetEntityCount("invalid");
 
@@ -148,7 +153,8 @@ public class EntitiesControllerTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         var jsonBody = "{\"Name\":\"New Category\"}";
@@ -179,7 +185,8 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("{}"));
@@ -204,7 +211,8 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(""));
@@ -230,7 +238,8 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var controller = new EntitiesController(context, metadataService);
+        var operationService = new EntityOperationService(context, metadataService);
+        var controller = new EntitiesController(operationService, metadataService);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("{invalid json}"));

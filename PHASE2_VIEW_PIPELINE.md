@@ -6,6 +6,18 @@
 
 ---
 
+## Prerequisites
+
+✅ **Phase 1 COMPLETED (2026-01-27):** `IEntityOperationService` is now available for all writes.
+
+Before implementing Phase 2, ensure:
+- Phase 1 refactoring is complete (see ARCHITECTURE_SUMMARY.md)
+- `IEntityOperationService` is being used by `EntitiesController`
+- Unit tests for Phase 1 are passing
+- All tests pass: `make test`
+
+---
+
 ## Implementation Progress
 
 ### ✅ Completed (Phase 2A - Code Generation)
@@ -1024,8 +1036,8 @@ namespace DotNetWebApp.Tests
 
 ### Documentation
 - [ ] README.md updated with view pipeline usage
-- [ ] PHASE1_REFACTOR.md updated with Phase 2 details
-- [ ] EF_Dapper_Hybrid__Architecture.md updated
+- [ ] ARCHITECTURE_SUMMARY.md updated with Phase 2 completion
+- [ ] CLAUDE.md updated with Phase 2 services
 
 ---
 
