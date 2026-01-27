@@ -90,7 +90,7 @@ DotNetWebApp/
 │   │   └── InventoryDashboardView.cs
 │   └── AppDictionary/                  # YAML models (existing)
 ├── Services/
-│   ├── IEntityOperationService.cs      # EF CRUD (REFACTOR.md Phase 1)
+│   ├── IEntityOperationService.cs      # EF CRUD (PHASE1_REFACTOR.md Phase 1)
 │   ├── EntityOperationService.cs
 │   └── Views/                          # NEW: Dapper view services
 │       ├── IViewRegistry.cs
@@ -126,7 +126,7 @@ DotNetWebApp/
 **When to use:** Single-table operations, simple queries, writes
 
 ```csharp
-// Service layer (REFACTOR.md Phase 1)
+// Service layer (PHASE1_REFACTOR.md Phase 1)
 public interface IEntityOperationService
 {
     Task<IList> GetAllAsync(Type entityType, CancellationToken ct = default);
@@ -241,7 +241,7 @@ public interface IViewService
 public interface IAppDictionaryService { /* loads app.yaml */ }
 public interface IEntityMetadataService { /* maps entities to CLR types */ }
 
-// NEW: Phase 1 (REFACTOR.md)
+// NEW: Phase 1 (PHASE1_REFACTOR.md)
 public interface IEntityOperationService { /* EF CRUD operations */ }
 
 // NEW: Phase 2 (View Pipeline)
@@ -569,7 +569,7 @@ public async Task ViewService_ExecutesViewWithTenantIsolation()
 
 ## Migration Path from Current Architecture
 
-### Phase 1: Foundation (REFACTOR.md Phases 1, 3, 5)
+### Phase 1: Foundation (PHASE1_REFACTOR.md Phases 1, 3, 5)
 - Extract `IEntityOperationService` (EF CRUD)
 - Migrate to Finbuckle.MultiTenant
 - Configuration consolidation
@@ -621,7 +621,7 @@ public async Task ViewService_ExecutesViewWithTenantIsolation()
 
 ## References
 
-- **REFACTOR.md** - Complete refactoring plan (all phases)
+- **PHASE1_REFACTOR.md** - Complete refactoring plan (all phases)
 - **PHASE2_VIEW_PIPELINE.md** - Detailed implementation guide for SQL-first views
 - **CLAUDE.md** - Project context for future Claude sessions
 - **SESSION_SUMMARY.md** - Development log

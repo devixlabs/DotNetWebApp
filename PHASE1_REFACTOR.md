@@ -485,7 +485,7 @@ After refactoring:
 - ✅ All existing tests passing
 - ✅ Code coverage increased (new service/view tests)
 - ✅ **Blazor components use server-side C# event handlers (no JavaScript/AJAX)** [NEW]
-- ✅ Architecture documented in updated REFACTOR.md + PHASE2_VIEW_PIPELINE.md
+- ✅ Architecture documented in updated PHASE1_REFACTOR.md + PHASE2_VIEW_PIPELINE.md
 
 ## Part 9: Architectural Strengths to Preserve
 
@@ -660,7 +660,7 @@ This refactoring plan has been verified against the actual source code. Prior ve
 
 #### TODO #6: Implement Validation Pipeline (High Priority - Phase 3)
 **Estimated Time:** 1 day
-**Reference:** REFACTOR.md Part 5 - Phase 3
+**Reference:** PHASE1_REFACTOR.md Part 5 - Phase 3
 
 **Implementation Steps:**
 1. Add validation middleware to EntitiesController

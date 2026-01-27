@@ -1,6 +1,6 @@
 # Phase 2: SQL-First View Pipeline Implementation Plan
 
-**Status:** Ready to implement (after REFACTOR.md Phases 1, 2, 3, 5 complete)
+**Status:** Ready to implement (after PHASE1_REFACTOR.md Phases 1, 2, 3, 5 complete)
 **Duration:** 1-2 weeks
 **Priority:** HIGH (enables legacy SQL integration for 200+ entities)
 
@@ -910,7 +910,7 @@ namespace DotNetWebApp.Tests
 
 ### Documentation
 - [ ] README.md updated with view pipeline usage
-- [ ] REFACTOR.md updated with Phase 2 details
+- [ ] PHASE1_REFACTOR.md updated with Phase 2 details
 - [ ] EF_Dapper_Hybrid__Architecture.md updated
 
 ---

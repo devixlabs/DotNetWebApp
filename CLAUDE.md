@@ -17,7 +17,7 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 **Before starting any refactoring or architectural work, read these documents in order:**
 
 1. **ARCHITECTURE_SUMMARY.md** - Quick overview of architecture decisions and current state
-2. **REFACTOR.md** - Complete 5-phase refactoring plan (Phases 1-5)
+2. **PHASE1_REFACTOR.md** - Complete 5-phase refactoring plan (Phases 1-5)
 3. **PHASE2_VIEW_PIPELINE.md** - Detailed implementation guide for SQL-first view pipeline
 4. **HYBRID_ARCHITECTURE.md** - EF Core + Dapper architecture reference
 
@@ -129,7 +129,7 @@ DotNetWebApp/
 ├── seed.sql                      # Sample seed data (Categories, Products)
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
-├── REFACTOR.md                   # 🆕 Complete 5-phase refactoring plan
+├── PHASE1_REFACTOR.md                   # 🆕 Complete 5-phase refactoring plan
 ├── PHASE2_VIEW_PIPELINE.md       # 🆕 Detailed Phase 2 implementation guide
 ├── HYBRID_ARCHITECTURE.md        # 🆕 EF+Dapper architecture reference
 ├── ARCHITECTURE_SUMMARY.md       # 🆕 Quick architecture overview

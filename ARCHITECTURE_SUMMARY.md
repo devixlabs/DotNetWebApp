@@ -9,7 +9,7 @@
 
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
-| **REFACTOR.md** | Complete refactoring plan with all 5 phases | Before starting any refactoring work |
+| **PHASE1_REFACTOR.md** | Complete refactoring plan with all 5 phases | Before starting any refactoring work |
 | **PHASE2_VIEW_PIPELINE.md** | Detailed step-by-step implementation guide for View Pipeline | When implementing Phase 2 |
 | **HYBRID_ARCHITECTURE.md** | Simplified EF+Dapper architecture reference | When understanding data access patterns |
 | **CLAUDE.md** | Project context for Claude Code sessions | Every new Claude session |
@@ -247,7 +247,7 @@ DotNetWebApp/
 │   ├── EntityGenerator.cs              # Existing
 │   └── ViewModelGenerator.cs           # (NEW)
 ├── Makefile
-├── REFACTOR.md                         # Complete refactoring plan
+├── PHASE1_REFACTOR.md                         # Complete refactoring plan
 ├── PHASE2_VIEW_PIPELINE.md             # Phase 2 detailed guide
 ├── HYBRID_ARCHITECTURE.md              # Architecture reference
 ├── ARCHITECTURE_SUMMARY.md             # This file
@@ -405,13 +405,13 @@ After completing all phases:
 
 ## Next Steps
 
-1. **Begin Phase 1:** Extract `IEntityOperationService` (see REFACTOR.md)
+1. **Begin Phase 1:** Extract `IEntityOperationService` (see PHASE1_REFACTOR.md)
 2. **After Phase 1:** Implement Phase 2 View Pipeline (see PHASE2_VIEW_PIPELINE.md)
-3. **After Phase 2:** Continue with Phases 3-5 (see REFACTOR.md)
+3. **After Phase 2:** Continue with Phases 3-5 (see PHASE1_REFACTOR.md)
 
 ---
 
 **For detailed implementation guidance, refer to:**
-- **REFACTOR.md** - All phases with code examples
+- **PHASE1_REFACTOR.md** - All phases with code examples
 - **PHASE2_VIEW_PIPELINE.md** - Step-by-step Phase 2 guide
 - **HYBRID_ARCHITECTURE.md** - Architecture patterns and reference
