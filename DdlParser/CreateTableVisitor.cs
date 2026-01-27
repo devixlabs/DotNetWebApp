@@ -8,9 +8,10 @@ public class CreateTableVisitor : TSqlFragmentVisitor
 
     public override void Visit(CreateTableStatement node)
     {
-        // Get table name - SchemaObjectName has .Name property
+        // Get table name and schema from SchemaObjectName
         var tableName = GetIdentifierValue(node.SchemaObjectName) ?? "UnknownTable";
-        var table = new TableMetadata { Name = tableName };
+        var schema = GetSchemaName(node.SchemaObjectName) ?? string.Empty;
+        var table = new TableMetadata { Name = tableName, Schema = schema };
 
         // Extract columns
         if (node.Definition?.ColumnDefinitions != null)
@@ -342,5 +343,28 @@ public class CreateTableVisitor : TSqlFragmentVisitor
             return null;
 
         return ExtractColumnName(col.Column);
+    }
+
+    private string? GetSchemaName(SchemaObjectName? schemaObjectName)
+    {
+        if (schemaObjectName == null)
+            return null;
+
+        try
+        {
+            // SchemaObjectName with format "schema.table" has multiple identifiers
+            // Index 0 = schema, Index 1 = table
+            if (schemaObjectName.Identifiers != null && schemaObjectName.Identifiers.Count > 1)
+            {
+                return schemaObjectName.Identifiers[0].Value;
+            }
+        }
+        catch
+        {
+            // Continue - no schema specified
+        }
+
+        // No schema specified, return null
+        return null;
     }
 }

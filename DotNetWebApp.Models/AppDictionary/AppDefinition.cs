@@ -35,6 +35,7 @@ namespace DotNetWebApp.Models.AppDictionary
     public class Entity
     {
         public string Name { get; set; }
+        public string Schema { get; set; } = string.Empty;
         public List<Property> Properties { get; set; }
         public List<Relationship> Relationships { get; set; }
     }

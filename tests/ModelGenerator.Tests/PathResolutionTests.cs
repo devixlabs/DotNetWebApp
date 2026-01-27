@@ -46,8 +46,8 @@ namespace ModelGenerator.Tests
             Assert.False(Directory.Exists(incorrectOutputDir),
                 $"Incorrect nested directory should not exist: {incorrectOutputDir}");
 
-            // Verify at least one generated file exists in the correct location
-            var generatedFiles = Directory.GetFiles(expectedOutputDir, "*.cs");
+            // Verify at least one generated file exists in the correct location (including subdirectories for schema-specific entities)
+            var generatedFiles = Directory.GetFiles(expectedOutputDir, "*.cs", SearchOption.AllDirectories);
             Assert.True(generatedFiles.Length > 0,
                 $"No generated files found in {expectedOutputDir} - try running 'make run-ddl-pipeline'");
 

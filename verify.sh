@@ -32,6 +32,7 @@ cleanup() {
         kill "$SERVER_PID" 2>/dev/null || true
         wait "$SERVER_PID" 2>/dev/null || true
     fi
+    make stop-dev
 }
 
 trap cleanup EXIT
@@ -49,9 +50,9 @@ print_status "All tests passed"
 echo ""
 
 # Step 3: Drop database
-print_info "Step 3: Dropping database (make db-drop)..."
-make db-drop || print_info "Docker database drop attempted (may not exist - running 'make ms-drop' for MSSQL Server)"
-make ms-drop || print_info "MSSQL Server database drop attempted"
+print_info "Step 3: Dropping database(s)..."
+make db-drop || print_info "Docker database drop attempted (may not exist)"
+make ms-drop || print_info "MSSQL Server database drop attempted (may not exist)"
 print_status "Database(s) dropped? ¯\_(ツ)_/¯"
 echo ""
 
@@ -234,6 +235,49 @@ else
 fi
 echo ""
 
+# Test 12: Multi-schema entity isolation
+# acme:Company has 'name' field, initech:Company has 'companyName' field
+# This test catches bugs where schema-qualified lookups return wrong schema's data
+print_info "Test 12: Multi-schema entity isolation (acme:Company vs initech:Company)"
+
+# 12a: Verify acme:Company returns data with 'name' field (not 'companyName')
+RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/acme:Company")
+HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/acme:Company")
+if [ "$HTTP_CODE" != "200" ]; then
+    print_error "Failed to fetch acme:Company (HTTP $HTTP_CODE)"
+    exit 1
+fi
+# Check if response has 'name' field (acme schema) and NOT 'companyName' (initech schema)
+HAS_NAME=$(echo "$RESPONSE" | jq '.[0] | has("name")')
+HAS_COMPANY_NAME=$(echo "$RESPONSE" | jq '.[0] | has("companyName")')
+if [ "$HAS_NAME" = "true" ] && [ "$HAS_COMPANY_NAME" = "false" ]; then
+    print_status "acme:Company correctly returns 'name' field (not 'companyName')"
+else
+    print_error "acme:Company returned wrong schema! has_name=$HAS_NAME, has_companyName=$HAS_COMPANY_NAME"
+    echo "$RESPONSE" | jq '.[0]'
+    exit 1
+fi
+
+# 12b: Verify initech:Company returns data with 'companyName' field (not 'name')
+RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/initech:Company")
+HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/initech:Company")
+if [ "$HTTP_CODE" != "200" ]; then
+    print_error "Failed to fetch initech:Company (HTTP $HTTP_CODE)"
+    exit 1
+fi
+# Check if response has 'companyName' field (initech schema) and NOT 'name' (acme schema)
+HAS_COMPANY_NAME=$(echo "$RESPONSE" | jq '.[0] | has("companyName")')
+HAS_NAME=$(echo "$RESPONSE" | jq '.[0] | has("name")')
+if [ "$HAS_COMPANY_NAME" = "true" ] && [ "$HAS_NAME" = "false" ]; then
+    print_status "initech:Company correctly returns 'companyName' field (not 'name')"
+else
+    print_error "initech:Company returned wrong schema! has_companyName=$HAS_COMPANY_NAME, has_name=$HAS_NAME"
+    echo "$RESPONSE" | jq '.[0]'
+    exit 1
+fi
+print_status "Multi-schema entity isolation verified"
+echo ""
+
 # Final count verification
 print_info "Final verification: Product count"
 FINAL_COUNT=$(curl -k -s https://localhost:7012/api/entities/product/count)
@@ -244,6 +288,6 @@ echo "================================"
 echo "✅ ALL CRUD OPERATIONS VERIFIED"
 echo "================================"
 echo ""
-print_status "All 11 tests passed successfully!"
+print_status "All 12 tests passed successfully!"
 print_info "Server logs available at: /tmp/dotnet-dev.log"
 echo ""

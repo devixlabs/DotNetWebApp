@@ -3,6 +3,7 @@ using System.Linq;
 using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
+using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,7 @@ builder.Services.AddSingleton<IAppDictionaryService>(sp =>
     return new AppDictionaryService(yamlPath);
 });
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
+builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -76,31 +78,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
 app.MapControllers();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

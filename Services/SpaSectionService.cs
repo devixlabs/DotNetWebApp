@@ -32,8 +32,19 @@ public sealed class SpaSectionService : ISpaSectionService
                     continue;
                 }
 
-                var label = entity.Name;
-                sections.Add(new(SpaSection.Entity, label, label, entity.Name, entity.Name));
+                // RouteSegment uses slash for URL paths (e.g., "acme/Company")
+                // EntityName uses colon for API calls (e.g., "acme:Company")
+                var routeSegment = string.IsNullOrWhiteSpace(entity.Schema)
+                    ? entity.Name
+                    : $"{entity.Schema}/{entity.Name}";
+                var entityName = string.IsNullOrWhiteSpace(entity.Schema)
+                    ? entity.Name
+                    : $"{entity.Schema}:{entity.Name}";
+
+                var label = string.IsNullOrWhiteSpace(entity.Schema)
+                    ? entity.Name
+                    : $"{entity.Name} ({entity.Schema})";
+                sections.Add(new(SpaSection.Entity, label, label, routeSegment, entityName));
             }
 
             sections.Add(new(SpaSection.Settings, labels.SettingsNav, labels.SettingsTitle, "settings"));

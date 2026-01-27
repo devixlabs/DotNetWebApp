@@ -3,7 +3,11 @@
         @foreach (var entityMeta in EntityMetadataService.Entities)
         {
             var displayName = entityMeta.Definition.Name;
-            var count = entityCountsByName.GetValueOrDefault(displayName, 0);
+            // Use schema-qualified key for lookup if schema exists
+            var lookupKey = string.IsNullOrWhiteSpace(entityMeta.Definition.Schema)
+                ? displayName
+                : $"{entityMeta.Definition.Schema}:{displayName}";
+            var count = entityCountsByName.GetValueOrDefault(lookupKey, 0);
 
             <RadzenColumn Size="12" Medium="6" Large="3">
                 <RadzenCard>

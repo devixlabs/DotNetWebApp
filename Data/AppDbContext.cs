@@ -1,6 +1,7 @@
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
 
@@ -24,16 +25,30 @@ namespace DotNetWebApp.Data
                 modelBuilder.HasDefaultSchema(Schema);
             }
 
-            // Dynamically register all entities in the Generated namespace
+            // Dynamically register all entities in the Generated namespace (including schema-specific subdirectories)
             // Scan the Models assembly instead of the executing assembly to support separated project structure
             var modelsAssembly = typeof(EntityMetadata).Assembly;
             var entityTypes = modelsAssembly.GetTypes()
-                .Where(t => t.IsClass && t.Namespace == "DotNetWebApp.Models.Generated");
+                .Where(t => t.IsClass && t.Namespace != null && t.Namespace.StartsWith("DotNetWebApp.Models.Generated"));
 
             foreach (var type in entityTypes)
             {
-                modelBuilder.Entity(type)
-                    .ToTable(ToPlural(type.Name));
+                var entity = modelBuilder.Entity(type);
+
+                // Extract schema from [Table] attribute if present
+                var tableAttr = type.GetCustomAttribute<TableAttribute>();
+                var tableName = ToPlural(type.Name);
+                var tableSchema = tableAttr?.Schema;
+
+                // Apply table name and schema (schema takes precedence from attribute)
+                if (!string.IsNullOrWhiteSpace(tableSchema))
+                {
+                    entity.ToTable(tableName, tableSchema);
+                }
+                else
+                {
+                    entity.ToTable(tableName);
+                }
             }
         }
 

@@ -6,8 +6,8 @@ Comprehensive guides for developers at all skill levels. Status of each guide:
 - ✅ **[Database & DDL](#database--ddl)** - COMPLETE
 - ✅ **[SQL Operations](#sql-operations)** - COMPLETE
 - ✅ **[App Configuration & YAML](#app-configuration--yaml)** - COMPLETE
-- 📋 **.NET/C# Data Layer** *(pending)* - Entity Framework Core, models, and data access
-- 📋 **.NET/C# API & Services** *(pending)* - Controllers, services, and API endpoints
+- ✅ **[.NET/C# Data Layer](#netc-data-layer)** - COMPLETE - Entity Framework Core, models, and data access
+- ✅ **[.NET/C# API & Services](#netc-api--services)** - COMPLETE - Controllers, services, and API endpoints
 
 ---
 
@@ -453,6 +453,424 @@ For other changes (adding entities, columns, types), edit `schema.sql` instead.
 
 ---
 
+# .NET/C# Data Layer
+
+This guide covers Entity Framework Core, entity models, and the database access layer.
+
+## Overview
+
+The data layer uses **Entity Framework Core** with a dynamic model discovery system:
+
+1. **YAML defines data structure** (`app.yaml` from SQL DDL)
+2. **ModelGenerator creates C# entities** from `app.yaml`
+3. **AppDbContext discovers entities via reflection**
+4. **EF Core handles migrations and queries**
+
+## File Locations
+
+| File | Purpose |
+|------|---------|
+| `DotNetWebApp.Models/Generated/` | Auto-generated entity classes (Product.cs, Category.cs, etc.) |
+| `Data/AppDbContext.cs` | EF Core DbContext with dynamic entity discovery |
+| `Migrations/` | EF Core migrations (generated, not committed in detail) |
+
+## Generated Entity Models
+
+Entity classes are auto-generated from `app.yaml` by ModelGenerator:
+
+```csharp
+// Example: Generated Product.cs
+public class Product
+{
+    public int Id { get; set; }  // IDENTITY PRIMARY KEY
+    public string Name { get; set; }  // NOT NULL
+    public string? Description { get; set; }  // NULL (nullable string)
+    public decimal? Price { get; set; }  // NULL (nullable decimal)
+    public int? CategoryId { get; set; }  // Foreign Key
+}
+```
+
+**Key Characteristics:**
+- `Id` is always auto-increment (IDENTITY)
+- Required fields are non-nullable
+- Optional fields use nullable types (`string?`, `decimal?`, `int?`)
+- Foreign keys as simple scalar properties
+
+## AppDbContext
+
+**Location:** `Data/AppDbContext.cs`
+
+The context uses **reflection-based entity discovery**:
+
+```csharp
+// Find all types in DotNetWebApp.Models.Generated
+var generatedTypes = assembly
+    .GetTypes()
+    .Where(t => t.Namespace == "DotNetWebApp.Models.Generated");
+
+foreach (var type in generatedTypes)
+{
+    modelBuilder.Entity(type).ToTable(ToPlural(type.Name));
+}
+```
+
+**Dynamic Pluralization:**
+- `Product` → `Products`
+- `Category` → `Categories`
+- `Company` → `Companies`
+
+**Multi-tenant Support:**
+- `X-Customer-Schema` HTTP header switches schemas
+- Default schema: `dbo`
+- Context uses `ITenantSchemaAccessor` to apply schema to all queries
+
+## Regenerating After Schema Changes
+
+```bash
+# Update schema.sql, then:
+make run-ddl-pipeline
+
+# This:
+# 1. Runs DdlParser on schema.sql
+# 2. Generates app.yaml
+# 3. Runs ModelGenerator
+# 4. Creates/updates entity classes
+# 5. Runs dotnet build
+
+# Apply to database:
+make migrate
+```
+
+## Working with Entities in Code
+
+**Query with Entity Framework:**
+
+```csharp
+@inject AppDbContext DbContext
+
+@code {
+    private List<Product> products = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get all
+        products = await DbContext.Set<Product>().ToListAsync();
+
+        // Filter
+        var expensive = await DbContext.Set<Product>()
+            .Where(p => p.Price > 100)
+            .ToListAsync();
+
+        // Include relationships
+        var withCategories = await DbContext.Set<Product>()
+            .Include(p => p.Category)
+            .ToListAsync();
+    }
+}
+```
+
+**Async Operations Are Required:**
+- Always use `ToListAsync()`, `FirstOrDefaultAsync()`, `CountAsync()`
+- Never use `.Result` or `.Wait()`
+- Always `await`
+
+## Troubleshooting
+
+**Q: New entities don't appear in DbContext**
+- Run `make run-ddl-pipeline` to regenerate
+- Run `make build` to recompile
+- Restart the application
+
+**Q: "Unknown entity type" error**
+- Ensure the entity exists in `DotNetWebApp.Models/Generated/`
+- Check the type name matches your entity
+- Run `make build` to ensure type discovery works
+
+**Q: Foreign key navigation properties don't work**
+- EF requires explicit `.Include()` to load related data
+- E.g., `await DbContext.Products.Include(p => p.Category).ToListAsync()`
+- Or use the scalar FK property directly
+
+---
+
+# .NET/C# API & Services
+
+This guide covers the REST API, EntitiesController, and service layer.
+
+## REST API Overview
+
+The application provides a **dynamic CRUD API** for all entities via `EntitiesController`.
+
+**Base URL:** `/api/entities/{entityName}`
+
+Endpoints use **singular entity names**:
+- `/api/entities/product` (not `/api/entities/products`)
+- `/api/entities/category`
+- `/api/entities/company`
+
+Entity names are **case-insensitive** via `IEntityMetadataService` lookup.
+
+## Available Endpoints
+
+All endpoints support all entities dynamically:
+
+### Get All Entities
+
+```
+GET /api/entities/{entityName}
+```
+
+**Example:**
+```bash
+curl https://localhost:5001/api/entities/product
+```
+
+**Response:** 200 OK with array of JSON objects
+```json
+[
+  { "id": 1, "name": "Laptop", "price": 999.99, "categoryId": 1 },
+  { "id": 2, "name": "Mouse", "price": 29.99, "categoryId": 1 }
+]
+```
+
+### Get Entity Count
+
+```
+GET /api/entities/{entityName}/count
+```
+
+**Example:**
+```bash
+curl https://localhost:5001/api/entities/product/count
+```
+
+**Response:** 200 OK with count
+```json
+{ "count": 42 }
+```
+
+### Get Single Entity by ID
+
+```
+GET /api/entities/{entityName}/{id}
+```
+
+**Example:**
+```bash
+curl https://localhost:5001/api/entities/product/1
+```
+
+**Response:** 200 OK or 404 Not Found
+
+### Create Entity
+
+```
+POST /api/entities/{entityName}
+Content-Type: application/json
+
+{...entity fields...}
+```
+
+**Example:**
+```bash
+curl -X POST https://localhost:5001/api/entities/product \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Keyboard","price":79.99,"categoryId":1}'
+```
+
+**Response:** 201 Created with created entity in body
+
+### Update Entity
+
+```
+PUT /api/entities/{entityName}/{id}
+Content-Type: application/json
+
+{...entity fields...}
+```
+
+**Example:**
+```bash
+curl -X PUT https://localhost:5001/api/entities/product/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Gaming Laptop","price":1299.99,"categoryId":1}'
+```
+
+**Response:** 200 OK or 404 Not Found
+
+### Delete Entity
+
+```
+DELETE /api/entities/{entityName}/{id}
+```
+
+**Example:**
+```bash
+curl -X DELETE https://localhost:5001/api/entities/product/1
+```
+
+**Response:** 204 No Content or 404 Not Found
+
+## Key Services
+
+**Location:** `Services/`
+
+### IEntityApiService
+
+Used by Blazor components to call the API:
+
+```csharp
+@inject IEntityApiService EntityApi
+
+@code {
+    private List<Product> products = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = (await EntityApi.GetEntitiesAsync("product"))
+            .Cast<Product>()
+            .ToList();
+    }
+
+    private async Task CreateItem(Product p)
+    {
+        var created = await EntityApi.CreateEntityAsync("product", p);
+    }
+
+    private async Task DeleteItem(int id)
+    {
+        await EntityApi.DeleteEntityAsync("product", id.ToString());
+    }
+}
+```
+
+### IEntityMetadataService
+
+Maps entity names to CLR types and provides metadata:
+
+```csharp
+@inject IEntityMetadataService EntityMetadata
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Get all entities
+        var entities = EntityMetadata.Entities;
+
+        // Find by name
+        var product = EntityMetadata.Find("product");
+        if (product != null)
+        {
+            var type = product.Type;  // System.Type
+            var properties = product.Properties;  // IReadOnlyList<PropertyMetadata>
+        }
+    }
+}
+```
+
+### IAppDictionaryService
+
+Loads and caches `app.yaml` entity definitions:
+
+```csharp
+@inject IAppDictionaryService AppDict
+
+@code {
+    protected override void OnInitialized()
+    {
+        var def = AppDict.AppDefinition;
+        foreach (var entity in def.DataModel.Entities)
+        {
+            Console.WriteLine($"Entity: {entity.Name}");
+            foreach (var prop in entity.Properties)
+            {
+                Console.WriteLine($"  - {prop.Name}: {prop.Type}");
+            }
+        }
+    }
+}
+```
+
+### ISpaSectionService
+
+Manages SPA routing and section navigation:
+
+```csharp
+@inject ISpaSectionService SpaSections
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Get all available sections (Dashboard, Settings, all entities)
+        var sections = SpaSections.Sections;
+
+        // Navigate to section
+        var productSection = SpaSections.FromRouteSegment("product");
+        if (productSection != null)
+        {
+            SpaSections.NavigateTo(productSection);
+        }
+    }
+}
+```
+
+### IDashboardService
+
+Fetches summary metrics for dashboard:
+
+```csharp
+@inject IDashboardService Dashboard
+
+@code {
+    private DashboardSummary? summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        summary = await Dashboard.GetSummaryAsync();
+        // summary.EntityCounts - IReadOnlyDictionary<string, int>
+    }
+}
+```
+
+## EntitiesController Implementation
+
+**Location:** `Controllers/EntitiesController.cs`
+
+The controller uses reflection to execute EF Core operations dynamically:
+
+**Key Methods:**
+- `GetAll(string entityName)` - DbSet query via reflection
+- `GetCount(string entityName)` - COUNT query
+- `GetById(string entityName, string id)` - FindAsync with type conversion
+- `Create(string entityName, JsonElement data)` - Activator.CreateInstance + SaveChanges
+- `Update(string entityName, string id, JsonElement data)` - Reflection property assignment
+- `Delete(string entityName, string id)` - FindAsync + Remove + SaveChanges
+
+**Important Notes:**
+- Primary key type detection handles: `int`, `long`, `Guid`, `string`
+- JSON deserialization to entity properties uses reflection
+- All operations are async (uses Task/Task<T>)
+- Errors return 400 Bad Request or 404 Not Found
+
+## Troubleshooting
+
+**Q: API returns 404 for my entity**
+- Check entity name casing (case-insensitive, but must be valid)
+- Verify entity exists in `app.yaml` and was generated
+- Run `make run-ddl-pipeline` if you added new entities
+
+**Q: "Unknown entity" error on Create/Update**
+- Entity metadata not synced - run `make run-ddl-pipeline`
+- Check JSON payload matches entity fields
+- Verify non-nullable fields are provided
+
+**Q: API changes take time to appear**
+- Entity metadata is cached in `IAppDictionaryService`
+- Restart application to refresh cache
+- Or: Force regeneration with `make run-ddl-pipeline`
+
+---
+
 # Front-End Skills Guide (Blazor/Radzen)
 
 This guide helps with front-end changes to Razor/Blazor components and JavaScript interop. Read this BEFORE making front-end changes.
@@ -463,9 +881,16 @@ This guide helps with front-end changes to Razor/Blazor components and JavaScrip
 
 | What | Where |
 |------|-------|
-| SPA main container | `Components/Pages/SpaApp.razor` |
-| Section components | `Components/Sections/*.razor` |
-| Shared layouts | `Shared/MainLayout.razor`, `Shared/NavMenu.razor` |
+| SPA main container | `Components/Pages/SpaApp.razor` (`/app` route) |
+| Entity CRUD page | `Components/Pages/GenericEntityPage.razor` (`/{EntityName}` route) |
+| Home page | `Components/Pages/Home.razor` (`/` route) |
+| Dashboard section | `Components/Sections/DashboardSection.razor` |
+| Entity section | `Components/Sections/EntitySection.razor` |
+| Settings section | `Components/Sections/SettingsSection.razor` |
+| Section header | `Components/Sections/SectionHeader.razor` (reusable) |
+| Dynamic data grid | `Shared/DynamicDataGrid.razor` (renders columns from YAML) |
+| Main layout | `Shared/MainLayout.razor` (RadzenLayout wrapper with branding) |
+| Navigation menu | `Shared/NavMenu.razor` (RadzenPanelMenu) |
 | Global imports | `_Imports.razor` |
 | Custom CSS | `wwwroot/css/app.css` |
 | HTML host | `Pages/_Layout.cshtml` (scripts/CSS), `Pages/_Host.cshtml` |
@@ -526,6 +951,25 @@ Radzen is already configured. The `<RadzenComponents />` tag in `Shared/MainLayo
 - `Property` binds to model property names (case-sensitive)
 - Use `<Template Context="item">` for custom column content
 - `FormatString` uses C# format strings (`{0:C}` = currency, `{0:N2}` = number)
+
+### DynamicDataGrid (Project Component)
+
+The project includes a dynamic data grid that renders columns from YAML definitions:
+
+```razor
+<DynamicDataGrid EntityName="Product" Entities="@products" />
+```
+
+**How it works:**
+- Reads entity columns from `app.yaml` via `IEntityMetadataService`
+- Dynamically instantiates generic `RadzenDataGrid<object>` for any entity
+- Renders columns based on property definitions
+- Handles filtering, sorting, and paging automatically
+
+**When to use:**
+- Generic CRUD pages for any entity
+- Rendering entities fetched from the API
+- Building custom admin interfaces
 
 ### RadzenProgressBar (Loading Indicator)
 
@@ -671,6 +1115,85 @@ If you need custom JS functions:
    ```csharp
    var result = await JSRuntime.InvokeAsync<string>("myFunction", param);
    ```
+
+---
+
+## SPA Structure
+
+The application includes an optional **Single Page Application** (SPA) at `/app` with dynamic routing and sections.
+
+### SPA Pages
+
+**SpaApp.razor** (`/app` and `/app/{section}`):
+- Main SPA container
+- Routes to Dashboard, Settings, Entity sections, or dynamic entities
+- Handles loading state via `AsyncUiState`
+
+**GenericEntityPage.razor** (`/{entityName}`):
+- Standalone CRUD page for any entity
+- Renders `DynamicDataGrid` and entity count
+- Alternative to SPA sections (non-SPA alternative)
+
+### SPA Sections
+
+Sections are dynamically loaded components managed by `ISpaSectionService`:
+
+**Built-in Sections:**
+1. **Dashboard** - Metrics and entity counts (`DashboardSection.razor`)
+2. **Settings** - Application configuration (`SettingsSection.razor`)
+3. **Entity** - CRUD for each entity (one per entity in `app.yaml`, routed via `EntitySection.razor`)
+
+**How Routing Works:**
+```
+/app                          → Dashboard (default)
+/app/dashboard                → Dashboard
+/app/settings                 → Settings
+/app/product                  → Entity section for Product
+/app/category                 → Entity section for Category
+```
+
+Entity names are matched case-insensitively and support dynamic routes even if not pre-configured.
+
+### Section Components
+
+**DashboardSection.razor:**
+- Displays entity count cards (reads from `IEntityMetadataService`)
+- Shows hardcoded metrics: Revenue, Active Users, Growth, Recent Activity
+- Injects: `IDashboardService`, `IEntityMetadataService`
+
+**EntitySection.razor:**
+- CRUD interface for a single entity
+- Parameters: `EntityName`
+- Renders: `SectionHeader` + `DynamicDataGrid`
+- Injects: `IEntityApiService`, `IEntityMetadataService`
+
+**SettingsSection.razor:**
+- Application settings form (stub implementation)
+- Theme selector, notification toggles, export/cache buttons
+- Injects: application configuration services
+
+**SectionHeader.razor:**
+- Reusable header component for any section
+- Parameters: `Title`, `IsLoading`
+- Shows loading spinner if busy
+
+### Enabling the SPA
+
+The SPA is optional and can be toggled in `appsettings.json`:
+
+```json
+{
+  "AppCustomization": {
+    "EnableSpaExample": true,
+    "SpaSectionLabels": {
+      "DashboardNav": "Dashboard",
+      "SettingsNav": "Settings"
+    }
+  }
+}
+```
+
+When disabled, `/app` is unavailable but `GenericEntityPage.razor` still works.
 
 ---
 
@@ -895,29 +1418,54 @@ private async Task LoadData()
 
 ## Quick Reference: Current Project Structure
 
-<!-- FIXME: Outdated structure: include GenericEntityPage.razor, DynamicDataGrid.razor, Models/Generated, and ModelGenerator; remove Models/Product.cs. -->
 ```
 Components/
   Pages/
-    SpaApp.razor       <- Main SPA container (route: /app)
-    Home.razor         <- Landing page (route: /)
+    SpaApp.razor               <- Main SPA container (route: /app, dynamic sections)
+    GenericEntityPage.razor    <- Standalone CRUD page (route: /{EntityName})
+    Home.razor                 <- Landing page (route: /)
   Sections/
-    DashboardSection.razor   <- Metrics cards
-    EntitySection.razor      <- Dynamic entity section
-    SettingsSection.razor    <- Config forms
+    DashboardSection.razor     <- Dashboard with entity metrics
+    EntitySection.razor        <- Entity CRUD section for SPA
+    SettingsSection.razor      <- Application settings
+    SectionHeader.razor        <- Reusable section header component
 Shared/
-  MainLayout.razor     <- Master layout (contains RadzenComponents)
-  NavMenu.razor        <- Navigation bar
+  MainLayout.razor             <- Master layout (RadzenLayout, branding, MainLayout.razor)
+  NavMenu.razor                <- Navigation menu (dynamic entity links)
+  DynamicDataGrid.razor        <- Generic data grid (renders any entity via reflection)
 Models/
-  Generated/           <- Auto-generated entity models from app.yaml
+  Generated/                   <- Auto-generated entity models from app.yaml
+Services/
+  AppDictionaryService.cs      <- Loads and caches app.yaml
+  EntityMetadataService.cs     <- Maps YAML entities to CLR types
+  EntityApiService.cs          <- HTTP client wrapper
+  SpaSectionService.cs         <- SPA routing and section management
+  DashboardService.cs          <- Dashboard metrics
 ```
 
-### Adding a New Section
+### Adding a New Entity
 
-<!-- FIXME: SPA sections are coordinated via SpaSection enum + SpaSectionService/ISpaSectionService; update steps to include those files. -->
-1. Add a new entity to `app.yaml` (SPA sections are data-driven)
-2. Regenerate models with `ModelGenerator` if needed
-3. Verify the entity appears in `/app/{EntityName}` and the "Data" nav group
+1. Add `CREATE TABLE` to `schema.sql`
+2. Run `make run-ddl-pipeline`
+3. Entity auto-appears in:
+   - API endpoints (`/api/entities/myentity`)
+   - SPA sections (`/app/myentity`)
+   - Navigation menu ("Data" section)
+   - GenericEntityPage (`/myentity`)
+
+### Adding a New SPA Section
+
+Sections are coordinated by `ISpaSectionService`. The system currently supports:
+- Dashboard (hardcoded, static)
+- Settings (hardcoded, static)
+- Entity (dynamic - one per entity from `app.yaml`)
+
+To add custom static sections, modify `SpaSectionService.cs`:
+1. Add entry to `SpaSection` enum
+2. Register in `GetInfo()` method
+3. Add route segment in `FromRouteSegment()` method
+4. Create corresponding `.razor` component in `Components/Sections/`
+5. Update navigation in `NavMenu.razor` if desired
 
 ### Adding a New Radzen Component
 

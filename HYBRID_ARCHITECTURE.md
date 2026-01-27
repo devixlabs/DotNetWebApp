@@ -90,7 +90,7 @@ DotNetWebApp/
 │   │   └── InventoryDashboardView.cs
 │   └── AppDictionary/                  # YAML models (existing)
 ├── Services/
-│   ├── IEntityOperationService.cs      # EF CRUD (REFACTOR.md Phase 1)
+│   ├── IEntityOperationService.cs      # EF CRUD (PHASE1_REFACTOR.md Phase 1)
 │   ├── EntityOperationService.cs
 │   └── Views/                          # NEW: Dapper view services
 │       ├── IViewRegistry.cs
@@ -126,7 +126,7 @@ DotNetWebApp/
 **When to use:** Single-table operations, simple queries, writes
 
 ```csharp
-// Service layer (REFACTOR.md Phase 1)
+// Service layer (PHASE1_REFACTOR.md Phase 1)
 public interface IEntityOperationService
 {
     Task<IList> GetAllAsync(Type entityType, CancellationToken ct = default);
@@ -241,7 +241,7 @@ public interface IViewService
 public interface IAppDictionaryService { /* loads app.yaml */ }
 public interface IEntityMetadataService { /* maps entities to CLR types */ }
 
-// NEW: Phase 1 (REFACTOR.md)
+// NEW: Phase 1 (PHASE1_REFACTOR.md)
 public interface IEntityOperationService { /* EF CRUD operations */ }
 
 // NEW: Phase 2 (View Pipeline)
@@ -467,6 +467,104 @@ public class DapperQueryService : IDapperQueryService
 
 ---
 
+## Code Generation Patterns
+
+### Partial Class Strategy
+
+Generated view models use partial classes for clean separation between machine-generated and user-maintained code:
+
+- **Generated file:** `{Name}.generated.cs` - Machine-generated, overwritten on regeneration
+- **Manual file:** `{Name}.cs` - Optional user extensions, never overwritten
+
+**Example:**
+```csharp
+// Generated: ProductSalesView.generated.cs (auto-generated, do not edit)
+public partial class ProductSalesView
+{
+    [Required]
+    [MaxLength(100)]
+    public string Name { get; set; } = null!;
+    public decimal TotalRevenue { get; set; }
+}
+
+// Manual: ProductSalesView.cs (optional, user-maintained)
+public partial class ProductSalesView
+{
+    public string FormattedRevenue => TotalRevenue.ToString("C");
+    public bool IsHighValue => TotalRevenue > 10000;
+}
+```
+
+### Type Mapping (30+ SQL Server Types)
+
+TypeMapper.cs provides comprehensive SQL Server to C# type mapping:
+
+| SQL Type | YAML Type | C# Type | Nullable C# | DbType |
+|----------|-----------|---------|-------------|--------|
+| int | int | int | int? | Int32 |
+| bigint | long | long | long? | Int64 |
+| smallint | short | short | short? | Int16 |
+| tinyint | byte | byte | byte? | Byte |
+| decimal/numeric | decimal | decimal | decimal? | Decimal |
+| money/smallmoney | decimal | decimal | decimal? | Decimal |
+| float | double | double | double? | Double |
+| real | float | float | float? | Single |
+| datetime/datetime2 | datetime | DateTime | DateTime? | DateTime2 |
+| date | datetime | DateTime | DateTime? | DateTime2 |
+| time | timespan | TimeSpan | TimeSpan? | Time |
+| datetimeoffset | datetimeoffset | DateTimeOffset | DateTimeOffset? | DateTimeOffset |
+| bit | bool | bool | bool? | Boolean |
+| uniqueidentifier | guid | Guid | Guid? | Guid |
+| varchar/nvarchar/char/nchar | string | string | string | String |
+| text/ntext/xml | string | string | string | String |
+| varbinary/binary/image | bytes | byte[] | byte[] | Binary |
+| geography/geometry | string | string | string | String |
+| hierarchyid | string | string | string | String |
+| sql_variant | string | string | string | String |
+| timestamp/rowversion | bytes | byte[] | byte[] | Binary |
+
+### Validation Strategy
+
+Generated models use a progressive validation approach:
+
+**1. Default (DataAnnotations):**
+Generated properties automatically include DataAnnotations based on views.yaml:
+- `[Required]` - For non-nullable properties
+- `[MaxLength(n)]` - For string columns with max_length
+- `[MinLength(n)]` - For string columns with min_length
+- `[Range(min, max)]` - For numeric constraints
+
+**2. Complex Validation (FluentValidation):**
+For advanced scenarios, add FluentValidation in the manual partial class:
+
+```csharp
+// ProductSalesView.cs (user-maintained)
+public partial class ProductSalesView
+{
+    // Custom validation via FluentValidation
+}
+
+public class ProductSalesViewValidator : AbstractValidator<ProductSalesView>
+{
+    public ProductSalesViewValidator()
+    {
+        RuleFor(x => x.TotalRevenue)
+            .GreaterThan(0)
+            .When(x => x.TotalSold > 0);
+
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .Must(BeValidProductName)
+            .WithMessage("Product name contains invalid characters");
+    }
+
+    private bool BeValidProductName(string name) =>
+        !name.Any(c => char.IsControl(c));
+}
+```
+
+---
+
 ## Performance Optimization Guidelines
 
 ### 1. Use Compiled Queries for Hot Paths
@@ -511,6 +609,22 @@ modelBuilder.Entity<Product>()
 ---
 
 ## Testing Strategy
+
+### 🧪 CRITICAL: Unit Tests Are Mandatory
+
+**Unit tests are VERY IMPORTANT for this project.** All new code must include comprehensive unit tests.
+
+**Testing Principles:**
+- ✅ **Test-First Mindset:** Write tests alongside or before implementation code
+- ✅ **No Untested Code:** Every new service, generator, or significant change requires tests
+- ✅ **Run Tests Before Commit:** Always run `make test` before considering work complete
+- ✅ **80%+ Coverage Target:** Service layer and generators must have high test coverage
+
+**Test Commands:**
+```bash
+make test                    # Run all tests (ALWAYS run before completing work)
+make build-all               # Build including test projects
+```
 
 ### Unit Tests
 
@@ -569,7 +683,7 @@ public async Task ViewService_ExecutesViewWithTenantIsolation()
 
 ## Migration Path from Current Architecture
 
-### Phase 1: Foundation (REFACTOR.md Phases 1, 3, 5)
+### Phase 1: Foundation (PHASE1_REFACTOR.md Phases 1, 3, 5)
 - Extract `IEntityOperationService` (EF CRUD)
 - Migrate to Finbuckle.MultiTenant
 - Configuration consolidation
@@ -621,13 +735,13 @@ public async Task ViewService_ExecutesViewWithTenantIsolation()
 
 ## References
 
-- **REFACTOR.md** - Complete refactoring plan (all phases)
+- **PHASE1_REFACTOR.md** - Complete refactoring plan (all phases)
 - **PHASE2_VIEW_PIPELINE.md** - Detailed implementation guide for SQL-first views
 - **CLAUDE.md** - Project context for future Claude sessions
 - **SESSION_SUMMARY.md** - Development log
 
 ---
 
-**Document Version:** 2.0 (Simplified Approach)
-**Last Updated:** 2026-01-26
-**Next Review:** After Phase 2 implementation
+**Document Version:** 2.1 (Code Generation Patterns Added)
+**Last Updated:** 2026-01-27
+**Next Review:** After Phase 2B (Runtime Services) implementation

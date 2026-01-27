@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using DotNetWebApp.Services;
 using DotNetWebApp.Models;
-using System.Collections;
-using System.Reflection;
 using System.Text.Json;
 
 namespace DotNetWebApp.Controllers
@@ -12,7 +9,7 @@ namespace DotNetWebApp.Controllers
     [Route("api/entities")]
     public class EntitiesController : ControllerBase
     {
-        private readonly DbContext _context;
+        private readonly IEntityOperationService _operationService;
         private readonly IEntityMetadataService _metadataService;
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
@@ -20,60 +17,11 @@ namespace DotNetWebApp.Controllers
         };
 
         public EntitiesController(
-            DbContext context,
+            IEntityOperationService operationService,
             IEntityMetadataService metadataService)
         {
-            _context = context;
+            _operationService = operationService;
             _metadataService = metadataService;
-        }
-
-        private async Task<IList> ExecuteToListAsync(Type entityType, IQueryable query)
-        {
-            var methods = typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods()
-                .Where(m => m.Name == nameof(EntityFrameworkQueryableExtensions.ToListAsync)
-                    && m.IsGenericMethodDefinition
-                    && m.GetParameters().Length == 2)
-                .ToArray();
-
-            if (methods.Length == 0)
-            {
-                throw new InvalidOperationException("Failed to find ToListAsync method");
-            }
-
-            var toListAsyncMethod = methods[0].MakeGenericMethod(entityType);
-
-            var task = (Task)toListAsyncMethod.Invoke(null, new object[] { query, CancellationToken.None })!;
-            await task;
-
-            var resultProperty = task.GetType().GetProperty("Result");
-            if (resultProperty == null)
-            {
-                throw new InvalidOperationException("Failed to extract result from Task");
-            }
-
-            return (IList)resultProperty.GetValue(task)!;
-        }
-
-        private async Task<int> ExecuteCountAsync(Type entityType, IQueryable query)
-        {
-            var methods = typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods()
-                .Where(m => m.Name == nameof(EntityFrameworkQueryableExtensions.CountAsync)
-                    && m.IsGenericMethodDefinition
-                    && m.GetParameters().Length == 2
-                    && m.GetParameters()[0].ParameterType.GetGenericTypeDefinition() == typeof(IQueryable<>))
-                .ToArray();
-
-            if (methods.Length == 0)
-            {
-                throw new InvalidOperationException("Failed to find CountAsync method");
-            }
-
-            var countAsyncMethod = methods[0].MakeGenericMethod(entityType);
-
-            var task = (Task<int>)countAsyncMethod.Invoke(null, new object[] { query, CancellationToken.None })!;
-            return await task;
         }
 
         [HttpGet("{entityName}")]
@@ -85,24 +33,9 @@ namespace DotNetWebApp.Controllers
                 return NotFound(new { error = $"Entity '{entityName}' not found" });
             }
 
-            var dbSet = GetDbSet(metadata.ClrType);
-            var list = await ExecuteToListAsync(metadata.ClrType, dbSet);
+            var list = await _operationService.GetAllAsync(metadata.ClrType);
 
             return Ok(list);
-        }
-
-        private IQueryable GetDbSet(Type entityType)
-        {
-            var setMethod = typeof(DbContext)
-                .GetMethod(nameof(DbContext.Set), Type.EmptyTypes)
-                ?.MakeGenericMethod(entityType);
-
-            if (setMethod == null)
-            {
-                throw new InvalidOperationException($"Failed to resolve Set method for type {entityType.Name}");
-            }
-
-            return (IQueryable)setMethod.Invoke(_context, null)!;
         }
 
         [HttpGet("{entityName}/count")]
@@ -114,8 +47,7 @@ namespace DotNetWebApp.Controllers
                 return NotFound(new { error = $"Entity '{entityName}' not found" });
             }
 
-            var dbSet = GetDbSet(metadata.ClrType);
-            var count = await ExecuteCountAsync(metadata.ClrType, dbSet);
+            var count = await _operationService.GetCountAsync(metadata.ClrType);
 
             return Ok(count);
         }
@@ -152,15 +84,7 @@ namespace DotNetWebApp.Controllers
                 return BadRequest(new { error = "Failed to deserialize entity" });
             }
 
-            var dbSet = GetDbSet(metadata.ClrType);
-            var addMethod = dbSet.GetType().GetMethod("Add");
-            if (addMethod == null)
-            {
-                throw new InvalidOperationException($"Failed to resolve Add method for type {metadata.ClrType.Name}");
-            }
-
-            addMethod.Invoke(dbSet, new[] { entity });
-            await _context.SaveChangesAsync();
+            await _operationService.CreateAsync(metadata.ClrType, entity);
 
             return CreatedAtAction(nameof(GetEntities),
                 new { entityName = entityName },
@@ -176,7 +100,8 @@ namespace DotNetWebApp.Controllers
                 return NotFound(new { error = $"Entity '{entityName}' not found" });
             }
 
-            var pkProperty = GetPrimaryKeyProperty(metadata);
+            var pkProperty = metadata.Definition.Properties?
+                .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
                 return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
@@ -185,14 +110,21 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+                pkValue = pkProperty.Type.ToLowerInvariant() switch
+                {
+                    "int" => int.Parse(id),
+                    "long" => long.Parse(id),
+                    "guid" => Guid.Parse(id),
+                    "string" => id,
+                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
+                };
             }
             catch (Exception ex)
             {
                 return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
             }
 
-            var entity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
+            var entity = await _operationService.GetByIdAsync(metadata.ClrType, pkValue);
             if (entity == null)
             {
                 return NotFound(new { error = $"Entity with id '{id}' not found" });
@@ -210,7 +142,8 @@ namespace DotNetWebApp.Controllers
                 return NotFound(new { error = $"Entity '{entityName}' not found" });
             }
 
-            var pkProperty = GetPrimaryKeyProperty(metadata);
+            var pkProperty = metadata.Definition.Properties?
+                .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
                 return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
@@ -219,17 +152,18 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+                pkValue = pkProperty.Type.ToLowerInvariant() switch
+                {
+                    "int" => int.Parse(id),
+                    "long" => long.Parse(id),
+                    "guid" => Guid.Parse(id),
+                    "string" => id,
+                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
+                };
             }
             catch (Exception ex)
             {
                 return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
-            }
-
-            var existingEntity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
-            if (existingEntity == null)
-            {
-                return NotFound(new { error = $"Entity with id '{id}' not found" });
             }
 
             using var reader = new StreamReader(Request.Body);
@@ -255,23 +189,9 @@ namespace DotNetWebApp.Controllers
                 return BadRequest(new { error = "Failed to deserialize entity" });
             }
 
-            // Copy properties from updatedEntity to existingEntity
-            var properties = metadata.ClrType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var property in properties)
-            {
-                // Skip primary key and navigation properties
-                if (property.Name == pkProperty.Name || !property.CanWrite)
-                {
-                    continue;
-                }
+            var entity = await _operationService.UpdateAsync(metadata.ClrType, updatedEntity);
 
-                var value = property.GetValue(updatedEntity);
-                property.SetValue(existingEntity, value);
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(existingEntity);
+            return Ok(entity);
         }
 
         [HttpDelete("{entityName}/{id}")]
@@ -283,7 +203,8 @@ namespace DotNetWebApp.Controllers
                 return NotFound(new { error = $"Entity '{entityName}' not found" });
             }
 
-            var pkProperty = GetPrimaryKeyProperty(metadata);
+            var pkProperty = metadata.Definition.Properties?
+                .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
                 return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
@@ -292,78 +213,23 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = ConvertPrimaryKeyValue(id, pkProperty);
+                pkValue = pkProperty.Type.ToLowerInvariant() switch
+                {
+                    "int" => int.Parse(id),
+                    "long" => long.Parse(id),
+                    "guid" => Guid.Parse(id),
+                    "string" => id,
+                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
+                };
             }
             catch (Exception ex)
             {
                 return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
             }
 
-            var entity = await FindEntityByPrimaryKey(metadata.ClrType, pkValue);
-            if (entity == null)
-            {
-                return NotFound(new { error = $"Entity with id '{id}' not found" });
-            }
-
-            var dbSet = GetDbSet(metadata.ClrType);
-            var removeMethod = dbSet.GetType().GetMethod("Remove");
-            if (removeMethod == null)
-            {
-                throw new InvalidOperationException($"Failed to resolve Remove method for type {metadata.ClrType.Name}");
-            }
-
-            removeMethod.Invoke(dbSet, new[] { entity });
-            await _context.SaveChangesAsync();
+            await _operationService.DeleteAsync(metadata.ClrType, pkValue);
 
             return NoContent();
-        }
-
-        private Models.AppDictionary.Property? GetPrimaryKeyProperty(EntityMetadata metadata)
-        {
-            return metadata.Definition.Properties?
-                .FirstOrDefault(p => p.IsPrimaryKey);
-        }
-
-        private object ConvertPrimaryKeyValue(string id, Models.AppDictionary.Property pkProperty)
-        {
-            return pkProperty.Type.ToLowerInvariant() switch
-            {
-                "int" => int.Parse(id),
-                "long" => long.Parse(id),
-                "guid" => Guid.Parse(id),
-                "string" => id,
-                _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-            };
-        }
-
-        private async Task<object?> FindEntityByPrimaryKey(Type entityType, object pkValue)
-        {
-            var findAsyncMethod = typeof(DbContext)
-                .GetMethod(nameof(DbContext.FindAsync), new[] { typeof(Type), typeof(object[]) });
-
-            if (findAsyncMethod == null)
-            {
-                throw new InvalidOperationException($"Failed to resolve FindAsync method");
-            }
-
-            var valueTask = findAsyncMethod.Invoke(_context, new object[] { entityType, new[] { pkValue } });
-            if (valueTask == null)
-            {
-                return null;
-            }
-
-            // ValueTask<object?> needs to be awaited
-            var asTaskMethod = valueTask.GetType().GetMethod("AsTask");
-            if (asTaskMethod == null)
-            {
-                throw new InvalidOperationException("Failed to resolve AsTask method on ValueTask");
-            }
-
-            var task = (Task)asTaskMethod.Invoke(valueTask, null)!;
-            await task;
-
-            var resultProperty = task.GetType().GetProperty("Result");
-            return resultProperty?.GetValue(task);
         }
     }
 }

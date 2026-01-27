@@ -20,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
+.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline run-view-pipeline run-all-pipelines verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
 	rm -f msbuild.binlog
@@ -97,7 +97,7 @@ build-release:
 migrate: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
-seed: migrate
+seed:
 	$(DOTNET) run --project DotNetWebApp.csproj -- --seed
 
 # Run tests with same configuration as build target for consistency
@@ -160,6 +160,22 @@ verify-pipeline: run-ddl-pipeline
 	@echo "✅ All pipeline verifications passed!"
 	@echo "Pipeline is ready for use."
 
+# Run the view model generation pipeline (views.yaml → ViewModels/*.cs)
+# Generates partial class view models with DataAnnotations for Dapper queries
+run-view-pipeline: build
+	@echo "Running view model generation pipeline..."
+	cd ModelGenerator && "../$(DOTNET)" run -- --mode=views --views-yaml=../views.yaml --output-dir=../DotNetWebApp.Models/ViewModels
+	@echo ""
+	@echo "✅ View pipeline complete!"
+	@echo "Generated view models in DotNetWebApp.Models/ViewModels/"
+
+# Run both entity and view generation pipelines
+run-all-pipelines: run-ddl-pipeline run-view-pipeline
+	@echo ""
+	@echo "✅ All generation pipelines complete!"
+	@echo "  - Entities: DotNetWebApp.Models/Generated/"
+	@echo "  - Views: DotNetWebApp.Models/ViewModels/"
+
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
 
@@ -177,7 +193,7 @@ dev:
 # Uses kill -9 because dotnet watch ignores SIGTERM for graceful shutdown handling
 stop-dev:
 	@echo "Looking for orphaned 'dotnet watch' processes..."
-	@PIDS=$$(ps -ef | grep -e "dotnet-build\.sh watch" -e "dotnet watch --project DotNetWebApp.csproj" -e "dotnet-watch.dll --project DotNetWebApp.csproj" | grep -v grep | awk '{print $$2}'); \
+	@PIDS=$$(ps -ef | grep -e "dotnet-build\.sh watch" -e "dotnet watch --project DotNetWebApp.csproj" -e "dotnet-watch.dll --project DotNetWebApp.csproj" -e "bin/Debug/net8.0/DotNetWebApp" | grep -v grep | awk '{print $$2}'); \
 	if [ -n "$$PIDS" ]; then \
 		echo "Found PIDs: $$PIDS"; \
 		kill -9 $$PIDS 2>/dev/null && echo "Force-stopped orphaned dev processes." || echo "Failed to stop some processes (may need sudo)."; \

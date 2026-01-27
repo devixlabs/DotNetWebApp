@@ -10,7 +10,7 @@ This project uses **Radzen Blazor components and themes only**. Bootstrap is not
 
 **Goal**: Keep styling consistent with the active Radzen theme and avoid hardcoded colors on layout containers.
 
-<!-- FIXME: Branding colors and font are now set via CSS variables in MainLayout.razor from app.yaml; update guidance to reflect that workflow. -->
+**How Branding Works**: Branding colors and fonts are set via CSS variables in `MainLayout.razor` from `AppCustomizationOptions.BrandCustomization`.
 
 ---
 
@@ -30,9 +30,16 @@ wwwroot/css/
 - Any custom component tweaks
 - CSS animations (`@keyframes pulse`, `spin`, `slideIn`)
 
-<!-- FIXME: app.css now relies on CSS variables that are overridden per branding; document where those variables are set. -->
+**CSS Variables** are defined in app.css root and overridden in MainLayout.razor via inline `style` attribute:
+- `--app-font-family` - "Space Grotesk" (from AppCustomizationOptions)
+- `--app-primary` - Primary theme color (from AppCustomizationOptions)
+- `--app-accent` - Accent color (from AppCustomizationOptions)
+- `--app-header-bg` - Header background gradient (from AppCustomizationOptions)
+- `--app-header-text` - Header text color (from AppCustomizationOptions)
+- `--app-logo-bg` - Logo background (from AppCustomizationOptions)
+- `--app-logo-text` - Logo text color (from AppCustomizationOptions)
 
-**Rule**: Avoid hardcoded background or text colors on layout containers unless the Radzen theme is explicitly updated to match.
+**Rule**: Avoid hardcoded background or text colors on layout containers. Use CSS variables instead so they respect the active branding.
 
 ---
 
@@ -47,14 +54,21 @@ wwwroot/css/
 <link href="_content/Radzen.Blazor/css/material.css" rel="stylesheet" />
 ```
 
+**Radzen Version**: v7.1.0 (pinned in project)
+
 ### Theme Options
 Radzen offers multiple theme families:
-- `material` / `material-dark`
+- `material` / `material-dark` (currently in use)
 - `default` / `default-dark`
 - `humanistic` / `humanistic-dark`
 - `software` / `software-dark`
 
-**Rule**: If you switch to a dark theme, ensure layout backgrounds and custom colors remain readable.
+**Switching Themes**:
+1. Update CSS links in `Pages/_Layout.cshtml`
+2. Consider updating CSS variables in `wwwroot/css/app.css` root for light/dark compatibility
+3. Test readability of text and component colors
+
+**Rule**: If you switch to a dark theme, ensure CSS variables (especially text colors) remain readable against the new background colors.
 
 ---
 
@@ -62,14 +76,20 @@ Radzen offers multiple theme families:
 
 ### Layout Structure
 
-<!-- FIXME: Add GenericEntityPage.razor and DynamicDataGrid.razor since dynamic entity pages now exist. -->
 ```
 Shared/
   MainLayout.razor        <- RadzenLayout, RadzenHeader, RadzenSidebar, RadzenBody, RadzenComponents
-  NavMenu.razor           <- RadzenPanelMenu
+                             CSS variables injected via BuildLayoutStyle()
+  NavMenu.razor           <- RadzenPanelMenu with dynamic entity links
+  DynamicDataGrid.razor   <- Generic data grid component (renders any entity)
+  GenericEntityPage.razor <- Standalone CRUD page template (routable at /{EntityName})
+Components/Pages/
+  SpaApp.razor            <- Main SPA container with section routing (/app)
 Components/Sections/
-  EntitySection.razor     <- Dynamic entity UI with RadzenDataGrid
-  SettingsSection.razor   <- Settings UI with RadzenStack, RadzenCard, etc.
+  EntitySection.razor     <- Entity CRUD within SPA (uses DynamicDataGrid)
+  SettingsSection.razor   <- Settings UI with forms
+  DashboardSection.razor  <- Dashboard metrics cards
+  SectionHeader.razor     <- Reusable header component
 ```
 
 ### Key Containers
@@ -186,12 +206,15 @@ After making CSS changes, verify:
 
 This project includes several key section components for the SPA:
 
-- `Components/Sections/EntitySection.razor` - Dynamic entity management with RadzenDataGrid
+- `Components/Pages/SpaApp.razor` - Main SPA container with dynamic section routing (`/app`)
+- `Components/Pages/GenericEntityPage.razor` - Standalone CRUD page template (`/{EntityName}`)
+- `Shared/DynamicDataGrid.razor` - Reusable data grid that renders any entity from YAML definitions
+- `Components/Sections/DashboardSection.razor` - Dashboard with entity count metrics
+- `Components/Sections/EntitySection.razor` - Dynamic entity CRUD section (used within SPA)
 - `Components/Sections/SettingsSection.razor` - Application settings interface
+- `Components/Sections/SectionHeader.razor` - Reusable header component with title and loading state
 
-<!-- FIXME: Missing DashboardSection.razor and the dynamic entity page/grid components. -->
-
-These are loaded dynamically by the main SPA page and styled with scoped CSS blocks.
+These components are loaded dynamically by the main SPA page and styled with scoped CSS blocks in each `.razor` file.
 
 ---
 

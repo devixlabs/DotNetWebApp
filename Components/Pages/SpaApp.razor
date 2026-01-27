@@ -1,5 +1,5 @@
 @page "/app"
-@page "/app/{Section?}"
+@page "/app/{*Section}"
 @inject ISpaSectionService SpaSections
 @inject IEntityMetadataService EntityMetadataService
 @inject IOptions<AppCustomizationOptions> AppOptions
@@ -99,8 +99,12 @@
         }
 
         // Treat any non-static route segment as an entity name.
-        activeSection = new SpaSectionInfo(SpaSection.Entity, segment, segment, segment, segment);
-        activeEntityName = segment;
+        // Convert URL format (schema/name) to API format (schema:name)
+        var entityName = segment.Contains('/')
+            ? segment.Replace('/', ':')
+            : segment;
+        activeSection = new SpaSectionInfo(SpaSection.Entity, segment, segment, segment, entityName);
+        activeEntityName = entityName;
     }
 
     private async Task LoadSection(SpaSectionInfo section)
