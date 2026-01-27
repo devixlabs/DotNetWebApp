@@ -1,9 +1,10 @@
 # Phase 4: Editable View Components & UI-Driven Architecture
 
-**Status:** PLANNING PHASE (2026-01-27)
-**Duration:** 2-4 weeks (requires Radzen/Blazor UI research)
+**Status:** PLANNING PHASE - REVISED (2026-01-27)
+**Duration:** 1-2 weeks (hybrid approach reduces complexity)
 **Priority:** MEDIUM (enables advanced CRUD patterns for complex views)
 **Prerequisite:** Phase 2 (View Pipeline) must be complete
+**Approach:** HYBRID - Reusable components + optional YAML config (see "REVISED APPROACH" section)
 
 ---
 
@@ -767,6 +768,7 @@ public async Task ViewEditGrid_OnUpdateRow_CallsEntityOperationService()
 
 ## Implementation Difficulty Assessment
 
+### Original Plan (Heavy YAML)
 | Component | Difficulty | Effort | Blocker? |
 |-----------|-----------|--------|----------|
 | **YAML schema extension** | ✅ Trivial | 1 hour | No |
@@ -780,48 +782,393 @@ public async Task ViewEditGrid_OnUpdateRow_CallsEntityOperationService()
 | **Multi-table update logic** | ❌ Hard | 4-6 hours | Yes |
 | **Tests + documentation** | ⚠️ Moderate | 4-6 hours | No |
 
-**Total Effort:** 2-4 weeks (accounting for Radzen research, Blazor complexity, and testing)
+**Original Total Effort:** 2-4 weeks
+
+### Revised Plan (Hybrid Approach)
+| Component | Difficulty | Effort | Blocker? |
+|-----------|-----------|--------|----------|
+| **ColumnConfig model** | ✅ Trivial | 30 min | No |
+| **SmartDataGrid<T> component** | ⚠️ Moderate | 4-6 hours | No |
+| **INotificationService** | ✅ Easy | 1-2 hours | No |
+| **EventCallback wiring** | ✅ Easy | 1-2 hours | No |
+| **IEntityOperationService integration** | ✅ Easy | 2-3 hours | No |
+| **Confirmation dialogs** | ✅ Easy | 1-2 hours | No |
+| **Optional: ui_config.yaml schema** | ✅ Easy | 2-3 hours | No |
+| **Optional: IUiConfigService** | ⚠️ Moderate | 3-4 hours | No |
+| **Tests + documentation** | ⚠️ Moderate | 3-4 hours | No |
+
+**Revised Total Effort:** 1-2 weeks (no blockers, incremental delivery possible)
 
 ---
 
 ## Success Criteria
 
+### Revised Success Criteria (Hybrid Approach)
+
 After Phase 4 completion:
 
-✅ Views support mixed read-write patterns via YAML metadata
-✅ Editable properties are identified in generated DTOs with `[Editable]` attribute
-✅ ViewMetadata class auto-generated with property writability info
-✅ Generic `ViewEditGrid<T>` component renders columns appropriately
-✅ Editable columns trigger IEntityOperationService updates
-✅ Permission checks respected during write operations
-✅ Multi-table views update correct tables automatically
-✅ Soft-delete supported for logical deletes
-✅ Comprehensive tests for metadata + components
-✅ Example ProductDashboard page demonstrates full flow
+**Core Components:**
+- [ ] `SmartDataGrid<T>` component renders data with configurable columns
+- [ ] Action column displays Edit/Delete buttons when enabled
+- [ ] Inline editing works via Radzen's built-in EditMode
+- [ ] `EventCallback<T>` properly delegates events to parent components
+
+**Write Operations:**
+- [ ] `OnRowUpdate` triggers `IEntityOperationService.UpdateAsync()`
+- [ ] `OnRowDelete` triggers `IEntityOperationService.DeleteAsync()`
+- [ ] Confirmation dialog appears before destructive actions
+- [ ] Toast notifications show success/failure feedback
+
+**Configuration (Optional):**
+- [ ] `ColumnConfig` model allows display name, format, visibility overrides
+- [ ] Components work without YAML config (reflection-based defaults)
+- [ ] `ui_config.yaml` can optionally enhance column configuration
+
+**Integration:**
+- [ ] EntitySection.razor uses SmartDataGrid instead of DynamicDataGrid
+- [ ] Full CRUD flow works end-to-end for existing entities
+- [ ] Multi-tenant schema isolation respected in all operations
+
+### Original Success Criteria (Heavy YAML - Deferred)
+
+These are retained for reference if heavy YAML automation is needed later:
+
+- Views support mixed read-write patterns via YAML metadata
+- Editable properties identified in generated DTOs with `[Editable]` attribute
+- ViewMetadata class auto-generated with property writability info
+- Multi-table views update correct tables automatically
+- Soft-delete supported for logical deletes
+
+---
+
+## REVISED APPROACH: Hybrid Component Library (2026-01-27)
+
+After analyzing the existing codebase patterns (DynamicDataGrid.razor, EntitySection.razor, AsyncUiState pattern) and Radzen's capabilities, **we recommend a Hybrid approach** instead of heavy YAML automation.
+
+### Why Hybrid Over Heavy YAML?
+
+| Factor | Heavy YAML (Original Phase 4) | Hybrid (Recommended) |
+|--------|-------------------------------|----------------------|
+| **Flexibility** | Limited to YAML schema | Full Radzen access |
+| **Debugging** | Hard (generated code) | Easy (readable components) |
+| **Non-dev editing** | Yes | Partial (config only) |
+| **Radzen features** | Must generate each one | Use directly |
+| **Maintenance** | Complex generators | Simple components |
+| **Type safety** | Weak | Strong (generics) |
+| **Event handling** | Generated boilerplate | Native Radzen events |
+
+**Key Insight:** Radzen already provides `RowUpdate`, `RowCreate`, `EditMode`, inline editing, and validation. Generating these from YAML duplicates work and loses flexibility.
+
+### Recommended Architecture
+
+```
++------------------------------------------------------------------+
+|                    YAML Configuration Layer                       |
+|   views.yaml + ui_config.yaml (optional metadata hints)          |
++-----------------------------+------------------------------------+
+                              | IUiConfigService loads config
+                              v
++------------------------------------------------------------------+
+|              Reusable Component Library                           |
+|   SmartDataGrid<T>  |  EntityForm<T>  |  ActionButton            |
+|   (wraps Radzen)    |  (wraps Radzen) |  (confirms + executes)   |
++-----------------------------+------------------------------------+
+                              | EventCallback<T> for parent handling
+                              v
++------------------------------------------------------------------+
+|                   Page Components                                 |
+|   ProductDashboard.razor  |  EntitySection.razor                 |
+|   (orchestrates components + business logic)                     |
++------------------------------------------------------------------+
+```
+
+### SmartDataGrid<T> Component Design
+
+Instead of generating components from YAML, build a **configurable** Radzen wrapper:
+
+```csharp
+// Components/Shared/SmartDataGrid.razor
+@typeparam T where T : class, new()
+
+<RadzenDataGrid @ref="grid"
+                TItem="T"
+                Data="@Data"
+                EditMode="@(AllowInlineEdit ? DataGridEditMode.Single : DataGridEditMode.None)"
+                RowUpdate="@OnRowUpdated"
+                RowCreate="@OnRowCreated"
+                AllowFiltering="@AllowFiltering"
+                AllowSorting="@AllowSorting"
+                AllowPaging="@AllowPaging">
+    <Columns>
+        @foreach (var column in GetColumnConfig())
+        {
+            @if (!column.Hidden)
+            {
+                <RadzenDataGridColumn TItem="T"
+                                      Property="@column.Property"
+                                      Title="@column.DisplayName"
+                                      Sortable="@column.Sortable"
+                                      Filterable="@column.Filterable"
+                                      Editable="@column.Editable" />
+            }
+        }
+
+        @if (ShowActionColumn)
+        {
+            <RadzenDataGridColumn TItem="T" Title="Actions" Sortable="false" Width="120px">
+                <Template Context="row">
+                    @if (AllowEdit)
+                    {
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small"
+                                      Click="@(_ => EditRow(row))" />
+                    }
+                    @if (AllowDelete)
+                    {
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(_ => DeleteRow(row))" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        }
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    // Data binding
+    [Parameter] public IEnumerable<T>? Data { get; set; }
+
+    // Feature toggles (easy to configure)
+    [Parameter] public bool AllowFiltering { get; set; } = true;
+    [Parameter] public bool AllowSorting { get; set; } = true;
+    [Parameter] public bool AllowPaging { get; set; } = true;
+    [Parameter] public bool AllowInlineEdit { get; set; } = false;
+    [Parameter] public bool AllowEdit { get; set; } = false;
+    [Parameter] public bool AllowDelete { get; set; } = false;
+    [Parameter] public bool ShowActionColumn { get; set; } = false;
+
+    // Optional: YAML-derived column config
+    [Parameter] public IEnumerable<ColumnConfig>? ColumnOverrides { get; set; }
+
+    // Events - delegates to parent for business logic
+    [Parameter] public EventCallback<T> OnRowUpdate { get; set; }
+    [Parameter] public EventCallback<T> OnRowCreate { get; set; }
+    [Parameter] public EventCallback<T> OnRowDelete { get; set; }
+    [Parameter] public EventCallback<T> OnRowEdit { get; set; }
+
+    private RadzenDataGrid<T>? grid;
+
+    private IEnumerable<ColumnConfig> GetColumnConfig()
+    {
+        // If explicit overrides provided, use those
+        if (ColumnOverrides != null && ColumnOverrides.Any())
+            return ColumnOverrides;
+
+        // Otherwise, derive from T's properties (like current DynamicDataGrid)
+        return typeof(T).GetProperties()
+            .Select(p => new ColumnConfig
+            {
+                Property = p.Name,
+                DisplayName = p.Name,  // Could use [Display] attribute
+                Sortable = true,
+                Filterable = true,
+                Editable = false,
+                Hidden = false
+            });
+    }
+
+    private async Task OnRowUpdated(T row)
+    {
+        if (OnRowUpdate.HasDelegate)
+            await OnRowUpdate.InvokeAsync(row);
+    }
+
+    private async Task EditRow(T row)
+    {
+        if (AllowInlineEdit)
+            await grid!.EditRow(row);
+        else if (OnRowEdit.HasDelegate)
+            await OnRowEdit.InvokeAsync(row);
+    }
+
+    private async Task DeleteRow(T row)
+    {
+        if (OnRowDelete.HasDelegate)
+            await OnRowDelete.InvokeAsync(row);
+    }
+}
+```
+
+### Column Configuration Model
+
+```csharp
+// Models/UI/ColumnConfig.cs
+public class ColumnConfig
+{
+    public string Property { get; set; } = null!;
+    public string DisplayName { get; set; } = null!;
+    public bool Sortable { get; set; } = true;
+    public bool Filterable { get; set; } = true;
+    public bool Editable { get; set; } = false;
+    public bool Hidden { get; set; } = false;
+    public string? FormatString { get; set; }  // e.g., "C2" for currency
+    public int? Width { get; set; }
+}
+```
+
+### Usage Example - Without YAML (Code-First)
+
+```razor
+@* Pages/Products.razor - Simple usage, no YAML needed *@
+@page "/products"
+@inject IEntityOperationService EntityOperationService
+
+<SmartDataGrid T="Product"
+               Data="@products"
+               AllowEdit="true"
+               AllowDelete="true"
+               ShowActionColumn="true"
+               OnRowUpdate="@HandleUpdate"
+               OnRowDelete="@HandleDelete" />
+
+@code {
+    private List<Product> products = new();
+
+    private async Task HandleUpdate(Product product)
+    {
+        await EntityOperationService.UpdateAsync(typeof(Product), product);
+        // Refresh, show toast, etc.
+    }
+
+    private async Task HandleDelete(Product product)
+    {
+        await EntityOperationService.DeleteAsync(typeof(Product), product.Id);
+        products.Remove(product);
+    }
+}
+```
+
+### Usage Example - With YAML Configuration (Optional Enhancement)
+
+```yaml
+# ui_config.yaml (optional, enhances but not required)
+grids:
+  - name: ProductGrid
+    entity: Product
+    features:
+      allow_inline_edit: true
+      allow_delete: true
+      show_action_column: true
+    columns:
+      - property: Id
+        hidden: true
+      - property: Name
+        display_name: "Product Name"
+        editable: true
+      - property: Price
+        display_name: "Unit Price"
+        format: "C2"
+        editable: true
+      - property: CategoryId
+        hidden: true
+```
+
+```razor
+@* Pages/Products.razor - With optional YAML config *@
+@inject IUiConfigService UiConfig
+
+<SmartDataGrid T="Product"
+               Data="@products"
+               ColumnOverrides="@gridConfig?.Columns"
+               AllowInlineEdit="@(gridConfig?.Features.AllowInlineEdit ?? false)"
+               OnRowUpdate="@HandleUpdate" />
+
+@code {
+    private GridConfig? gridConfig;
+
+    protected override void OnInitialized()
+    {
+        gridConfig = UiConfig.GetGridConfig("ProductGrid");  // Returns null if not configured
+    }
+}
+```
+
+### Revised Implementation Path
+
+**Phase A: Core Components (1-2 days)**
+1. `SmartDataGrid<T>` - Configurable grid with events (replaces DynamicDataGrid)
+2. `EntityForm<T>` - Auto-generated form from type with validation
+3. `ColumnConfig` / `FormFieldConfig` models
+
+**Phase B: Event Infrastructure (1 day)**
+1. Standardize `EventCallback<T>` patterns across all components
+2. Extend `AsyncUiState` wrapper for all async operations (already exists)
+3. Add toast notification service (`INotificationService`) for user feedback
+
+**Phase C: Optional YAML Layer (1-2 days)**
+1. Define `ui_config.yaml` schema (grids, forms, dashboards)
+2. Create `IUiConfigService` to load and cache config
+3. Components check for config, fall back to reflection-based defaults
+
+**Phase D: Write Operations Integration (2-3 days)**
+1. Integrate `IEntityOperationService` calls in SmartDataGrid
+2. Add validation feedback via Radzen's built-in validation
+3. Implement confirmation dialogs for destructive actions (delete)
+4. Handle optimistic updates with rollback on failure
+
+### What Changes from Original Phase 4
+
+| Original Plan | Revised Approach |
+|---------------|------------------|
+| Generate metadata classes from YAML | Build reusable generic components |
+| `ViewModelTemplate.scriban` extensions | `SmartDataGrid<T>` with EventCallbacks |
+| `[Editable]` / `[ReadOnly]` attributes | `ColumnConfig.Editable` property |
+| `WritableSource` complex mapping | Direct `IEntityOperationService` calls |
+| Permission checks in generated code | Permission checks in page components |
+
+### Benefits of Revised Approach
+
+1. **Incremental adoption** - Teams use pure code initially, add YAML as patterns emerge
+2. **Lower risk** - No generator changes when requirements change
+3. **Easier debugging** - Developers debug actual Razor code, not generated output
+4. **Full Radzen access** - Use any Radzen feature without generator support
+5. **Type safety** - Generic `<T>` provides compile-time checking
+6. **Simpler onboarding** - New developers understand standard Blazor patterns
 
 ---
 
 ## Known Risks & Research Questions
 
-1. **Radzen Limitations**
-   - Does DataGrid support dynamic column generation with templates?
-   - How to handle complex validation rules (cross-column validation)?
-   - Can we embed permission checks in column rendering?
+### Resolved by Hybrid Approach
 
-2. **Blazor Constraints**
-   - How to efficiently detect changed properties without tracking state?
-   - Optimistic vs. pessimistic updates - which strategy for Blazor Server?
-   - How to handle validation errors from database constraints?
+1. **Radzen Limitations** - RESOLVED
+   - ~~Does DataGrid support dynamic column generation with templates?~~
+     **Answer:** Yes, and SmartDataGrid<T> uses reflection + ColumnOverrides pattern
+   - ~~Can we embed permission checks in column rendering?~~
+     **Answer:** Yes, via `@if` in Razor template, no generation needed
 
-3. **Entity Operation Service**
-   - Does IEntityOperationService support arbitrary column updates (not just PK)?
-   - How to handle foreign key constraints in write operations?
-   - Should we add a new `UpdateColumnsAsync()` method for selective updates?
+2. **Blazor Constraints** - RESOLVED
+   - ~~How to efficiently detect changed properties without tracking state?~~
+     **Answer:** Radzen's `RowUpdate` event passes the modified row; let EF detect changes
+   - ~~Optimistic vs. pessimistic updates?~~
+     **Answer:** Optimistic - update immediately, show error toast on failure
 
-4. **Multi-Tenant Edge Cases**
-   - Do schema-qualified names work correctly in ViewEditGrid for multi-tenant?
-   - Should permission checks include schema isolation?
-   - Testing across multiple schemas with identical table names
+### Remaining Questions
+
+1. **Entity Operation Service**
+   - Does `IEntityOperationService.UpdateAsync()` handle partial updates correctly?
+   - How to handle foreign key constraint violations (show user-friendly message)?
+   - Should we add a `ValidateAsync()` method before update?
+
+2. **Multi-Tenant Edge Cases**
+   - Verify schema-qualified names work in SmartDataGrid for multi-tenant
+   - Test update operations across different schemas
+   - Ensure `X-Customer-Schema` header flows through all operations
+
+3. **Validation UX**
+   - Should validation errors show inline (Radzen default) or as toast?
+   - How to handle server-side validation errors (unique constraints)?
+   - Cross-field validation (e.g., StartDate < EndDate) - component or service?
 
 ---
 
@@ -839,13 +1186,27 @@ After Phase 4 completion:
 
 ---
 
-## Quick Checklist for Tomorrow's Session
+## Quick Checklist - Revised Approach
 
-- [ ] Research Radzen DataGrid capabilities (2-3 hours)
-- [ ] Design ViewEditGrid<T> component architecture (1-2 hours)
-- [ ] Decide on inline edit vs. row-edit strategy
-- [ ] Determine validation error UX (toast, inline, modal)
-- [ ] Design permission check integration points
-- [ ] Start coding ViewDefinition.cs extensions
-- [ ] Update ViewModelTemplate.scriban
-- [ ] Begin ViewEditGrid<T> implementation
+**Phase A: Core Components**
+- [ ] Create `ColumnConfig.cs` model in `DotNetWebApp.Models/UI/`
+- [ ] Implement `SmartDataGrid<T>` component (replaces/extends DynamicDataGrid)
+- [ ] Add action column with Edit/Delete buttons
+- [ ] Wire up `EventCallback<T>` for OnRowUpdate, OnRowDelete, OnRowEdit
+- [ ] Test with existing Product entity
+
+**Phase B: Event Infrastructure**
+- [ ] Create `INotificationService` for toast notifications
+- [ ] Integrate with Radzen's `NotificationService`
+- [ ] Extend AsyncUiState pattern to SmartDataGrid operations
+
+**Phase C: Optional YAML Layer (can defer)**
+- [ ] Define `ui_config.yaml` schema
+- [ ] Create `IUiConfigService` interface and implementation
+- [ ] Add column override support to SmartDataGrid
+
+**Phase D: Write Operations**
+- [ ] Wire SmartDataGrid to `IEntityOperationService.UpdateAsync()`
+- [ ] Add confirmation dialog for delete operations
+- [ ] Implement validation error display (Radzen built-in)
+- [ ] Test full CRUD flow with EntitySection
