@@ -97,7 +97,7 @@ build-release:
 migrate: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
-seed: migrate
+seed:
 	$(DOTNET) run --project DotNetWebApp.csproj -- --seed
 
 # Run tests with same configuration as build target for consistency

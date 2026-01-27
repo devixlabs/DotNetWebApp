@@ -32,6 +32,7 @@ cleanup() {
         kill "$SERVER_PID" 2>/dev/null || true
         wait "$SERVER_PID" 2>/dev/null || true
     fi
+    make stop-dev
 }
 
 trap cleanup EXIT
@@ -49,9 +50,9 @@ print_status "All tests passed"
 echo ""
 
 # Step 3: Drop database
-print_info "Step 3: Dropping database (make db-drop)..."
-make db-drop || print_info "Docker database drop attempted (may not exist - running 'make ms-drop' for MSSQL Server)"
-make ms-drop || print_info "MSSQL Server database drop attempted"
+print_info "Step 3: Dropping database(s)..."
+make db-drop || print_info "Docker database drop attempted (may not exist)"
+make ms-drop || print_info "MSSQL Server database drop attempted (may not exist)"
 print_status "Database(s) dropped? ¯\_(ツ)_/¯"
 echo ""
 
