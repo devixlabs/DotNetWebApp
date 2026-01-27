@@ -138,6 +138,41 @@ public interface IEntityOperationService
 
 **Benefit:** Reduces EntitiesController from 369 lines to ~150-180 lines; centralizes reflection logic for reuse and testing.
 
+##### Compiled Query Delegates for Performance
+
+When implementing `EntityOperationService`, cache reflection results as compiled `Func<>` delegates to eliminate per-call reflection overhead. This is critical for 200+ entity scenarios.
+
+```csharp
+public class EntityOperationService : IEntityOperationService
+{
+    private static readonly ConcurrentDictionary<Type, Func<AppDbContext, IQueryable>> _queryFactories = new();
+
+    public IQueryable GetQueryable(AppDbContext dbContext, Type entityType)
+    {
+        return _queryFactories.GetOrAdd(entityType, t =>
+        {
+            // Build expression tree once, compile to delegate
+            var method = typeof(AppDbContext)
+                .GetMethod(nameof(AppDbContext.Set), Type.EmptyTypes)!
+                .MakeGenericMethod(t);
+
+            var ctxParam = Expression.Parameter(typeof(AppDbContext), "ctx");
+            var call = Expression.Call(ctxParam, method);
+            var lambda = Expression.Lambda<Func<AppDbContext, IQueryable>>(call, ctxParam);
+
+            return lambda.Compile();
+        })(dbContext);
+    }
+
+    // Similarly cache Find, Add, Remove operations...
+}
+```
+
+**Benefits:**
+- First call: ~500μs (compile expression tree)
+- Subsequent calls: ~2μs (invoke cached delegate)
+- 250x improvement for hot paths
+
 #### 2. SQL-First View Pipeline (NEW: Dapper for Complex Reads)
 
 **CONTEXT:** With 200+ entities and multiple database schemas, we need a scalable way to handle complex SQL queries (JOINs, aggregations, reports) without hand-writing services for each view. Legacy SQL queries should be the source of truth for UI features.
@@ -439,12 +474,49 @@ public class AppDefinition
 
 ## Part 6: Testing Strategy
 
-### Unit Tests (New)
-- `EntityOperationService` - All reflection methods (GetAllAsync, CreateAsync, etc.)
-- `ViewRegistry` - YAML loading and SQL file resolution
-- `ViewService` - View execution with parameters
-- `DapperQueryService` - Query execution with shared connection
-- `ValidationPipeline` - Valid/invalid entity scenarios
+### 🧪 CRITICAL: Unit Tests Are Mandatory
+
+**Unit tests are VERY IMPORTANT for this project.** Every phase implementation MUST include comprehensive unit tests before being considered complete.
+
+**Testing Requirements:**
+- ✅ **No untested code:** All new services, generators, and significant changes require tests
+- ✅ **Run tests before commit:** Always run `make test` before considering work complete
+- ✅ **80%+ code coverage target** on service layer and generators
+- ✅ **Test edge cases:** Empty inputs, null values, invalid data, boundary conditions
+
+### Unit Tests (Required for Each Phase)
+
+**Phase 1 - EntityOperationService Tests:**
+```csharp
+[Fact] GetAllAsync_ValidEntityType_ReturnsAllEntities()
+[Fact] GetAllAsync_InvalidEntityType_ThrowsException()
+[Fact] GetByIdAsync_ExistingId_ReturnsEntity()
+[Fact] GetByIdAsync_NonExistentId_ReturnsNull()
+[Fact] CreateAsync_ValidEntity_ReturnsCreatedEntity()
+[Fact] UpdateAsync_ExistingEntity_ReturnsUpdatedEntity()
+[Fact] DeleteAsync_ExistingId_RemovesEntity()
+[Fact] GetCountAsync_WithEntities_ReturnsCorrectCount()
+```
+
+**Phase 2 - View Pipeline Tests:**
+```csharp
+[Fact] ViewRegistry_LoadsViewsFromYaml()
+[Fact] ViewRegistry_GetViewSqlAsync_ReturnsValidSql()
+[Fact] ViewRegistry_NonExistentView_ThrowsException()
+[Fact] ViewService_ExecuteViewAsync_ReturnsResults()
+[Fact] ViewService_WithParameters_PassesParameters()
+[Fact] DapperQueryService_InheritsTenantSchema()
+[Fact] ViewModelGenerator_GeneratesPartialClass()
+[Fact] ViewModelGenerator_GeneratesDataAnnotations()
+```
+
+**Phase 3 - Validation Tests:**
+```csharp
+[Fact] CreateEntity_InvalidData_Returns400WithErrors()
+[Fact] CreateEntity_MissingRequiredField_Returns400()
+[Fact] CreateEntity_ExceedsMaxLength_Returns400()
+[Fact] UpdateEntity_InvalidData_Returns400WithErrors()
+```
 
 ### Integration Tests (Update)
 - Multi-tenant scenarios with Finbuckle (different schemas for EF + Dapper)
@@ -457,6 +529,13 @@ public class AppDefinition
 - Verify View pipeline generates correct view models (new)
 - Verify existing API endpoints return same results
 - Verify Blazor UI still renders correctly
+
+### Test Commands
+```bash
+make test                    # Run all tests (ALWAYS run before completing work)
+make build-all               # Build including test projects
+./dotnet-build.sh test tests/DdlParser.Tests/DdlParser.Tests.csproj --no-restore
+```
 
 ## Part 7: Risk Assessment
 

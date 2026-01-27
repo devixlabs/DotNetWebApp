@@ -31,6 +31,55 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 
 **Current Phase:** Ready to begin Phase 1 (Extract Reflection Logic to IEntityOperationService)
 
+## 🧪 CRITICAL: Unit Testing Requirements
+
+**Unit tests are VERY IMPORTANT for this project.** All new code must include comprehensive unit tests.
+
+### Testing Principles
+1. **Test-First Mindset:** Write tests alongside or before implementation code
+2. **No Untested Code:** Every new service, generator, or significant change requires tests
+3. **Run Tests Before Commit:** Always run `make test` before considering work complete
+4. **Test Coverage Target:** 80%+ code coverage on service layer and generators
+
+### Test Projects
+| Project | Purpose | Run Command |
+|---------|---------|-------------|
+| `tests/DotNetWebApp.Tests/` | Services, Controllers, Integration | `make test` |
+| `tests/ModelGenerator.Tests/` | Path resolution, template validation | `make test` |
+| `tests/DdlParser.Tests/` | SQL parsing, type mapping, YAML generation | `make test` |
+
+### What MUST Be Tested
+- **All new services** (IEntityOperationService, IViewService, IViewRegistry, etc.)
+- **Type mapping changes** (TypeMapper.cs has 125+ tests)
+- **Code generators** (ViewModelGenerator, EntityGenerator)
+- **YAML deserialization** (ViewDefinition, AppDefinition classes)
+- **Controller endpoints** (CRUD operations, validation)
+- **Multi-tenant scenarios** (schema isolation)
+
+### Testing Commands
+```bash
+make test                    # Run all tests (builds test projects first)
+make build-all               # Build including test projects
+./dotnet-build.sh test tests/DdlParser.Tests/DdlParser.Tests.csproj --no-restore  # Run specific project
+```
+
+### Example Test Pattern
+```csharp
+[Fact]
+public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
+{
+    // Arrange
+    var service = new MyService(mockDependency);
+
+    // Act
+    var result = await service.DoSomethingAsync(input);
+
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal(expected, result.Value);
+}
+```
+
 ## Project Goal & Session Notes
 - **Primary Goal:** Use SQL DDL as the source of truth, generating `app.yaml` and C# models for dynamic customization.
 - Review `SESSION_SUMMARY.md` before starting work and update it when you make meaningful progress or decisions.
