@@ -7,7 +7,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DotNetWebApp.Models.Generated
 {
+    {{~ if entity.schema ~}}
+    [Table("{{ entity.name | string.capitalize }}", Schema = "{{ entity.schema }}")]
+    {{~ else ~}}
     [Table("{{ entity.name | string.capitalize }}")]
+    {{~ end ~}}
     public class {{ entity.name | string.capitalize }}
     {
         public {{ entity.name | string.capitalize }}()
@@ -35,10 +39,35 @@ namespace DotNetWebApp.Models.Generated
         {{~ if property.type == "decimal" ~}}
         [Column(TypeName = "decimal({{ property.precision }}, {{ property.scale }})")]
         {{~ end ~}}
-        {{~ clr_type = property.type == "datetime" ? "DateTime" : property.type ~}}
-        {{~ is_value_type = clr_type != "string" ~}}
-        {{~ is_nullable = (!property.is_required) && !property.is_primary_key && !property.is_identity && (clr_type == "string" || is_value_type) ~}}
-        public {{ clr_type }}{{ is_nullable ? "?" : "" }} {{ property.name }} { get; set; }
+        {{~ # Map YAML types to CLR types (expanded for 30+ SQL Server types) ~}}
+        {{~ if property.type == "datetime" ~}}
+        {{~ clr_type = "DateTime" ~}}
+        {{~ else if property.type == "datetimeoffset" ~}}
+        {{~ clr_type = "DateTimeOffset" ~}}
+        {{~ else if property.type == "timespan" ~}}
+        {{~ clr_type = "TimeSpan" ~}}
+        {{~ else if property.type == "guid" ~}}
+        {{~ clr_type = "Guid" ~}}
+        {{~ else if property.type == "bytes" ~}}
+        {{~ clr_type = "byte[]" ~}}
+        {{~ else if property.type == "long" ~}}
+        {{~ clr_type = "long" ~}}
+        {{~ else if property.type == "short" ~}}
+        {{~ clr_type = "short" ~}}
+        {{~ else if property.type == "byte" ~}}
+        {{~ clr_type = "byte" ~}}
+        {{~ else if property.type == "float" ~}}
+        {{~ clr_type = "float" ~}}
+        {{~ else if property.type == "double" ~}}
+        {{~ clr_type = "double" ~}}
+        {{~ else ~}}
+        {{~ clr_type = property.type ~}}
+        {{~ end ~}}
+        {{~ # Reference types: string, byte[] - also need nullable suffix with #nullable enable ~}}
+        {{~ is_reference_type = clr_type == "string" || clr_type == "byte[]" ~}}
+        {{~ is_nullable = (!property.is_required) && !property.is_primary_key && !property.is_identity ~}}
+        {{~ nullable_suffix = is_nullable ? "?" : "" ~}}
+        public {{ clr_type }}{{ nullable_suffix }} {{ property.name }} { get; set; }
         {{~ "\n" ~}}
         {{~ end ~}}
 

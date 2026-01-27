@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using DotNetWebApp.Models.AppDictionary;
 using Scriban;
 using YamlDotNet.Serialization;
@@ -11,12 +12,36 @@ namespace ModelGenerator
     {
         static void Main(string[] args)
         {
-            if (args.Length == 0)
+            // Check for --mode argument
+            var modeArg = args.FirstOrDefault(a => a.StartsWith("--mode="));
+            var mode = modeArg?.Split('=').ElementAtOrDefault(1) ?? "entities";
+
+            if (mode == "views")
+            {
+                RunViewGeneration(args);
+            }
+            else
+            {
+                RunEntityGeneration(args);
+            }
+        }
+
+        /// <summary>
+        /// Generate entity models from app.yaml (existing behavior)
+        /// </summary>
+        static void RunEntityGeneration(string[] args)
+        {
+            // Filter out mode argument
+            var filteredArgs = args.Where(a => !a.StartsWith("--mode=")).ToArray();
+
+            if (filteredArgs.Length == 0)
             {
                 Console.WriteLine("Usage: ModelGenerator <path_to_yaml_file>");
+                Console.WriteLine("       ModelGenerator --mode=views --views-yaml=<path> --output-dir=<path>");
                 return;
             }
-            var yamlFilePath = args[0];
+
+            var yamlFilePath = filteredArgs[0];
             var yamlContent = File.ReadAllText(yamlFilePath);
 
             var deserializer = new DeserializerBuilder()
@@ -39,6 +64,28 @@ namespace ModelGenerator
                 File.WriteAllText(outputPath, result);
                 Console.WriteLine($"Generated {outputPath}");
             }
+        }
+
+        /// <summary>
+        /// Generate view models from views.yaml (new Phase 2 behavior)
+        /// </summary>
+        static void RunViewGeneration(string[] args)
+        {
+            // Parse arguments
+            var viewsYamlArg = args.FirstOrDefault(a => a.StartsWith("--views-yaml="));
+            var outputDirArg = args.FirstOrDefault(a => a.StartsWith("--output-dir="));
+
+            var viewsYamlPath = viewsYamlArg?.Split('=').ElementAtOrDefault(1) ?? "views.yaml";
+            var outputDir = outputDirArg?.Split('=').ElementAtOrDefault(1) ?? "../DotNetWebApp.Models/ViewModels";
+
+            Console.WriteLine("Running view model generation...");
+            Console.WriteLine($"  views.yaml: {viewsYamlPath}");
+            Console.WriteLine($"  Output dir: {outputDir}");
+
+            var generator = new ViewModelGenerator(viewsYamlPath, outputDir);
+            var count = generator.Generate();
+
+            Console.WriteLine($"Generated {count} view model(s).");
         }
     }
 }

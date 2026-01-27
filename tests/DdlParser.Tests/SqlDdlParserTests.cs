@@ -318,4 +318,87 @@ public class SqlDdlParserTests
         Assert.Contains(table.Columns, c => c.Name == "BitField" && c.SqlType.ToUpperInvariant() == "BIT");
         Assert.Contains(table.Columns, c => c.Name == "MoneyField" && c.SqlType.ToUpperInvariant() == "MONEY");
     }
+
+    [Fact]
+    public void Parse_WithCreateSchema_IgnoresSchemaAndExtractsTables()
+    {
+        // Arrange - Multiple schemas with tables
+        var sql = @"
+            CREATE SCHEMA acme;
+
+            CREATE TABLE acme.Categories (
+                Id INT PRIMARY KEY IDENTITY(1,1),
+                Name NVARCHAR(50) NOT NULL
+            );
+
+            CREATE TABLE acme.Products (
+                Id INT PRIMARY KEY IDENTITY(1,1),
+                Name NVARCHAR(100) NOT NULL,
+                CategoryId INT NULL,
+                FOREIGN KEY (CategoryId) REFERENCES acme.Categories(Id)
+            );";
+        var parser = new SqlDdlParser();
+
+        // Act
+        var tables = parser.Parse(sql);
+
+        // Assert
+        Assert.Equal(2, tables.Count);
+
+        // Verify tables are extracted (schema prefix ignored)
+        Assert.Contains(tables, t => t.Name == "Categories");
+        Assert.Contains(tables, t => t.Name == "Products");
+
+        var productsTable = tables.FirstOrDefault(t => t.Name == "Products");
+        Assert.NotNull(productsTable);
+        Assert.Single(productsTable.ForeignKeys);
+    }
+
+    [Fact]
+    public void Parse_WithBracketedSchema_IgnoresSchemaAndExtractsTables()
+    {
+        // Arrange - Schema name in brackets
+        var sql = @"
+            CREATE SCHEMA [tenant1];
+
+            CREATE TABLE [tenant1].Users (
+                Id INT PRIMARY KEY IDENTITY(1,1),
+                Email NVARCHAR(255) NOT NULL
+            );";
+        var parser = new SqlDdlParser();
+
+        // Act
+        var tables = parser.Parse(sql);
+
+        // Assert
+        Assert.Single(tables);
+        Assert.Equal("Users", tables[0].Name);
+    }
+
+    [Fact]
+    public void Parse_MultipleSchemas_ExtractsTablesFromAll()
+    {
+        // Arrange - Multiple schema definitions
+        var sql = @"
+            CREATE SCHEMA acme;
+            CREATE SCHEMA tenant1;
+
+            CREATE TABLE acme.Products (
+                Id INT PRIMARY KEY IDENTITY(1,1),
+                Name NVARCHAR(100) NOT NULL
+            );
+
+            CREATE TABLE tenant1.Products (
+                Id INT PRIMARY KEY IDENTITY(1,1),
+                Name NVARCHAR(100) NOT NULL
+            );";
+        var parser = new SqlDdlParser();
+
+        // Act
+        var tables = parser.Parse(sql);
+
+        // Assert
+        Assert.Equal(2, tables.Count);
+        Assert.All(tables, t => Assert.Equal("Products", t.Name));
+    }
 }

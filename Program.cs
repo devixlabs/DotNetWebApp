@@ -3,6 +3,7 @@ using System.Linq;
 using DotNetWebApp.Data;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
+using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
@@ -76,31 +77,29 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-var summaries = new[]
+// Product and Category API endpoints - return random rows
+app.MapGet("/api/products/random", async (AppDbContext db) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    var product = await db.Set<Product>()
+        .Include(p => p.Category)
+        .OrderBy(_ => EF.Functions.Random())
+        .FirstOrDefaultAsync();
+    return product is null ? Results.NotFound() : Results.Ok(product);
 })
-.WithName("GetWeatherForecast")
+.WithName("GetRandomProduct")
 .WithOpenApi();
+
+app.MapGet("/api/categories/random", async (AppDbContext db) =>
+{
+    var category = await db.Set<Category>()
+        .OrderBy(_ => EF.Functions.Random())
+        .FirstOrDefaultAsync();
+    return category is null ? Results.NotFound() : Results.Ok(category);
+})
+.WithName("GetRandomCategory")
+.WithOpenApi();
+
 app.MapControllers();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

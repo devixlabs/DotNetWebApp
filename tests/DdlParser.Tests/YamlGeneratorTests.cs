@@ -384,4 +384,102 @@ public class YamlGeneratorTests
         Assert.Equal("Category", relationship.TargetEntity); // Singularized
         Assert.Equal("CategoryId", relationship.ForeignKey);
     }
+
+    [Fact]
+    public void Generate_EntitiesWithSchema_PreservesSchemaInYaml()
+    {
+        // Arrange - Tables with schema prefix
+        var tables = new List<TableMetadata>
+        {
+            new TableMetadata
+            {
+                Name = "Category",
+                Schema = "acme",
+                Columns = new List<ColumnMetadata>
+                {
+                    new ColumnMetadata { Name = "Id", SqlType = "INT", IsPrimaryKey = true, IsIdentity = true, IsNullable = false }
+                }
+            },
+            new TableMetadata
+            {
+                Name = "Product",
+                Schema = "acme",
+                Columns = new List<ColumnMetadata>
+                {
+                    new ColumnMetadata { Name = "Id", SqlType = "INT", IsPrimaryKey = true, IsIdentity = true, IsNullable = false },
+                    new ColumnMetadata { Name = "CategoryId", SqlType = "INT", IsNullable = true }
+                },
+                ForeignKeys = new List<ForeignKeyMetadata>
+                {
+                    new ForeignKeyMetadata { ColumnName = "CategoryId", ReferencedTable = "Category", ReferencedColumn = "Id" }
+                }
+            }
+        };
+        var generator = new YamlGenerator();
+
+        // Act
+        var yaml = generator.Generate(tables);
+
+        // Assert - Verify schema appears in YAML
+        Assert.Contains("schema: acme", yaml, StringComparison.OrdinalIgnoreCase);
+
+        // Verify deserialization preserves schema
+        var deserializer = new DeserializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .Build();
+
+        var appDefinition = deserializer.Deserialize<AppDefinition>(yaml);
+        var category = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Category");
+        Assert.NotNull(category);
+        Assert.Equal("acme", category.Schema);
+
+        var product = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Product");
+        Assert.NotNull(product);
+        Assert.Equal("acme", product.Schema);
+    }
+
+    [Fact]
+    public void Generate_MixedSchemas_PreservesAllSchemas()
+    {
+        // Arrange - Tables in different schemas
+        var tables = new List<TableMetadata>
+        {
+            new TableMetadata
+            {
+                Name = "Product",
+                Schema = "acme",
+                Columns = new List<ColumnMetadata>
+                {
+                    new ColumnMetadata { Name = "Id", SqlType = "INT", IsPrimaryKey = true, IsIdentity = true, IsNullable = false }
+                }
+            },
+            new TableMetadata
+            {
+                Name = "User",
+                Schema = "tenant1",
+                Columns = new List<ColumnMetadata>
+                {
+                    new ColumnMetadata { Name = "Id", SqlType = "INT", IsPrimaryKey = true, IsIdentity = true, IsNullable = false }
+                }
+            }
+        };
+        var generator = new YamlGenerator();
+
+        // Act
+        var yaml = generator.Generate(tables);
+
+        // Assert
+        Assert.Contains("schema: acme", yaml, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("schema: tenant1", yaml, StringComparison.OrdinalIgnoreCase);
+
+        // Verify deserialization
+        var deserializer = new DeserializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .Build();
+
+        var appDefinition = deserializer.Deserialize<AppDefinition>(yaml);
+        Assert.Equal(2, appDefinition.DataModel.Entities.Count);
+        Assert.Contains(appDefinition.DataModel.Entities, e => e.Schema == "acme");
+        Assert.Contains(appDefinition.DataModel.Entities, e => e.Schema == "tenant1");
+    }
 }

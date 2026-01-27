@@ -5,6 +5,7 @@ namespace DdlParser;
 public class TableMetadata
 {
     public string Name { get; set; } = string.Empty;
+    public string Schema { get; set; } = string.Empty;
     public List<ColumnMetadata> Columns { get; set; } = new();
     public List<ForeignKeyMetadata> ForeignKeys { get; set; } = new();
 }
@@ -33,12 +34,15 @@ public class SqlDdlParser
 {
     public List<TableMetadata> Parse(string sqlContent)
     {
+        // Remove CREATE SCHEMA statements (parser doesn't need them, only CREATE TABLE)
+        var processedSql = RemoveCreateSchemaStatements(sqlContent);
+
         var parser = new TSql160Parser(initialQuotedIdentifiers: false);
 
         TSqlFragment fragment;
         IList<ParseError> errors;
 
-        using (var reader = new StringReader(sqlContent))
+        using (var reader = new StringReader(processedSql))
         {
             fragment = parser.Parse(reader, out errors);
         }
@@ -58,5 +62,21 @@ public class SqlDdlParser
         fragment.Accept(visitor);
 
         return visitor.Tables;
+    }
+
+    /// <summary>
+    /// Removes CREATE SCHEMA statements from SQL content.
+    /// These are valid SQL but not needed for DDL table extraction.
+    /// </summary>
+    private static string RemoveCreateSchemaStatements(string sqlContent)
+    {
+        // Regex to match: CREATE SCHEMA [schema_name];
+        // Handles optional schema name in brackets or plain identifier
+        var pattern = @"CREATE\s+SCHEMA\s+(?:\[[\w]+\]|[\w]+)\s*;?";
+        return System.Text.RegularExpressions.Regex.Replace(
+            sqlContent,
+            pattern,
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 }

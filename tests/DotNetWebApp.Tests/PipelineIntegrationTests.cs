@@ -154,7 +154,7 @@ CREATE TABLE Products (
     }
 
     [Fact]
-    public async Task RunDdlPipeline_UpdatedSchema_RegeneratesCorrectly()
+    public void RunDdlPipeline_UpdatedSchema_RegeneratesCorrectly()
     {
         // Arrange: Create initial schema
         var initialSql = @"
