@@ -196,7 +196,7 @@ DotNetWebApp/
 - **Dynamic Entity API:** `EntitiesController` provides CRUD endpoints at `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
 - **Optional SPA example:** Toggle the `/app` routes via `AppCustomization:EnableSpaExample` in `appsettings.json`
 - **Generic CRUD UI:** `GenericEntityPage.razor` + `DynamicDataGrid.razor` render dynamic data grids from YAML definitions
-- **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with links to all entities via `AppDictionaryService`
+- **Dynamic Navigation:** `NavMenu.razor` renders "Data" section with schema-qualified links (e.g., `/entity/acme/Company`) and labels showing schema for disambiguation
 - **DDL to YAML Parser:** Complete pipeline (DdlParser → app.yaml → ModelGenerator → DotNetWebApp.Models/Generated)
   - Converts SQL Server DDL files to `app.yaml` format
   - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
@@ -232,6 +232,59 @@ DotNetWebApp/
 - **Zombie processes:** Killed processes may become zombies (`<defunct>`) until parent reaps them. These are harmless and don't consume resources.
 - **Process accumulation:** Running multiple `make` commands (especially `test`, `run-ddl-pipeline`) without cleanup causes dotnet process accumulation. Run `make clean` periodically or `make stop-dev` + `make shutdown-build-servers` as needed.
 - **Wrapper script processes:** The `dotnet-build.sh` wrapper may leave bash process entries after termination. These typically become zombies and don't need manual cleanup.
+
+## 🚨 Multi-Schema Support: Critical Pitfalls
+
+**This project is DDL-driven.** Everything flows from `schema.sql` → `app.yaml` → generated C# models. Multiple schemas with identical table names (e.g., `acme.Companies` and `initech.Companies`) are perfectly valid SQL but require careful handling throughout the codebase.
+
+### The Problem
+When the same table name exists in multiple schemas, components must use **schema-qualified names** (`schema:TableName`) everywhere—not just plain table names. Failing to do so causes:
+- **Wrong data returned:** API fetches `acme.Company` when `initech.Company` was requested
+- **Type casting errors:** `InvalidCastException: Unable to cast 'Acme.Company' to 'Initech.Company'`
+- **Dictionary key collisions:** `An item with the same key has already been added. Key: Company`
+
+### Schema-Qualified Name Formats
+- **Browser URLs:** `schema/TableName` (e.g., `/entity/acme/Company`, `/app/initech/Company`) - uses slash, URL-safe
+- **API endpoints:** `schema:TableName` (e.g., `/api/entities/acme:Company`) - uses colon internally
+- **C# Namespaces:** `DotNetWebApp.Models.Generated.{PascalSchema}.{TableName}` (e.g., `...Generated.Acme.Company`)
+- **YAML (app.yaml):** Uses lowercase `schema:` field (e.g., `schema: initech`)
+
+**Important:** Colons in URLs are interpreted by browsers as protocol schemes (like `mailto:`), causing `xdg-open` popups. Always use slashes for browser-facing URLs and convert to colons for API calls.
+
+### Files That Must Use Qualified Names
+| File | What to use | NOT this |
+|------|-------------|----------|
+| `EntityMetadataService.cs` | Pascal-cased schema in namespace: `Generated.Initech.Company` | `Generated.initech.Company` |
+| `DashboardService.cs` | `$"{schema}:{name}"` in both try AND catch blocks | `entity.Definition.Name` |
+| `EntitySection.razor` | `EntityName` parameter (colon format for API) | `metadata.Definition.Name` |
+| `GenericEntityPage.razor` | Convert URL `Schema/EntityName` to API `schema:name` | Using URL format for API |
+| `NavMenu.razor` | Build path as `entity/{schema}/{name}` (slash for URLs) | Colons in browser URLs |
+| `SpaSectionService.cs` | RouteSegment=`schema/name`, EntityName=`schema:name` | Same format for both |
+| `SpaApp.razor` | Convert URL slash format to API colon format | Using slash format for API |
+
+### Key Patterns
+
+**URL Routing (use slashes):**
+```csharp
+// ✅ CORRECT - slash-separated for browser URLs
+var path = $"entity/{entity.Schema}/{entity.Name}";  // "/entity/acme/Company"
+
+// ❌ WRONG - colon triggers browser protocol handler popup
+var path = $"{entity.Schema}:{entity.Name}";  // "acme:Company" causes xdg-open!
+```
+
+**API Calls (use colons):**
+```csharp
+// ✅ CORRECT - colon-separated for API calls
+var qualifiedName = $"{schema}:{entityName}";  // "acme:Company"
+var result = await EntityApiService.GetEntitiesAsync(qualifiedName);
+
+// ❌ WRONG - strips schema, returns wrong data when duplicate table names exist
+var result = await EntityApiService.GetEntitiesAsync(metadata.Definition.Name);
+```
+
+### Regression Test
+`verify.sh` Test 12 validates multi-schema isolation by checking that `acme:Company` returns `name` field and `initech:Company` returns `companyName` field (they have different schemas with different properties).
 
 ## Architecture Notes
 - **Hybrid architecture:** ASP.NET Core Web API backend + Blazor Server SPA frontend

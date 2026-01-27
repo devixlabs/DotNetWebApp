@@ -16,7 +16,13 @@
     <RadzenPanelMenuItem Text="Data" Icon="table_chart" Expanded="true">
         @foreach (var entity in AppDictionary.AppDefinition.DataModel.Entities)
         {
-            <RadzenPanelMenuItem Text="@entity.Name" Icon="data_object" Path="@entity.Name" />
+            var path = string.IsNullOrWhiteSpace(entity.Schema)
+                ? $"entity/{entity.Name}"
+                : $"entity/{entity.Schema}/{entity.Name}";
+            var label = string.IsNullOrWhiteSpace(entity.Schema)
+                ? entity.Name
+                : $"{entity.Name} ({entity.Schema})";
+            <RadzenPanelMenuItem Text="@label" Icon="data_object" Path="@path" />
         }
     </RadzenPanelMenuItem>
 </RadzenPanelMenu>
@@ -46,6 +52,12 @@
     private string GetDefaultEntityPath()
     {
         var entity = AppDictionary.AppDefinition.DataModel.Entities.FirstOrDefault();
-        return entity == null ? "/" : entity.Name;
+        if (entity == null)
+        {
+            return "/";
+        }
+        return string.IsNullOrWhiteSpace(entity.Schema)
+            ? $"entity/{entity.Name}"
+            : $"entity/{entity.Schema}/{entity.Name}";
     }
 }

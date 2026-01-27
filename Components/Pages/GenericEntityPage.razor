@@ -1,4 +1,5 @@
-@page "/{EntityName}"
+@page "/entity/{EntityName}"
+@page "/entity/{Schema}/{EntityName}"
 @inject IEntityApiService EntityApi
 @inject IEntityMetadataService EntityMetadataService
 
@@ -12,15 +13,18 @@ else if (!string.IsNullOrWhiteSpace(errorMessage))
 }
 else if (!string.IsNullOrWhiteSpace(EntityName))
 {
-    <h1>@EntityName</h1>
+    <h1>@DisplayName</h1>
 
     @if (entities != null)
     {
-        <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
+        <DynamicDataGrid Entities="@entities" EntityName="@QualifiedName" />
     }
 }
 
 @code {
+    [Parameter]
+    public string? Schema { get; set; }
+
     [Parameter]
     public string? EntityName { get; set; }
 
@@ -28,6 +32,16 @@ else if (!string.IsNullOrWhiteSpace(EntityName))
 
     private bool isLoading;
     private string? errorMessage;
+
+    // Build schema-qualified name for API calls (e.g., "initech:Company")
+    private string QualifiedName => string.IsNullOrWhiteSpace(Schema)
+        ? EntityName ?? string.Empty
+        : $"{Schema}:{EntityName}";
+
+    // Display name shows schema in parentheses if present
+    private string DisplayName => string.IsNullOrWhiteSpace(Schema)
+        ? EntityName ?? string.Empty
+        : $"{EntityName} ({Schema})";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -42,22 +56,23 @@ else if (!string.IsNullOrWhiteSpace(EntityName))
             return;
         }
 
-        var metadata = EntityMetadataService.Find(EntityName);
+        var metadata = EntityMetadataService.Find(QualifiedName);
         if (metadata == null || metadata.ClrType == null)
         {
-            errorMessage = $"No model type found for '{EntityName}'.";
+            errorMessage = $"No model type found for '{QualifiedName}'.";
             isLoading = false;
             return;
         }
 
         try
         {
-            var result = await EntityApi.GetEntitiesAsync(metadata.Definition.Name);
+            // Use schema-qualified name (e.g., "initech:Company") to ensure correct schema lookup
+            var result = await EntityApi.GetEntitiesAsync(QualifiedName);
             entities = result.ToList().AsReadOnly();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load {metadata.Definition.Name} data: {ex.Message}";
+            errorMessage = $"Failed to load {DisplayName} data: {ex.Message}";
         }
         finally
         {

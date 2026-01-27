@@ -27,15 +27,19 @@ public sealed class DashboardService : IDashboardService
         var countTasks = entities
             .Select(async e =>
             {
+                // Use schema-qualified name for lookup to support multiple schemas with same table name
+                var qualifiedName = string.IsNullOrWhiteSpace(e.Definition.Schema)
+                    ? e.Definition.Name
+                    : $"{e.Definition.Schema}:{e.Definition.Name}";
                 try
                 {
-                    var count = await _entityApiService.GetCountAsync(e.Definition.Name);
-                    return new EntityCountInfo(e.Definition.Name, count);
+                    var count = await _entityApiService.GetCountAsync(qualifiedName);
+                    return new EntityCountInfo(qualifiedName, count);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error getting count for {EntityName}", e.Definition.Name);
-                    return new EntityCountInfo(e.Definition.Name, 0);
+                    _logger.LogWarning(ex, "Error getting count for {EntityName}", qualifiedName);
+                    return new EntityCountInfo(qualifiedName, 0);
                 }
             })
             .ToArray();

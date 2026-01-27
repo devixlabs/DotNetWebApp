@@ -6,7 +6,8 @@ namespace DotNetWebApp.Services;
 public sealed class EntityMetadataService : IEntityMetadataService
 {
     private readonly IReadOnlyList<EntityMetadata> _entities;
-    private readonly Dictionary<string, EntityMetadata> _byName;
+    private readonly Dictionary<string, EntityMetadata> _byQualifiedName;
+    private readonly Dictionary<string, List<EntityMetadata>> _byPlainName;
 
     public EntityMetadataService(IAppDictionaryService appDictionary)
     {
@@ -17,12 +18,31 @@ public sealed class EntityMetadataService : IEntityMetadataService
 
         foreach (var entity in entityDefinitions)
         {
-            var clrType = assembly.GetType($"DotNetWebApp.Models.Generated.{entity.Name}");
+            // Build namespace based on schema: DotNetWebApp.Models.Generated[.Schema].Name
+            // Schema must be Pascal-cased to match generated namespace (e.g., "initech" -> "Initech")
+            var ns = "DotNetWebApp.Models.Generated";
+            if (!string.IsNullOrWhiteSpace(entity.Schema))
+            {
+                var pascalSchema = char.ToUpperInvariant(entity.Schema[0]) + entity.Schema[1..].ToLowerInvariant();
+                ns += $".{pascalSchema}";
+            }
+            var clrType = assembly.GetType($"{ns}.{entity.Name}");
             entities.Add(new EntityMetadata(entity, clrType));
         }
 
         _entities = entities;
-        _byName = entities.ToDictionary(item => item.Definition.Name, StringComparer.OrdinalIgnoreCase);
+
+        // Build dictionaries for efficient lookup
+        _byQualifiedName = entities.ToDictionary(
+            item => string.IsNullOrWhiteSpace(item.Definition.Schema)
+                ? item.Definition.Name
+                : $"{item.Definition.Schema}:{item.Definition.Name}",
+            StringComparer.OrdinalIgnoreCase);
+
+        // Group by plain name for fallback lookup
+        _byPlainName = entities
+            .GroupBy(item => item.Definition.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<EntityMetadata> Entities => _entities;
@@ -34,6 +54,20 @@ public sealed class EntityMetadataService : IEntityMetadataService
             return null;
         }
 
-        return _byName.TryGetValue(entityName, out var metadata) ? metadata : null;
+        // Try exact match first (handles both plain and schema-qualified names)
+        if (_byQualifiedName.TryGetValue(entityName, out var metadata))
+        {
+            return metadata;
+        }
+
+        // If not found and entityName doesn't contain schema qualifier, try plain name lookup
+        if (!entityName.Contains(':') && _byPlainName.TryGetValue(entityName, out var candidates))
+        {
+            // Return first match (prefer non-schema-qualified or first available)
+            return candidates.FirstOrDefault(m => string.IsNullOrWhiteSpace(m.Definition.Schema))
+                ?? candidates[0];
+        }
+
+        return null;
     }
 }
