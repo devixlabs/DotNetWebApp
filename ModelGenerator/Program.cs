@@ -60,7 +60,18 @@ namespace ModelGenerator
             foreach (var entity in appDefinition.DataModel.Entities)
             {
                 var result = template.Render(new { entity });
-                var outputPath = Path.Combine(outputDir, $"{entity.Name}.cs");
+
+                // Create schema-specific subdirectory if schema is defined
+                var entityOutputDir = outputDir;
+                if (!string.IsNullOrEmpty(entity.Schema))
+                {
+                    // Capitalize schema name for directory (e.g., "acme" -> "Acme")
+                    var schemaDir = char.ToUpper(entity.Schema[0]) + entity.Schema.Substring(1);
+                    entityOutputDir = Path.Combine(outputDir, schemaDir);
+                    Directory.CreateDirectory(entityOutputDir);
+                }
+
+                var outputPath = Path.Combine(entityOutputDir, $"{entity.Name}.cs");
                 File.WriteAllText(outputPath, result);
                 Console.WriteLine($"Generated {outputPath}");
             }

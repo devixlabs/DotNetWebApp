@@ -25,11 +25,11 @@ namespace DotNetWebApp.Data
                 modelBuilder.HasDefaultSchema(Schema);
             }
 
-            // Dynamically register all entities in the Generated namespace
+            // Dynamically register all entities in the Generated namespace (including schema-specific subdirectories)
             // Scan the Models assembly instead of the executing assembly to support separated project structure
             var modelsAssembly = typeof(EntityMetadata).Assembly;
             var entityTypes = modelsAssembly.GetTypes()
-                .Where(t => t.IsClass && t.Namespace == "DotNetWebApp.Models.Generated");
+                .Where(t => t.IsClass && t.Namespace != null && t.Namespace.StartsWith("DotNetWebApp.Models.Generated"));
 
             foreach (var type in entityTypes)
             {

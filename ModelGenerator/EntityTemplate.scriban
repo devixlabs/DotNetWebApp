@@ -5,7 +5,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DotNetWebApp.Models.Generated
+{{~ namespace = "DotNetWebApp.Models.Generated" ~}}
+{{~ if entity.schema ~}}
+{{~ namespace = namespace + "." + (entity.schema | string.capitalize) ~}}
+{{~ end ~}}
+namespace {{ namespace }}
 {
     {{~ if entity.schema ~}}
     [Table("{{ entity.name | string.capitalize }}", Schema = "{{ entity.schema }}")]

@@ -77,28 +77,6 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-// Product and Category API endpoints - return random rows
-app.MapGet("/api/products/random", async (AppDbContext db) =>
-{
-    var product = await db.Set<Product>()
-        .Include(p => p.Category)
-        .OrderBy(_ => EF.Functions.Random())
-        .FirstOrDefaultAsync();
-    return product is null ? Results.NotFound() : Results.Ok(product);
-})
-.WithName("GetRandomProduct")
-.WithOpenApi();
-
-app.MapGet("/api/categories/random", async (AppDbContext db) =>
-{
-    var category = await db.Set<Category>()
-        .OrderBy(_ => EF.Functions.Random())
-        .FirstOrDefaultAsync();
-    return category is null ? Results.NotFound() : Results.Ok(category);
-})
-.WithName("GetRandomCategory")
-.WithOpenApi();
-
 app.MapControllers();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
