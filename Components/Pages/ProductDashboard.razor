@@ -1,0 +1,287 @@
+@page "/dashboard/products"
+@inject IViewService ViewService
+@inject ILogger<ProductDashboard> Logger
+
+<PageTitle>Product Sales Dashboard</PageTitle>
+
+<!--
+    COMPONENT OVERVIEW:
+    This is an example Blazor Server component that demonstrates how to use IViewService to execute SQL views.
+
+    Key concepts:
+    1. Inject IViewService from DI container
+    2. Call ExecuteViewAsync<T> to fetch view data (where T is the generated view model class)
+    3. Pass optional parameters as an anonymous object (matches SQL parameter names)
+    4. Handle loading/error states
+    5. Render results using Radzen DataGrid with type-safe binding
+
+    VIEW MODEL BINDING:
+    The ViewService.ExecuteViewAsync<ProductSalesView>(...) call returns an IEnumerable<ProductSalesView>,
+    where ProductSalesView is the auto-generated class from views.yaml code generation.
+    The @TItem="ProductSalesView" binding ensures full type safety and IntelliSense support.
+
+    PARAMETER PASSING:
+    SQL views may require parameters (e.g., @TopN). Pass them as an anonymous object:
+      new { TopN = 50 }  // Maps to @TopN in the SQL query
+
+    Dapper automatically maps property names to SQL parameter names, so ensure the anonymous object
+    property names match the SQL parameter names (case-insensitive with Dapper).
+
+    CUSTOMIZATION GUIDE:
+    - Change the view name from "ProductSalesView" to any other registered view
+    - Modify the generic type (ProductSalesView) to match the view model class you're using
+    - Add/remove columns from the DataGrid to match your view's properties
+    - Adjust PageSize, AllowFiltering, AllowSorting as needed for your use case
+    - Add sorting/grouping parameters in the ExecuteViewAsync call
+-->
+
+<div class="dashboard-container">
+    <h3>Top Selling Products</h3>
+
+    @if (isLoading)
+    {
+        <p><em>Loading dashboard data...</em></p>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <strong>Error:</strong> @errorMessage
+        </div>
+    }
+    else if (products != null && products.Any())
+    {
+        <!--
+            RADZEN DATAGRID SETUP:
+            @TItem="ProductSalesView" - Type safety for the data grid
+            Data="@products" - Bind the view results
+            AllowFiltering="true" - Users can filter by column values
+            AllowSorting="true" - Users can sort by clicking column headers
+            AllowPaging="true" - Show page controls at the bottom
+            PageSize="20" - How many rows per page
+
+            For more complex scenarios:
+            - Add SelectionMode="DataGridSelectionMode.Multiple" for checkboxes
+            - Add Edit/Delete buttons in a command column
+            - Add custom CSS classes for styling
+            - Add LoadData event handler for server-side filtering/sorting/paging
+        -->
+        <RadzenDataGrid Data="@products"
+                        TItem="ProductSalesView"
+                        AllowFiltering="true"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="20"
+                        Style="width: 100%; height: 500px;">
+            <!--
+                COLUMN DEFINITIONS:
+                Each column maps to a property of ProductSalesView.
+                - Property: C# property name (case-sensitive)
+                - Title: Display header text
+                - FormatString: Optional formatting (e.g., {0:C} for currency, {0:N2} for decimals)
+                - Sortable: Allow sorting on this column (default: true)
+                - Filterable: Allow filtering on this column (default: true)
+            -->
+            <Columns>
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="Name"
+                                     Title="Product Name"
+                                     Width="20%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="CategoryName"
+                                     Title="Category"
+                                     Width="15%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="Price"
+                                     Title="Price"
+                                     FormatString="{0:C}"
+                                     Width="12%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="TotalSold"
+                                     Title="Units Sold"
+                                     FormatString="{0:N0}"
+                                     Width="12%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="TotalRevenue"
+                                     Title="Total Revenue"
+                                     FormatString="{0:C}"
+                                     Width="15%" />
+
+                <!--
+                    CUSTOM COMPUTED COLUMN:
+                    You can add computed columns that aren't in the SQL view.
+                    These are calculated in C# (after data is loaded) using partial class methods.
+
+                    Example: If ProductSalesView has a custom property like "IsHighValue"
+                    defined in ProductSalesView.cs (the user-maintained partial class),
+                    you can display it here:
+
+                    <RadzenDataGridColumn TItem="ProductSalesView"
+                                         Title="Status"
+                                         Template="@(context => context.IsHighValue ? "High Value" : "Standard")"
+                                         Width="10%" />
+                -->
+            </Columns>
+        </RadzenDataGrid>
+
+        <!--
+            PAGINATION INFO:
+            Display summary information about the current page/results.
+            This helps users understand what data they're looking at.
+        -->
+        <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+            Showing @(products?.Count() ?? 0) products
+        </p>
+    }
+    else
+    {
+        <p>No products found. Please try different parameters.</p>
+    }
+</div>
+
+<!--
+    STYLING:
+    Optional: Add scoped CSS for this component.
+    Uncomment the <style> tag below to customize appearance.
+
+    <style>
+        .dashboard-container {
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+-->
+
+@code {
+    /// <summary>
+    /// Stores the view results - populated by ExecuteViewAsync<ProductSalesView>
+    /// </summary>
+    private IEnumerable<ProductSalesView>? products;
+
+    /// <summary>
+    /// Flag to show loading spinner while data is fetching
+    /// </summary>
+    private bool isLoading = true;
+
+    /// <summary>
+    /// Error message display - set if view execution fails
+    /// </summary>
+    private string? errorMessage;
+
+    /// <summary>
+    /// Blazor lifecycle hook - runs when component initializes
+    /// Called once per component instance
+    ///
+    /// For parameter-based loading (like with pagination or filters),
+    /// override OnParametersSetAsync instead to reload when parameters change.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    /// <summary>
+    /// Loads dashboard data by executing the registered "ProductSalesView" view.
+    ///
+    /// PARAMETER PASSING:
+    /// The new { TopN = 50 } creates an anonymous object that Dapper maps to SQL parameters.
+    /// The SQL query expects @TopN parameter, which gets the value 50.
+    ///
+    /// You can add more parameters:
+    ///   new { TopN = 50, CategoryId = 5 }
+    ///
+    /// Make sure your SQL query has corresponding @TopN and @CategoryId parameters.
+    /// </summary>
+    private async Task LoadDashboardDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        products = null;
+
+        try
+        {
+            //
+            // EXECUTE VIEW:
+            // Calls IViewService.ExecuteViewAsync<T> to:
+            // 1. Look up "ProductSalesView" in the registry (from views.yaml)
+            // 2. Load the SQL from sql/views/ProductSalesView.sql
+            // 3. Execute the SQL with parameters { TopN = 50 }
+            // 4. Map results to ProductSalesView instances via Dapper
+            //
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = 50 });  // SQL parameter: @TopN = 50
+
+            Logger.LogInformation("Loaded {Count} products for dashboard", products?.Count() ?? 0);
+        }
+        catch (Exception ex)
+        {
+            // Log the full exception for debugging
+            Logger.LogError(ex, "Failed to load product dashboard");
+
+            // Show user-friendly error message
+            errorMessage = $"Failed to load dashboard: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Optional: Refresh method that can be called from the UI
+    /// This could be triggered by a "Refresh" button
+    ///
+    /// Usage in Razor markup:
+    ///   <RadzenButton Text="Refresh" Click="@(async _ => await RefreshAsync())" />
+    /// </summary>
+    private async Task RefreshAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    /// <summary>
+    /// Optional: Method to load a different subset of products
+    /// Demonstrates how to pass different parameters to the same view
+    ///
+    /// Usage in Razor markup:
+    ///   <RadzenButton Text="Top 100" Click="@(async _ => await LoadTopProductsAsync(100))" />
+    /// </summary>
+    private async Task LoadTopProductsAsync(int topCount)
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = topCount });  // Different parameter value
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load top {Count} products", topCount);
+            errorMessage = $"Failed to load products: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
