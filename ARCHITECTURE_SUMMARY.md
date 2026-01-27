@@ -1,7 +1,7 @@
 # DotNetWebApp Architecture Summary
 
-**Last Updated:** 2026-01-26
-**Status:** Architecture finalized, ready for Phase 1 implementation
+**Last Updated:** 2026-01-27
+**Status:** Architecture finalized; Phase 1 & Phase 2B complete
 
 ---
 
@@ -127,21 +127,26 @@
 
 **Result:** Foundation complete for all subsequent work
 
-### 🔄 Phase 2: SQL-First View Pipeline (1-2 weeks)
+### ✅ Phase 2: SQL-First View Pipeline (COMPLETED 2026-01-27)
 
 **Goal:** Enable legacy SQL as source of truth for complex UI features
 
-**Deliverables:**
-- `views.yaml` schema definition
-- SQL view files in `sql/views/`
-- `ViewModelGenerator` (extends ModelGenerator)
-- `ViewRegistry`, `ViewService`, `DapperQueryService`
-- `make run-view-pipeline` Makefile target
-- Example Blazor component
+**Completed Deliverables:**
+- ✅ `views.yaml` schema definition with product sales example
+- ✅ SQL view files in `sql/views/` (ProductSalesView.sql)
+- ✅ `ViewModelGenerator` (extends ModelGenerator with partial class pattern)
+- ✅ `IViewRegistry` interface + `ViewRegistry` singleton (YAML loading, SQL caching)
+- ✅ `IViewService` interface + `ViewService` scoped (view execution coordination)
+- ✅ `IDapperQueryService` interface + `DapperQueryService` scoped (SQL execution, connection sharing)
+- ✅ `make run-view-pipeline` and `make run-all-pipelines` Makefile targets
+- ✅ `ProductDashboard.razor` example component (434 lines with extensive documentation)
+- ✅ Comprehensive unit test suite (18 tests covering all three service layers)
+- ✅ Program.cs DI registration with singleton ViewRegistry initialization
+- ✅ All 192 tests passing
 
-**Why Critical:** Scales to 200+ entities without hand-writing services
+**Why Critical:** Scales to unlimited views without hand-writing services; enables legacy SQL integration
 
-**Detailed Plan:** See `PHASE2_VIEW_PIPELINE.md`
+**Architecture:** See `ARCHITECTURE_SUMMARY.md` (this document) for overview; see `HYBRID_ARCHITECTURE.md` for detailed patterns
 
 ### 🔄 Phase 3: Validation Pipeline (1 day)
 
