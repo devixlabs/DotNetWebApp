@@ -24,13 +24,21 @@ namespace DotNetWebApp.Controllers
             _metadataService = metadataService;
         }
 
-        [HttpGet("{entityName}")]
-        public async Task<ActionResult> GetEntities(string entityName)
+        private string BuildQualifiedName(string schema, string entityName)
         {
-            var metadata = _metadataService.Find(entityName);
+            // Default to 'dbo' if schema is not provided
+            var effectiveSchema = string.IsNullOrWhiteSpace(schema) ? "dbo" : schema;
+            return $"{effectiveSchema}:{entityName}";
+        }
+
+        [HttpGet("{schema}/{entityName}")]
+        public async Task<ActionResult> GetEntities(string schema, string entityName)
+        {
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             var list = await _operationService.GetAllAsync(metadata.ClrType);
@@ -38,13 +46,14 @@ namespace DotNetWebApp.Controllers
             return Ok(list);
         }
 
-        [HttpGet("{entityName}/count")]
-        public async Task<ActionResult<int>> GetEntityCount(string entityName)
+        [HttpGet("{schema}/{entityName}/count")]
+        public async Task<ActionResult<int>> GetEntityCount(string schema, string entityName)
         {
-            var metadata = _metadataService.Find(entityName);
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             var count = await _operationService.GetCountAsync(metadata.ClrType);
@@ -52,13 +61,14 @@ namespace DotNetWebApp.Controllers
             return Ok(count);
         }
 
-        [HttpPost("{entityName}")]
-        public async Task<ActionResult> CreateEntity(string entityName)
+        [HttpPost("{schema}/{entityName}")]
+        public async Task<ActionResult> CreateEntity(string schema, string entityName)
         {
-            var metadata = _metadataService.Find(entityName);
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             using var reader = new StreamReader(Request.Body);
@@ -87,24 +97,25 @@ namespace DotNetWebApp.Controllers
             await _operationService.CreateAsync(metadata.ClrType, entity);
 
             return CreatedAtAction(nameof(GetEntities),
-                new { entityName = entityName },
+                new { schema = schema, entityName = entityName },
                 entity);
         }
 
-        [HttpGet("{entityName}/{id}")]
-        public async Task<ActionResult> GetEntityById(string entityName, string id)
+        [HttpGet("{schema}/{entityName}/{id}")]
+        public async Task<ActionResult> GetEntityById(string schema, string entityName, string id)
         {
-            var metadata = _metadataService.Find(entityName);
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
-                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a primary key defined" });
             }
 
             object? pkValue;
@@ -133,20 +144,21 @@ namespace DotNetWebApp.Controllers
             return Ok(entity);
         }
 
-        [HttpPut("{entityName}/{id}")]
-        public async Task<ActionResult> UpdateEntity(string entityName, string id)
+        [HttpPut("{schema}/{entityName}/{id}")]
+        public async Task<ActionResult> UpdateEntity(string schema, string entityName, string id)
         {
-            var metadata = _metadataService.Find(entityName);
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
-                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a primary key defined" });
             }
 
             object? pkValue;
@@ -189,25 +201,33 @@ namespace DotNetWebApp.Controllers
                 return BadRequest(new { error = "Failed to deserialize entity" });
             }
 
+            // Set the primary key on the entity (it comes from the URL, not the JSON body)
+            var pkPropertyInfo = metadata.ClrType.GetProperty(pkProperty.Name);
+            if (pkPropertyInfo != null && pkPropertyInfo.CanWrite)
+            {
+                pkPropertyInfo.SetValue(updatedEntity, pkValue);
+            }
+
             var entity = await _operationService.UpdateAsync(metadata.ClrType, updatedEntity);
 
             return Ok(entity);
         }
 
-        [HttpDelete("{entityName}/{id}")]
-        public async Task<ActionResult> DeleteEntity(string entityName, string id)
+        [HttpDelete("{schema}/{entityName}/{id}")]
+        public async Task<ActionResult> DeleteEntity(string schema, string entityName, string id)
         {
-            var metadata = _metadataService.Find(entityName);
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
-                return BadRequest(new { error = $"Entity '{entityName}' does not have a primary key defined" });
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a primary key defined" });
             }
 
             object? pkValue;

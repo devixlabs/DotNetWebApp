@@ -99,7 +99,7 @@
         }
 
         // Treat any non-static route segment as an entity name.
-        // Convert URL format (schema/name) to API format (schema:name)
+        // Convert URL format (schema/name) to internal format (schema:name) for metadata lookups
         var entityName = segment.Contains('/')
             ? segment.Replace('/', ':')
             : segment;
