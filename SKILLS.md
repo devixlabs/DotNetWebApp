@@ -7,6 +7,7 @@ Comprehensive guides for developers at all skill levels. Status of each guide:
 - ✅ **[SQL Operations](#sql-operations)** - COMPLETE
 - ✅ **[App Configuration & YAML](#app-configuration--yaml)** - COMPLETE
 - ✅ **[.NET/C# Data Layer](#netc-data-layer)** - COMPLETE - Entity Framework Core, models, and data access
+- ✅ **[SQL Views & Complex Queries (Phase 2)](#sql-views--complex-queries-phase-2)** - COMPLETE - Dapper-based views, IViewService, and SQL-first read patterns
 - ✅ **[.NET/C# API & Services](#netc-api--services)** - COMPLETE - Controllers, services, and API endpoints
 
 ---
@@ -590,6 +591,658 @@ make migrate
 - EF requires explicit `.Include()` to load related data
 - E.g., `await DbContext.Products.Include(p => p.Category).ToListAsync()`
 - Or use the scalar FK property directly
+
+---
+
+# SQL Views & Complex Queries (Phase 2)
+
+This guide covers **SQL-first view pipeline** for complex read operations using Dapper. Use this for multi-table JOINs, aggregations, reports, and dashboards where EF Core queries would be inefficient or overly complex.
+
+## Overview
+
+Phase 2 introduces a **hybrid data access architecture**:
+
+- **EF Core** for all write operations (CREATE, UPDATE, DELETE) on entities
+- **Dapper** for complex read operations from SQL views (multi-table JOINs, aggregations)
+- **SQL-first philosophy:** Write SQL queries, generate C# view models automatically
+
+### Why SQL Views?
+
+| Scenario | Use EF Core | Use SQL Views (Dapper) |
+|----------|-------------|------------------------|
+| Single entity CRUD | ✅ Yes | ❌ No |
+| Simple queries (1-2 tables) | ✅ Yes | ❌ No |
+| Multi-table JOINs (3+ tables) | ⚠️ Complex | ✅ Yes |
+| Aggregations (SUM, AVG, GROUP BY) | ⚠️ Complex | ✅ Yes |
+| Reports & dashboards | ❌ No | ✅ Yes |
+| Legacy SQL queries | ❌ No | ✅ Yes |
+
+### The View Pipeline
+
+```
+SQL View File (sql/views/ProductSalesView.sql)
+    ↓ (manual: write your SELECT query)
+views.yaml (define view metadata)
+    ↓ (run: make run-view-pipeline)
+ViewModels/ProductSalesView.generated.cs (auto-generated C# DTO)
+    ↓ (inject in Blazor component)
+IViewService.ExecuteViewAsync<ProductSalesView>()
+    ↓ (Dapper executes SQL, maps to C# objects)
+IEnumerable<ProductSalesView> results
+```
+
+## File Locations
+
+| File | Purpose |
+|------|---------|
+| `sql/views/*.sql` | 📝 Your SQL SELECT queries - this is what you write |
+| `views.yaml` | 📝 View definitions with metadata - you edit this |
+| `DotNetWebApp.Models/ViewModels/*.generated.cs` | 🔄 Auto-generated C# view model classes - never edit manually |
+| `Services/Views/` | 🔧 IViewService, ViewRegistry, DapperQueryService implementations |
+
+## Creating SQL Views
+
+### Step 1: Write the SQL Query
+
+Create a new file in `sql/views/` with your SELECT query:
+
+**File:** `sql/views/ProductSalesView.sql`
+
+```sql
+-- ProductSalesView: Product sales summary with category and order totals
+-- Parameters: @TopN (int) - Number of top products to return
+
+SELECT TOP (@TopN)
+    p.Id,
+    p.Name,
+    p.Price,
+    c.Name AS CategoryName,
+    COUNT(od.Id) AS TotalSold,
+    SUM(od.Quantity * od.UnitPrice) AS TotalRevenue
+FROM Products p
+LEFT JOIN Categories c ON p.CategoryId = c.Id
+LEFT JOIN OrderDetails od ON p.Id = od.ProductId
+GROUP BY p.Id, p.Name, p.Price, c.Name
+ORDER BY TotalRevenue DESC
+```
+
+**Key Points:**
+- Use `@ParameterName` for parameters (will be mapped to C# parameters)
+- Use column aliases (`AS CategoryName`) for clarity
+- Aggregate functions (COUNT, SUM) are fully supported
+- Multi-table JOINs work as expected
+
+### Step 2: Define the View in views.yaml
+
+**File:** `views.yaml` (project root)
+
+```yaml
+views:
+  - name: ProductSalesView
+    description: "Product sales summary with category and order totals"
+    sql_file: "sql/views/ProductSalesView.sql"
+    generate_partial: true
+
+    # Parameters passed to SQL query
+    parameters:
+      - name: TopN
+        type: int
+        nullable: false
+        default: "10"
+        validation:
+          required: true
+          range: [1, 1000]
+
+    # Properties returned from SQL (must match column names)
+    properties:
+      - name: Id
+        type: int
+        nullable: false
+      - name: Name
+        type: string
+        nullable: false
+        max_length: 100
+      - name: Price
+        type: decimal
+        nullable: false
+      - name: CategoryName
+        type: string
+        nullable: true
+        max_length: 100
+      - name: TotalSold
+        type: int
+        nullable: false
+      - name: TotalRevenue
+        type: decimal
+        nullable: false
+```
+
+**Important:** Property names must match SQL column names exactly (case-sensitive).
+
+### Step 3: Generate View Models
+
+Run the view pipeline to generate C# view model classes:
+
+```bash
+make run-view-pipeline
+```
+
+This creates: `DotNetWebApp.Models/ViewModels/ProductSalesView.generated.cs`
+
+**Generated output:**
+```csharp
+// Auto-generated - DO NOT EDIT
+// Generated: 2026-01-27
+
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace DotNetWebApp.Models.ViewModels
+{
+    public partial class ProductSalesView
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = null!;
+
+        public decimal Price { get; set; }
+
+        [MaxLength(100)]
+        public string? CategoryName { get; set; }
+
+        public int TotalSold { get; set; }
+
+        public decimal TotalRevenue { get; set; }
+    }
+}
+```
+
+### Step 4: (Optional) Extend with Partial Class
+
+You can add custom properties/methods without modifying generated code:
+
+**File:** `DotNetWebApp.Models/ViewModels/ProductSalesView.cs` (create manually)
+
+```csharp
+namespace DotNetWebApp.Models.ViewModels
+{
+    public partial class ProductSalesView
+    {
+        // Custom computed property for UI display
+        public string FormattedRevenue => TotalRevenue.ToString("C");
+
+        // Business logic
+        public bool IsHighValue => TotalRevenue > 10000;
+
+        // Validation helpers
+        public bool HasSales => TotalSold > 0;
+    }
+}
+```
+
+This file is **never overwritten** by the pipeline.
+
+## Using IViewService in Components
+
+### Basic Example - Read-Only Grid
+
+**File:** `Components/Pages/ProductDashboard.razor`
+
+```razor
+@page "/dashboard/products"
+@inject IViewService ViewService
+@inject ILogger<ProductDashboard> Logger
+
+<PageTitle>Product Sales Dashboard</PageTitle>
+
+<h3>Top Selling Products</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @errorMessage
+    </div>
+}
+else if (products != null && products.Any())
+{
+    <RadzenDataGrid Data="@products"
+                    TItem="ProductSalesView"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="20">
+        <Columns>
+            <RadzenDataGridColumn TItem="ProductSalesView"
+                                 Property="Name"
+                                 Title="Product Name" />
+
+            <RadzenDataGridColumn TItem="ProductSalesView"
+                                 Property="CategoryName"
+                                 Title="Category" />
+
+            <RadzenDataGridColumn TItem="ProductSalesView"
+                                 Property="Price"
+                                 Title="Price"
+                                 FormatString="{0:C}" />
+
+            <RadzenDataGridColumn TItem="ProductSalesView"
+                                 Property="TotalSold"
+                                 Title="Units Sold"
+                                 FormatString="{0:N0}" />
+
+            <RadzenDataGridColumn TItem="ProductSalesView"
+                                 Property="TotalRevenue"
+                                 Title="Total Revenue"
+                                 FormatString="{0:C}" />
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private IEnumerable<ProductSalesView>? products;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize component");
+            errorMessage = "Failed to load component.";
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            Logger.LogInformation("Loading product sales data");
+
+            // Execute view with parameters
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = 50 }
+            );
+
+            Logger.LogInformation("Loaded {Count} products", products?.Count() ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading data");
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+```
+
+### With User Input Parameters
+
+Add filter controls that pass parameters to the view:
+
+```razor
+@code {
+    private int topN = 50;
+    private string? searchTerm;
+
+    private async Task OnApplyFilters()
+    {
+        products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+            "ProductSalesView",
+            new {
+                TopN = topN,
+                SearchTerm = searchTerm ?? ""
+            }
+        );
+    }
+}
+
+<!-- Add filter UI -->
+<div class="filters">
+    <RadzenNumeric @bind-Value="topN" Min="1" Max="1000" />
+    <RadzenTextBox @bind-Value="searchTerm" Placeholder="Search..." />
+    <RadzenButton Text="Apply Filters" Click="@OnApplyFilters" />
+</div>
+```
+
+### Loading Single Record
+
+Use `ExecuteViewSingleAsync` when expecting exactly one result:
+
+```razor
+@code {
+    private ProductSalesView? product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await ViewService.ExecuteViewSingleAsync<ProductSalesView>(
+            "ProductSalesView",
+            new { TopN = 1 }
+        );
+
+        if (product == null)
+        {
+            errorMessage = "Product not found.";
+        }
+    }
+}
+```
+
+## IViewService API Reference
+
+### ExecuteViewAsync<T>
+
+Executes a view and returns multiple results:
+
+```csharp
+Task<IEnumerable<T>> ExecuteViewAsync<T>(
+    string viewName,
+    object? parameters = null
+)
+```
+
+**Parameters:**
+- `viewName` - Name of view from `views.yaml` (case-insensitive)
+- `parameters` - Anonymous object with properties matching SQL parameter names
+
+**Returns:** `IEnumerable<T>` (empty if no results)
+
+**Example:**
+```csharp
+var results = await ViewService.ExecuteViewAsync<ProductSalesView>(
+    "ProductSalesView",
+    new { TopN = 100, CategoryId = 5 }
+);
+```
+
+### ExecuteViewSingleAsync<T>
+
+Executes a view and returns a single result or null:
+
+```csharp
+Task<T?> ExecuteViewSingleAsync<T>(
+    string viewName,
+    object? parameters = null
+)
+```
+
+**Returns:** Single result or `null` if no results
+
+**Example:**
+```csharp
+var product = await ViewService.ExecuteViewSingleAsync<ProductSalesView>(
+    "ProductSalesView",
+    new { TopN = 1 }
+);
+```
+
+## views.yaml Schema Reference
+
+### Complete Example
+
+```yaml
+views:
+  - name: ViewName                    # C# class name (PascalCase)
+    description: "Human-readable description"
+    sql_file: "sql/views/ViewName.sql"   # Relative to views.yaml
+    generate_partial: true            # Generate partial class (optional)
+
+    parameters:                       # Optional SQL parameters
+      - name: ParameterName
+        type: int|string|decimal|bool|DateTime
+        nullable: true|false
+        default: "10"                 # Default value as string
+        validation:                   # Optional validation rules
+          required: true
+          range: [1, 1000]            # For numeric types
+          max_length: 100             # For string types
+
+    properties:                       # Must match SQL column names
+      - name: PropertyName
+        type: int|string|decimal|bool|DateTime
+        nullable: true|false
+        max_length: 100               # For string types (optional)
+```
+
+### Supported Types
+
+| YAML Type | C# Type | SQL Type |
+|-----------|---------|----------|
+| `int` | `int` | `INT` |
+| `long` | `long` | `BIGINT` |
+| `decimal` | `decimal` | `DECIMAL`, `NUMERIC`, `MONEY` |
+| `string` | `string` | `NVARCHAR`, `VARCHAR`, `CHAR` |
+| `bool` | `bool` | `BIT` |
+| `DateTime` | `DateTime` | `DATETIME2`, `DATETIME`, `DATE` |
+
+**Nullable types:** Set `nullable: true` to generate `int?`, `decimal?`, etc.
+
+## Multi-Tenant Support
+
+SQL views automatically inherit the current tenant's schema via shared EF Core connection:
+
+```sql
+-- Your SQL view references tables without schema prefix
+SELECT p.Id, p.Name
+FROM Products p
+LEFT JOIN Categories c ON p.CategoryId = c.Id
+```
+
+The `X-Customer-Schema` header is automatically applied:
+- Request with `X-Customer-Schema: acme` queries `acme.Products`
+- Request with `X-Customer-Schema: initech` queries `initech.Products`
+
+**No code changes needed** - multi-tenancy is handled by `DapperQueryService`.
+
+## Common Patterns
+
+### Pattern: Dashboard with Multiple Views
+
+Load multiple views in parallel:
+
+```csharp
+protected override async Task OnInitializedAsync()
+{
+    var tasksales = ViewService.ExecuteViewAsync<ProductSalesView>(
+        "ProductSalesView", new { TopN = 10 });
+
+    var taskCustomers = ViewService.ExecuteViewAsync<CustomerSummaryView>(
+        "CustomerSummaryView", null);
+
+    var taskRevenue = ViewService.ExecuteViewSingleAsync<RevenueSummaryView>(
+        "RevenueSummaryView", null);
+
+    await Task.WhenAll(taskSales, taskCustomers, taskRevenue);
+
+    products = taskSales.Result;
+    customers = taskCustomers.Result;
+    revenue = taskRevenue.Result;
+}
+```
+
+### Pattern: Auto-Refresh Dashboard
+
+Refresh data on a timer:
+
+```csharp
+private System.Threading.Timer? refreshTimer;
+
+protected override void OnInitialized()
+{
+    refreshTimer = new Timer(async _ => {
+        await InvokeAsync(async () => {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
+    }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+}
+
+public void Dispose()
+{
+    refreshTimer?.Dispose();
+}
+```
+
+### Pattern: Export to CSV
+
+Use view results for reporting:
+
+```csharp
+private async Task ExportToCsv()
+{
+    var data = await ViewService.ExecuteViewAsync<ProductSalesView>(
+        "ProductSalesView", new { TopN = 1000 });
+
+    var csv = new StringBuilder();
+    csv.AppendLine("Name,Category,Price,Total Sold,Total Revenue");
+
+    foreach (var row in data)
+    {
+        csv.AppendLine($"{row.Name},{row.CategoryName},{row.Price},{row.TotalSold},{row.TotalRevenue}");
+    }
+
+    // Trigger browser download
+    await JSRuntime.InvokeVoidAsync("downloadFile",
+        "products.csv",
+        csv.ToString());
+}
+```
+
+## Architecture: Services Overview
+
+Phase 2 consists of three service layers:
+
+### IViewRegistry (Singleton)
+
+Loads `views.yaml` once at startup, caches SQL file contents:
+
+```csharp
+public interface IViewRegistry
+{
+    Task<string> GetViewSqlAsync(string viewName);
+    ViewDefinition GetViewDefinition(string viewName);
+    IEnumerable<string> GetAllViewNames();
+}
+```
+
+**Registered in Program.cs:**
+```csharp
+var viewRegistry = new ViewRegistry(
+    Path.Combine(builder.Environment.ContentRootPath, "views.yaml"),
+    loggerFactory.CreateLogger<ViewRegistry>()
+);
+builder.Services.AddSingleton<IViewRegistry>(viewRegistry);
+```
+
+### IDapperQueryService (Scoped)
+
+Executes SQL queries via Dapper, shares EF Core connection for multi-tenancy:
+
+```csharp
+public interface IDapperQueryService
+{
+    Task<IEnumerable<T>> QueryAsync<T>(string sql, object? parameters = null);
+    Task<T?> QuerySingleAsync<T>(string sql, object? parameters = null);
+}
+```
+
+**Uses shared connection:**
+```csharp
+var connection = _dbContext.Database.GetDbConnection();
+return await connection.QueryAsync<T>(sql, parameters);
+```
+
+### IViewService (Scoped)
+
+Orchestrates ViewRegistry + DapperQueryService:
+
+```csharp
+public interface IViewService
+{
+    Task<IEnumerable<T>> ExecuteViewAsync<T>(string viewName, object? parameters = null);
+    Task<T?> ExecuteViewSingleAsync<T>(string viewName, object? parameters = null);
+}
+```
+
+**Workflow:**
+1. Get SQL from `ViewRegistry.GetViewSqlAsync()`
+2. Execute SQL via `DapperQueryService.QueryAsync<T>()`
+3. Return results
+
+## Troubleshooting
+
+**Q: "View 'ViewName' not found in registry"**
+- Check `views.yaml` has an entry with matching `name:` field
+- View names are case-insensitive but must match exactly
+- Restart the application to reload `views.yaml`
+
+**Q: "SQL file not found"**
+- Verify `sql_file:` path in `views.yaml` is correct
+- Paths are relative to `views.yaml` location (project root)
+- Check file exists: `ls sql/views/YourView.sql`
+
+**Q: "Property 'X' does not exist on type 'Y'"**
+- SQL column names must match `properties:` in `views.yaml` exactly (case-sensitive)
+- Use column aliases in SQL: `SELECT c.Name AS CategoryName`
+- Regenerate view models: `make run-view-pipeline`
+
+**Q: "Type mismatch" or casting errors**
+- Ensure `type:` in `views.yaml` matches SQL column type
+- Check nullable settings match (`nullable: true` for `NULL` columns)
+- SQL `INT` → `int`, `BIGINT` → `long`, `NVARCHAR` → `string`, etc.
+
+**Q: Changes to SQL view don't reflect**
+- Restart the application (SQL is cached by `ViewRegistry`)
+- Or implement hot-reload by clearing the SQL cache
+
+**Q: Parameters not working**
+- Parameter names must match `@ParameterName` in SQL exactly (case-sensitive)
+- Pass parameters as anonymous object: `new { ParameterName = value }`
+- Dapper parameter matching is case-insensitive but consistent naming helps
+
+**Q: Multi-tenant queries returning wrong data**
+- Verify `X-Customer-Schema` header is set correctly
+- Check `DapperQueryService` is using shared EF connection
+- Test schema isolation with different header values
+
+## Important Notes
+
+- **Views are read-only:** Use `IEntityOperationService` for write operations (EF Core)
+- **SQL is cached:** Restart application to reload SQL changes
+- **Type safety:** View models are strongly typed with IntelliSense support
+- **Performance:** Dapper is ~2x faster than EF for complex queries
+- **No migrations:** SQL views don't create database views (just queries)
+- **Partial classes:** Extend generated classes without modifying generated code
+- **Multi-tenant:** Schema inheritance is automatic via shared connection
+
+## Running the View Pipeline
+
+```bash
+# Generate view models from views.yaml
+make run-view-pipeline
+
+# Generate both entities (from schema.sql) and views (from views.yaml)
+make run-all-pipelines
+
+# Check generated files
+ls DotNetWebApp.Models/ViewModels/
+```
 
 ---
 

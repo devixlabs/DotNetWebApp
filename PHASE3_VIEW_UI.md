@@ -1,28 +1,29 @@
-# Phase 3: Spec-Driven View UI Component Generation
+# Phase 3: Radzen Component Patterns & Implementation Guide
 
-**Status:** PLANNED (post Phase 2)
-**Duration:** 2-3 weeks
-**Priority:** MEDIUM (enables rapid UI development via LLM + human spec collaboration)
+**Status:** REFERENCE PATTERNS (Core patterns implemented via ProductDashboard.razor)
+**Purpose:** Guide for building Radzen components with IViewService integration
 **Prerequisite:** Phase 1 & Phase 2 must be completed first
 
 ---
 
 ## Executive Summary
 
-Phase 3 implements a **spec-driven UI component builder** that allows humans and LLMs to collaborate:
+Phase 3 provides **reference patterns and implementation guidelines** for building Blazor components using Radzen UI library:
 
-1. **Human developer** writes a component spec (YAML) describing what to build
-2. **LLM reads** spec file and understands requirements
-3. **LLM implements** `.razor` component following templated patterns
-4. **Result:** Type-safe, data-bound Blazor components with no guessing
+1. **Reference component patterns** - Copy these as starting points for grids, forms, and dashboards
+2. **Complete working example** - ProductDashboard.razor showing IViewService integration
+3. **Implementation guidelines** - File locations, naming conventions, state management patterns
+4. **Testing strategies** - Unit and integration testing approaches
 
-This is **NOT auto-generation** – it's **guided, explicit specification** that leverages Phase 2's generated ViewModels and services.
+This guide helps developers build type-safe, data-bound Blazor components that leverage Phase 2's ViewModels and IViewService.
 
 ### Why Phase 3?
 
-- Phase 1 provides: `IEntityOperationService` (CRUD writes)
-- Phase 2 provides: `IViewService` + ViewModels (complex reads)
-- **Phase 3 provides:** Systematic way to build UIs that consume both
+- Phase 1 provides: `IEntityOperationService` (CRUD writes via EF Core)
+- Phase 2 provides: `IViewService` + ViewModels (complex reads via Dapper)
+- **Phase 3 provides:** Systematic patterns for building UI components that consume both
+
+**Approach:** Manual component development following proven patterns (NOT code generation)
 
 ---
 
@@ -30,25 +31,25 @@ This is **NOT auto-generation** – it's **guided, explicit specification** that
 
 ### Key Principles
 
-1. **Specs Are Configuration, Not Code**
-   - YAML files describe *what* to build (structure, layout, bindings)
-   - `.razor` implementation is consistent (data binding + event handlers)
-   - Humans control the spec; LLM implements the pattern
+1. **Pattern-Based Development**
+   - Each component type (grid, form, dashboard) has a reference pattern
+   - Developers copy the pattern and customize for their needs
+   - Variations are straightforward - change bindings, add/remove columns, adjust styling
 
 2. **Strong Typing from Phase 2**
    - ViewModels have DataAnnotations ([Required], [MaxLength], [Range])
    - ViewModelParameters classes are validation-ready
-   - No guessing about nullable types or field constraints
+   - Full IntelliSense and compile-time type checking
 
-3. **Template-Based Implementation**
-   - Each component type (grid, form, dashboard) has a proven pattern
-   - Variations are CSS/layout changes, not structural changes
-   - LLM applies template to spec properties
+3. **Radzen Component Library**
+   - Use Radzen's built-in components directly (RadzenDataGrid, RadzenCard, etc.)
+   - No abstraction layers - full access to Radzen features
+   - Leverage Radzen's validation, filtering, sorting, paging out-of-the-box
 
 4. **Composability**
    - Components can be nested (dashboard contains grids + forms)
    - Each component is independent and testable
-   - Reusable state management patterns
+   - Reusable state management patterns (AsyncUiState, error handling)
 
 5. **Multi-Tenant & Schema-Aware by Default**
    - SQL views use schema-qualified table names: `[acme].[TableName]`
@@ -69,310 +70,22 @@ This is **NOT auto-generation** – it's **guided, explicit specification** that
 
 ---
 
-## Phase 3A: Spec Format & Documentation
+## Reference Component Patterns
 
-### 3A.1 Spec Format Schema
+This section provides reference Razor component patterns for building Blazor UI components with Radzen. These are **complete working examples** that you can copy as starting points and customize for your specific needs.
 
-**File:** `specs/SPEC_FORMAT.md`
+Each pattern shows:
+- Complete `.razor` component code
+- IViewService integration for data loading
+- State management (loading, error, empty states)
+- Event handling and user interactions
+- Radzen component configuration
 
-Complete YAML schema for component specs:
+### Grid Component Pattern
 
-```markdown
-# Component Spec Format v1
+**Use this pattern for:** Dashboards, reports, data tables, any read-only or read-heavy data display
 
-All component specs are YAML files describing UI structure and data bindings.
-
-## File Location
-`specs/{component-name}.yaml` or `specs/examples/{category}/{name}.yaml`
-
-## Root Properties
-
-### metadata (required)
-```yaml
-metadata:
-  name: ProductSalesGrid              # C# class name (PascalCase)
-  description: "Display top selling products"
-  type: grid|form|detail|filter-panel|dashboard|chart
-  version: "1.0"
-```
-
-### routing (required for page components)
-```yaml
-routing:
-  page: /dashboard/products           # Route (must start with /)
-  layout: MainLayout                  # Blazor layout (optional, default: MainLayout)
-  title: "Product Sales Dashboard"    # Page title
-  requiresAuth: false                 # Auth required (optional, default: false)
-```
-
-### view (required for data components - grid, form, detail, chart)
-```yaml
-view:
-  name: ProductSalesView              # From views.yaml
-  parameters:
-    TopN: 50                          # Parameter values (optional)
-    CategoryId: 5
-  singleRecord: false                 # Use ExecuteViewSingleAsync (optional, default: false)
-```
-
-### parameters (optional - for components with filter inputs)
-```yaml
-parameters:
-  - name: TopN
-    type: int
-    label: "Number of Results"
-    default: 50
-    control: number-input
-    gridColumn: 2
-  - name: CategoryId
-    type: int?
-    label: "Category"
-    default: null
-    control: dropdown
-    gridColumn: 2
-    dataSource: Categories              # Entity name or view name
-    valueProperty: Id
-    textProperty: Name
-```
-
-### grid (required for type: grid)
-```yaml
-grid:
-  allowFiltering: true
-  allowSorting: true
-  allowPaging: true
-  pageSize: 20
-  height: "600px"                     # Optional CSS height
-  striped: true
-  border: true
-  responsive: true                    # Stack on mobile
-
-  columns:
-    - property: Name                  # ViewModel property name
-      title: "Product Name"
-      type: string                    # Expected type
-      width: 200                      # Optional pixel width
-      sortable: true
-      filterable: true
-      format: null                    # No format
-
-    - property: Price
-      title: "Unit Price"
-      type: decimal
-      sortable: true
-      filterable: false
-      format: "{0:C}"                 # Currency format
-      textAlign: right
-
-    - property: TotalRevenue
-      title: "Total Revenue"
-      type: decimal
-      format: "{0:C}"
-      textAlign: right
-      width: 150
-
-    - property: CategoryName
-      title: "Category"
-      type: string
-      sortable: true
-      filterable: true
-
-actions:                              # Optional action columns
-  - name: Edit
-    icon: edit
-    route: /products/{Id}
-    enabled: true
-
-  - name: View Details
-    icon: info
-    onClick: ViewDetails              # C# method name
-    enabled: true
-```
-
-### form (required for type: form | detail)
-```yaml
-form:
-  layout: vertical                    # vertical | horizontal | 2-column
-  submitButtonText: "Save"
-  cancelButtonText: "Cancel"
-  readOnly: false                     # Entire form read-only
-
-  fieldGroups:                        # Group fields visually
-    - title: "Basic Information"
-      fields:
-        - property: Id
-          label: "ID"
-          type: int
-          readOnly: true              # Disable individual fields
-          visible: true               # Hide field conditionally (optional)
-
-        - property: Name
-          label: "Product Name"
-          type: string
-          required: true              # From ViewModel [Required]
-          maxLength: 100              # From ViewModel [MaxLength]
-
-    - title: "Pricing"
-      fields:
-        - property: Price
-          label: "Unit Price"
-          type: decimal
-          required: true
-          min: 0.01
-          step: 0.01
-```
-
-### dashboard (required for type: dashboard)
-```yaml
-dashboard:
-  layout: auto                        # auto | 1-column | 2-column | 3-column
-  spacing: normal                     # compact | normal | spacious
-
-  sections:
-    - title: "Top Products"
-      component: ProductSalesGrid     # Reference another spec (without .yaml)
-      span: 2                         # Column span for 3-column layout
-      height: 400
-
-    - title: "Filters"
-      component: ProductFilters
-      span: 1
-      height: auto
-
-    - title: "Revenue Chart"
-      component: RevenueChart
-      span: 2
-      height: 350
-```
-
-### filter-panel (required for type: filter-panel)
-```yaml
-filter-panel:
-  layout: horizontal                  # horizontal | vertical | grid
-  gridColumns: 3
-  submitButtonText: "Apply Filters"
-  resetButtonText: "Reset"
-  liveUpdate: false                   # Apply filters on change
-
-  fields:
-    - name: TopN
-      label: "Show Top"
-      control: number-input
-      default: 50
-      gridColumn: 1
-
-    - name: CategoryId
-      label: "Category"
-      control: dropdown
-      default: null
-      gridColumn: 1
-      dataSource: Categories
-
-    - name: PriceRange
-      label: "Price Range"
-      control: range-slider
-      min: 0
-      max: 10000
-      gridColumn: 2
-```
-
-### chart (required for type: chart)
-```yaml
-chart:
-  chartType: column                   # column | bar | line | pie | area
-  xAxis:
-    property: Name                    # Property to use for X-axis
-    label: "Product"
-
-  yAxis:
-    property: TotalRevenue            # Property to use for Y-axis
-    label: "Revenue"
-
-  height: 400
-  legend: true
-  tooltip: true
-  interactive: true                   # Allow drill-down
-```
-
-### styling (optional)
-```yaml
-styling:
-  containerClass: ""                  # Custom CSS classes
-  theme: default                      # light | dark | default
-  customCss: |
-    .product-grid { margin: 20px; }
-```
-
-## Example: Complete Grid Spec
-
-```yaml
-metadata:
-  name: ProductSalesGrid
-  description: "Display top selling products by category"
-  type: grid
-  version: "1.0"
-
-routing:
-  page: /dashboard/products
-  title: "Product Sales"
-  requiresAuth: false
-
-view:
-  name: ProductSalesView
-  parameters:
-    TopN: 50
-
-grid:
-  allowFiltering: true
-  allowSorting: true
-  allowPaging: true
-  pageSize: 20
-
-  columns:
-    - property: Name
-      title: "Product"
-      sortable: true
-      filterable: true
-
-    - property: Price
-      title: "Price"
-      format: "{0:C}"
-      sortable: true
-
-    - property: CategoryName
-      title: "Category"
-      sortable: true
-
-    - property: TotalSold
-      title: "Units Sold"
-      sortable: true
-      textAlign: right
-
-    - property: TotalRevenue
-      title: "Total Revenue"
-      format: "{0:C}"
-      textAlign: right
-
-  actions:
-    - name: Edit
-      icon: edit
-      route: /products/{Id}
-```
-
-## Complete Schema Reference
-
-See detailed property descriptions above for all supported options.
-```
-
----
-
-## Phase 3B: Implementation Patterns & Templates
-
-### 3B.1 Template: Grid Component
-
-**File:** `specs/templates/grid-template.razor`
-
-This is the reference implementation that all grid specs should follow:
+**Example: ProductDashboard.razor** (see `Components/Pages/ProductDashboard.razor` for working implementation)
 
 ```razor
 @page "{Route}"
@@ -495,21 +208,21 @@ This is the reference implementation that all grid specs should follow:
 
 @code {
     [Parameter]
-    public string Route { get; set; } = "{RouteFromSpec}";
+    public string Route { get; set; } = "/your-route";
 
     private IEnumerable<{ViewModelType}>? gridData;
     private bool isLoading = true;
     private string? errorMessage;
     private RadzenDataGrid<{ViewModelType}>? grid;
 
-    // Grid configuration from spec
+    // Grid configuration
     private bool allowFiltering = {AllowFiltering};
     private bool allowSorting = {AllowSorting};
     private bool allowPaging = {AllowPaging};
     private int pageSize = {PageSize};
     private string gridHeight = "{GridHeight}";
 
-    // Filter parameters (if spec includes parameters)
+    // Filter parameters (if view has parameters)
     private Dictionary<string, object?> filterValues = new();
     private bool hasFilterPanel = {HasFilterPanel};
 
@@ -542,7 +255,7 @@ This is the reference implementation that all grid specs should follow:
         {
             Logger.LogInformation("Loading data for {ComponentName}", "{ComponentName}");
 
-            // Build parameters object from spec defaults + filter values
+            // Build parameters object from defaults + filter values
             var parameters = new {ViewModelTypeParameters}
             {
                 {ParameterBindings}
@@ -621,21 +334,13 @@ This is the reference implementation that all grid specs should follow:
         public object? Max { get; set; }
     }
 }
-```
 
-**How LLM Uses This Template:**
+### Form Component Pattern
 
-1. Replace `{ComponentName}` with metadata.name
-2. Replace `{Route}` with routing.page
-3. Replace `{Title}` with routing.title
-4. Replace `{ViewModelType}` with the generated class name from views.yaml
-5. Generate `<RadzenDataGridColumn>` entries for each column in spec
-6. Generate parameter binding code for each parameter
-7. Replace placeholders with spec values
+**Use this pattern for:** Detail pages, edit forms, settings pages, single-record display/edit
 
-### 3B.2 Template: Form Component
+**Example: ProductForm.razor**
 
-**File:** `specs/templates/form-template.razor`
 
 ```razor
 @page "{Route}"
@@ -709,7 +414,7 @@ This is the reference implementation that all grid specs should follow:
 
 @code {
     [Parameter]
-    public string Route { get; set; } = "{RouteFromSpec}";
+    public string Route { get; set; } = "/your-route";
 
     private {ViewModelType}? formData;
     private bool isLoading = true;
@@ -804,12 +509,12 @@ This is the reference implementation that all grid specs should follow:
         public bool Required { get; set; }
         public int? MaxLength { get; set; }
     }
-}
-```
 
-### 3B.3 Template: Dashboard Component
+### Dashboard Component Pattern
 
-**File:** `specs/templates/dashboard-template.razor`
+**Use this pattern for:** Composite pages with multiple data sources, executive dashboards
+
+**Example: ExecutiveDashboard.razor**
 
 ```razor
 @page "{Route}"
@@ -827,9 +532,9 @@ This is the reference implementation that all grid specs should follow:
                 <RadzenCard>
                     <RadzenText TextStyle="TextStyle.H5">@section.Title</RadzenText>
                     @* Load component dynamically or use @if branches *@
-                    @if (section.ComponentType == typeof(ProductSalesGrid))
+                    @if (section.ComponentType == typeof(ProductDashboard))
                     {
-                        <ProductSalesGrid />
+                        <ProductDashboard />
                     }
                 </RadzenCard>
             </div>
@@ -839,14 +544,14 @@ This is the reference implementation that all grid specs should follow:
 
 @code {
     [Parameter]
-    public string Route { get; set; } = "{RouteFromSpec}";
+    public string Route { get; set; } = "/your-route";
 
     private List<DashboardSection> sections = new();
 
     protected override void OnInitialized()
     {
         Logger.LogInformation("Dashboard initialized");
-        // Initialize sections based on spec
+        // Initialize sections
     }
 
     private class DashboardSection
@@ -857,274 +562,103 @@ This is the reference implementation that all grid specs should follow:
         public int Span { get; set; } = 1;
         public string Height { get; set; } = "400px";
     }
-}
-```
 
 ---
 
-## Phase 3C: Reference Specs & Examples
+## Building Radzen Components (SKILLS.md Integration)
 
-### 3C.1 Example 1: Simple Grid
-
-**File:** `specs/examples/ProductSalesGrid.yaml`
-
-```yaml
-metadata:
-  name: ProductSalesGrid
-  description: "Display top selling products by category"
-  type: grid
-  version: "1.0"
-
-routing:
-  page: /dashboard/products
-  title: "Product Sales Dashboard"
-  requiresAuth: false
-
-view:
-  name: ProductSalesView
-  parameters:
-    TopN: 50
-
-grid:
-  allowFiltering: true
-  allowSorting: true
-  allowPaging: true
-  pageSize: 20
-  height: "600px"
-  striped: true
-  border: true
-
-  columns:
-    - property: Name
-      title: "Product"
-      type: string
-      sortable: true
-      filterable: true
-      width: 200
-
-    - property: Price
-      title: "Unit Price"
-      type: decimal
-      format: "{0:C}"
-      sortable: true
-      textAlign: right
-      width: 120
-
-    - property: CategoryName
-      title: "Category"
-      type: string
-      sortable: true
-      filterable: true
-
-    - property: TotalSold
-      title: "Units Sold"
-      type: int
-      sortable: true
-      textAlign: right
-      width: 100
-
-    - property: TotalRevenue
-      title: "Total Revenue"
-      type: decimal
-      format: "{0:C}"
-      sortable: true
-      textAlign: right
-      width: 150
-
-  actions:
-    - name: Edit
-      icon: edit
-      route: /products/{Id}
-      enabled: true
-```
-
-### 3C.2 Example 2: Grid with Filter Panel
-
-**File:** `specs/examples/FilteredProductGrid.yaml`
-
-```yaml
-metadata:
-  name: FilteredProductGrid
-  description: "Products with category filter"
-  type: grid
-  version: "1.0"
-
-routing:
-  page: /products
-  title: "Products"
-
-view:
-  name: ProductSalesView
-  parameters:
-    TopN: 50
-    CategoryId: null
-
-parameters:
-  - name: TopN
-    type: int
-    label: "Show Top N"
-    default: 50
-    control: number-input
-    gridColumn: 1
-
-  - name: CategoryId
-    type: int?
-    label: "Category Filter"
-    default: null
-    control: dropdown
-    gridColumn: 1
-    dataSource: Categories
-    valueProperty: Id
-    textProperty: Name
-
-grid:
-  allowFiltering: true
-  allowSorting: true
-  allowPaging: true
-  pageSize: 20
-
-  columns:
-    - property: Name
-      title: "Product"
-      sortable: true
-
-    - property: CategoryName
-      title: "Category"
-      sortable: true
-
-    - property: Price
-      title: "Price"
-      format: "{0:C}"
-
-    - property: TotalRevenue
-      title: "Revenue"
-      format: "{0:C}"
-```
-
-### 3C.3 Example 3: Dashboard with Multiple Components
-
-**File:** `specs/examples/ExecutiveDashboard.yaml`
-
-```yaml
-metadata:
-  name: ExecutiveDashboard
-  description: "Executive summary dashboard"
-  type: dashboard
-  version: "1.0"
-
-routing:
-  page: /dashboard
-  title: "Executive Dashboard"
-  requiresAuth: true
-
-dashboard:
-  layout: 3-column
-  spacing: normal
-
-  sections:
-    - title: "Top Products"
-      component: ProductSalesGrid
-      span: 2
-      height: 400
-
-    - title: "Filters"
-      component: ProductFilters
-      span: 1
-      height: auto
-
-    - title: "Revenue Chart"
-      component: RevenueChart
-      span: 2
-      height: 350
-
-    - title: "Key Metrics"
-      component: MetricsSummary
-      span: 1
-      height: 350
-```
-
----
-
-## Phase 3D: SKILLS.md Integration
-
-### 3D.1 New Skill: Build Component from Spec
-
-**File:** `SKILLS.md` - Add new section
-
-```markdown
-## Building Blazor Components from Specs
-
-This skill enables you to implement `.razor` components from YAML specifications, leveraging Phase 2's view models and services. This is not auto-generation—it's guided, templated implementation where humans write specs and LLMs implement consistent patterns.
+This section provides guidance for implementing Blazor components using Radzen UI library with IViewService integration. These patterns should be documented in your project's `SKILLS.md` file.
 
 ### Overview
 
-1. Human developer writes a `.yaml` spec file in `specs/` directory
-2. Spec describes structure (grid, form, dashboard, etc.) and data bindings
-3. You implement a `.razor` component following the corresponding template pattern
-4. Result is type-safe, data-bound, reusable UI component
+Building Blazor components with Radzen follows a consistent pattern:
 
-### Spec Format
+1. **Create the `.razor` component file** in appropriate location
+2. **Inject required services** (IViewService, ILogger, NavigationManager)
+3. **Define state variables** (data, isLoading, errorMessage)
+4. **Implement OnInitializedAsync** to load data via IViewService
+5. **Add Radzen components** (RadzenDataGrid, RadzenCard, etc.) with data binding
+6. **Handle loading/error/empty states** with conditional rendering
 
-See `specs/SPEC_FORMAT.md` for complete schema. Key concepts:
+### Component File Locations
 
-- **metadata**: Component name, type, description
-- **routing**: Page route, title, auth requirements
-- **view**: Which view model to load data from (from Phase 2)
-- **parameters**: Filter/input parameters passed to view
-- **grid/form/dashboard**: Component-specific configuration
-- **columns/fields**: Data display configuration
+| Component Type | Location | Routable? |
+|---|---|---|
+| Page (grid, form, dashboard) | `Components/Pages/{Name}.razor` | Yes (@page directive) |
+| Reusable Section | `Components/Sections/{Name}.razor` | No |
+| Shared Sub-component | `Components/Shared/{Name}.razor` | No |
 
-### Implementation Process
+### Required Service Injections
 
-**Step 1: Read the Spec**
-- Open the provided `.yaml` file from `specs/` directory
-- Note: metadata.type (grid, form, dashboard, etc.)
-- Note: view.name (the view model to consume)
-- Note: view.parameters (what data to pass to IViewService)
+Every data-driven component needs:
 
-**Step 2: Determine Component Type**
-- `type: grid` → Use `specs/templates/grid-template.razor`
-- `type: form` → Use `specs/templates/form-template.razor`
-- `type: dashboard` → Use `specs/templates/dashboard-template.razor`
-- `type: filter-panel` → Custom form-based component
-- `type: chart` → Radzen chart component
+```csharp
+@inject IViewService ViewService
+@inject ILogger<ComponentName> Logger
+@inject NavigationManager Navigation    // If component has navigation
+```
 
-**Step 3: Create Component File**
-- Location: `Components/Pages/{ComponentName}.razor` (for page components)
-- Location: `Components/Sections/{ComponentName}.razor` (for reusable sections)
-- PascalCase filename matching metadata.name
+### State Management Pattern
 
-**Step 4: Implement Using Template**
-- Copy corresponding template from `specs/templates/`
-- Replace placeholders:
-  - `{ComponentName}` → metadata.name
-  - `{Route}` → routing.page
-  - `{Title}` → routing.title
-  - `{ViewName}` → view.name
-  - `{ViewModelType}` → Generated class name (e.g., ProductSalesView)
-  - `{ViewModelTypeParameters}` → Generated parameters class (e.g., ProductSalesViewParameters)
+Always use this pattern for consistency:
 
-**Step 5: Generate Column/Field Configuration**
-For each column/field in spec:
-- Create `<RadzenDataGridColumn>` or form field
-- Set property bindings from spec
-- Apply formatting/validation from spec
-- Use data types from spec
+```csharp
+private IEnumerable<ViewModelType>? data;    // The data
+private bool isLoading = true;               // Loading state
+private string? errorMessage;                // Error state
+```
 
-**Step 6: Bind View Parameters**
-In the `LoadDataAsync()` method:
-- Create new instance of {ViewModelTypeParameters}
-- Bind each property from spec.view.parameters or filter values
-- Pass to ViewService.ExecuteViewAsync<T>()
+### Data Loading Pattern
 
-**Step 7: Handle Loading/Error/Empty States**
-- Show `<RadzenProgressBar>` while isLoading
-- Show `<RadzenAlert AlertStyle.Danger>` if errorMessage
-- Show "No data" message if empty result set
+Standard async data loading with error handling:
+
+```csharp
+protected override async Task OnInitializedAsync()
+{
+    try
+    {
+        await LoadDataAsync();
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "Failed to initialize component");
+        errorMessage = "Failed to load component.";
+    }
+}
+
+private async Task LoadDataAsync()
+{
+    isLoading = true;
+    errorMessage = null;
+
+    try
+    {
+        Logger.LogInformation("Loading data");
+
+        // Execute view with parameters
+        data = await ViewService.ExecuteViewAsync<ViewModelType>(
+            "ViewName",
+            new { Parameter1 = value1, Parameter2 = value2 }
+        );
+
+        Logger.LogInformation("Loaded {Count} records", data?.Count() ?? 0);
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "Error loading data");
+        errorMessage = $"Error: {ex.Message}";
+    }
+    finally
+    {
+        isLoading = false;
+    }
+}
+```
 
 ### Common Patterns
 
 #### Pattern: Grid with No Parameters
+
 ```csharp
 var gridData = await ViewService.ExecuteViewAsync<ProductSalesView>(
     "ProductSalesView",
@@ -1132,62 +666,34 @@ var gridData = await ViewService.ExecuteViewAsync<ProductSalesView>(
 ```
 
 #### Pattern: Grid with View Parameters
-```csharp
-var parameters = new ProductSalesViewParameters
-{
-    TopN = 50
-};
-var gridData = await ViewService.ExecuteViewAsync<ProductSalesView>(
-    "ProductSalesView",
-    parameters);
-```
 
-#### Pattern: Grid with User Input Parameters
 ```csharp
-var parameters = new ProductSalesViewParameters
-{
-    TopN = (int)(filterValues["TopN"] ?? 50)
-};
+var parameters = new { TopN = 50, CategoryId = categoryId };
 var gridData = await ViewService.ExecuteViewAsync<ProductSalesView>(
     "ProductSalesView",
     parameters);
 ```
 
 #### Pattern: Single Record Load
+
 ```csharp
 var formData = await ViewService.ExecuteViewSingleAsync<ProductSalesView>(
     "ProductSalesView",
-    new { TopN = 1 });
+    new { ProductId = id });
 ```
 
-#### Pattern: Data Grid Column Configuration
-Each spec column generates code like:
-```razor
-<RadzenDataGridColumn TItem="ProductSalesView"
-                     Property="Name"
-                     Title="Product"
-                     Sortable="true"
-                     Filterable="true" />
-```
+#### Pattern: Multi-View Dashboard
 
-With formatting:
-```razor
-<RadzenDataGridColumn TItem="ProductSalesView"
-                     Property="Price"
-                     Title="Unit Price"
-                     FormatString="{0:C}"
-                     TextAlign="TextAlign.Right" />
-```
+Load multiple views in parallel:
 
-#### Pattern: Form EditForm
-```razor
-<EditForm Model="@formData" OnValidSubmit="@OnSubmit">
-    <DataAnnotationsValidator />
+```csharp
+var taskProducts = ViewService.ExecuteViewAsync<ProductSalesView>("ProductSalesView", null);
+var taskCustomers = ViewService.ExecuteViewAsync<CustomerSummaryView>("CustomerSummaryView", null);
 
-    <!-- Fields here -->
+await Task.WhenAll(taskProducts, taskCustomers);
 
-    <RadzenButton ButtonType="ButtonType.Submit" Text="Save" />
-</EditForm>
+products = taskProducts.Result;
+customers = taskCustomers.Result;
 ```
 
 ### Validation from ViewModels
@@ -1209,12 +715,14 @@ The form's `<EditForm>` with `<DataAnnotationsValidator>` automatically enforces
 ### Multi-Tenant & Schema Considerations
 
 ViewService automatically inherits schema from EF Core context. No extra work needed:
+
 - SQL views should use schema-qualified table names: `[acme].[TableName]`
-- User's X-Customer-Schema header is applied
+- User's `X-Customer-Schema` header is applied automatically
 - Dapper queries execute against correct schema
 - No component code changes required
 
-**Example SQL view with acme schema:**
+**Example SQL view with schema qualification:**
+
 ```sql
 SELECT
     p.Id,
@@ -1226,29 +734,15 @@ LEFT JOIN [acme].[Categories] c ON p.CategoryId = c.Id
 
 ### Navigation & Routing
 
-For action buttons with routes:
-```yaml
-actions:
-  - name: Edit
-    icon: edit
-    route: /products/{Id}
-```
+For action buttons with routes, use route parameters:
 
-Generates code:
 ```csharp
-public string ResolveRoute(object record)
+@foreach (var item in data)
 {
-    var result = "/products/{Id}";
-    foreach (var prop in record.GetType().GetProperties())
-    {
-        result = result.Replace($"{{{prop.Name}}}",
-                               prop.GetValue(record)?.ToString() ?? "");
-    }
-    return result;
+    <RadzenButton Text="Edit" 
+                  Click="@(() => Navigation.NavigateTo($"/products/{item.Id}"))" />
 }
 ```
-
-Then call: `Navigation.NavigateTo(action.ResolveRoute(record))`
 
 ### Error Handling Checklist
 
@@ -1286,230 +780,128 @@ When creating or reviewing SQL view files in `sql/views/`:
   ```
 - **Schema context is automatic:** IViewService and Dapper inherit schema from EF Core context, so no code changes needed
 
-### Tips for LLM Implementation
-
-1. **Always read the spec file first** - It's your source of truth
-2. **Match property names exactly** - PropertyName in spec must match ViewModel property
-3. **Use spec values for all configuration** - Don't add features not in spec
-4. **Copy the template, then customize** - Don't build from scratch
-5. **Validate data types** - Ensure format strings match property types (e.g., "{0:C}" for decimal)
-6. **Handle null/empty explicitly** - Check for null results before binding
-7. **Use consistent naming** - Class names, property names, method names follow C# conventions
-8. **Log meaningfully** - Include component name and operation being performed
-
-### Example: Full Implementation
-
-Given this spec:
-```yaml
-metadata:
-  name: ProductSalesGrid
-  type: grid
-
-routing:
-  page: /dashboard/products
-  title: "Product Sales"
-
-view:
-  name: ProductSalesView
-  parameters:
-    TopN: 50
-
-grid:
-  allowPaging: true
-  pageSize: 20
-  columns:
-    - property: Name
-      title: "Product"
-    - property: Price
-      title: "Price"
-      format: "{0:C}"
-```
-
-Implementation steps:
-1. Create `Components/Pages/ProductSalesGrid.razor`
-2. Copy grid-template.razor content
-3. Replace {ComponentName} with ProductSalesGrid
-4. Replace {Title} with "Product Sales"
-5. Replace {ViewName} with "ProductSalesView"
-6. Replace {ViewModelType} with ProductSalesView
-7. Generate columns based on spec
-8. Set pageSize = 20, allowPaging = true
-9. Build view parameters: `TopN = 50`
-10. Test component loads and displays data
-
-That's it. The template handles all the boilerplate.
-```
-
----
-
 ## Phase 3E: Step-by-Step Implementation Plan
 
-### Step 1: Create Spec Format Documentation (Day 1)
+### Step 1: Build Reference Component Examples (Days 1-3)
 
-**Deliverable:** `specs/SPEC_FORMAT.md`
+**Deliverable:** Working Blazor components demonstrating patterns
 
-- [ ] Write complete YAML schema
-- [ ] Include all component types
-- [ ] Provide full property documentation
-- [ ] Add constraint/validation descriptions
-- [ ] Create example specs in SPEC_FORMAT.md
+Build example components following the reference patterns:
 
-**Files to create:**
-- `specs/SPEC_FORMAT.md`
+- [x] Create `Components/Pages/ProductDashboard.razor` (grid pattern) ✅ DONE
+- [ ] Create `Components/Pages/ProductForm.razor` (form pattern)
+- [ ] Create `Components/Pages/ExecutiveDashboard.razor` (dashboard pattern)
+- [x] Verify all components compile and load data correctly ✅ ProductDashboard working
+- [ ] Test data binding, navigation, and state management
+- [ ] Document any customizations from base patterns
 
----
+**Files created:**
+- `Components/Pages/ProductDashboard.razor` ✅ (reference implementation)
 
-### Step 2: Create Component Templates (Days 2-3)
-
-**Deliverable:** Razor templates for grid, form, dashboard
-
-- [ ] Create `specs/templates/` directory
-- [ ] Implement grid-template.razor
-- [ ] Implement form-template.razor
-- [ ] Implement dashboard-template.razor
-- [ ] Document placeholder names
-- [ ] Test templates compile
-
-**Files to create:**
-- `specs/templates/grid-template.razor`
-- `specs/templates/form-template.razor`
-- `specs/templates/dashboard-template.razor`
-- `specs/templates/README.md` (template usage guide)
+**Approach:**
+1. Copy the appropriate reference pattern from this document
+2. Customize for your specific ViewModels and views
+3. Adjust columns, fields, styling as needed
+4. Test with actual data
 
 ---
 
-### Step 3: Create Reference Spec Examples (Day 4)
+### Step 2: Update SKILLS.md (Day 4)
 
-**Deliverable:** Example YAML specs showing different patterns
+**Deliverable:** Documentation for building Radzen components
 
-- [ ] Create `specs/examples/` directory
-- [ ] ProductSalesGrid.yaml (simple grid)
-- [ ] FilteredProductGrid.yaml (grid with parameters)
-- [ ] ProductForm.yaml (single record form)
-- [ ] ExecutiveDashboard.yaml (multi-component dashboard)
-- [ ] Validate specs against schema
-
-**Files to create:**
-- `specs/examples/ProductSalesGrid.yaml`
-- `specs/examples/FilteredProductGrid.yaml`
-- `specs/examples/ProductForm.yaml`
-- `specs/examples/ExecutiveDashboard.yaml`
-
----
-
-### Step 4: Update SKILLS.md (Day 5)
-
-**Deliverable:** New skill section for building components from specs
-
-- [ ] Add "Building Blazor Components from Specs" section
-- [ ] Document spec format overview
-- [ ] Provide implementation checklist
-- [ ] Include common patterns
+- [ ] Add "Building Radzen Components" section to SKILLS.md
+- [ ] Document service injection patterns
+- [ ] Provide state management examples
+- [ ] Include common data loading patterns
 - [ ] Add validation/error handling guide
-- [ ] Create examples showing full implementations
+- [ ] Document multi-tenant considerations
 
 **Files to update:**
 - `SKILLS.md` - Add new major section
 
----
-
-### Step 5: Create Reference Component Implementations (Days 6-7)
-
-**Deliverable:** Working example components built from specs
-
-Using the examples from Step 3, create actual working components:
-
-- [ ] Create ProductSalesGrid.razor from ProductSalesGrid.yaml
-- [ ] Create FilteredProductGrid.razor from FilteredProductGrid.yaml
-- [ ] Create ProductForm.razor from ProductForm.yaml
-- [ ] Create ExecutiveDashboard.razor from ExecutiveDashboard.yaml
-- [ ] Verify all components load without errors
-- [ ] Test data binding and navigation
-
-**Files to create:**
-- `Components/Pages/ProductSalesGrid.razor`
-- `Components/Pages/FilteredProductGrid.razor`
-- `Components/Pages/ProductForm.razor`
-- `Components/Pages/ExecutiveDashboard.razor`
+**Content to include:**
+- Component file locations and naming
+- Required service injections (IViewService, ILogger, NavigationManager)
+- Standard state management pattern
+- Data loading with error handling
+- Common patterns (grid with params, single record, multi-view)
+- SQL view best practices
 
 ---
 
-### Step 6: Update NavMenu Navigation (Day 8)
+### Step 3: Update NavMenu Navigation (Day 5)
 
-**Deliverable:** Navigation links to new example components
+**Deliverable:** Navigation links to new components
 
 - [ ] Add example components to NavMenu.razor
 - [ ] Create "Dashboard" menu section
-- [ ] Create "Examples" submenu
 - [ ] Test navigation links work
 - [ ] Verify pages are routable
 
 **Files to update:**
 - `Components/Shared/NavMenu.razor`
 
+**Example:**
+```razor
+<RadzenPanelMenuItem Text="Dashboards" Icon="dashboard">
+    <RadzenPanelMenuItem Text="Product Sales" Path="/dashboard/products" />
+    <RadzenPanelMenuItem Text="Executive Dashboard" Path="/dashboard/executive" />
+</RadzenPanelMenuItem>
+```
+
 ---
 
-### Step 7: Create Unit Tests (Days 9-10)
+### Step 4: Create Unit Tests (Days 6-7)
 
-**Deliverable:** Test suite for spec validation and component behavior
+**Deliverable:** Test suite for component behavior
 
-Create test project at `tests/DotNetWebApp.Tests/Specs/`
+Create test project at `tests/DotNetWebApp.Tests/Components/`
 
 **Unit Tests:**
 
 ```csharp
-// SpecValidationTests.cs
+// ComponentTests.cs
 [Fact]
-public void SpecSchema_ValidatesProductSalesGrid()
+public async Task ProductDashboard_LoadsDataFromViewService()
 {
-    // Load ProductSalesGrid.yaml
-    // Deserialize as ViewsDefinition or SpecDefinition
-    // Assert: metadata.name == "ProductSalesGrid"
-    // Assert: view.name == "ProductSalesView"
-    // Assert: grid.columns.Count > 0
-}
+    // Arrange
+    var mockViewService = new Mock<IViewService>();
+    mockViewService.Setup(x => x.ExecuteViewAsync<ProductSalesView>(
+        It.IsAny<string>(), It.IsAny<object>()))
+        .ReturnsAsync(new List<ProductSalesView> { /* test data */ });
 
-[Fact]
-public void SpecSchema_AllColumnsMapToViewModelProperties()
-{
-    // Load spec
-    // Get ViewModel type reflection
-    // Assert each column.property exists on ViewModel
-    // Assert column.type matches property type
-}
+    // Act
+    var component = RenderComponent<ProductDashboard>(parameters =>
+        parameters.Add(p => p.ViewService, mockViewService.Object));
 
-// ComponentIntegrationTests.cs
-[Fact]
-public async Task ProductSalesGrid_LoadsDataFromViewService()
-{
-    // Create component with mocked IViewService
-    // Mock ViewService.ExecuteViewAsync to return test data
-    // Render component
-    // Assert data appears in grid
+    // Assert
+    Assert.NotNull(component.Instance.Products);
+    mockViewService.Verify(x => x.ExecuteViewAsync<ProductSalesView>(
+        "ProductSalesView", It.IsAny<object>()), Times.Once);
 }
 ```
 
 **Files to create:**
-- `tests/DotNetWebApp.Tests/Specs/SpecValidationTests.cs`
-- `tests/DotNetWebApp.Tests/Specs/ComponentIntegrationTests.cs`
+- `tests/DotNetWebApp.Tests/Components/ProductDashboardTests.cs`
+- `tests/DotNetWebApp.Tests/Components/ProductFormTests.cs`
 
 **Run:** `make test`
 
 ---
 
-### Step 8: Create Documentation & Guides (Day 10)
+### Step 5: Create Documentation & Guides (Day 8)
 
 **Deliverable:** README and guides for using Phase 3
 
-- [ ] Create `specs/README.md` - Overview and quick start
-- [ ] Create `specs/IMPLEMENTATION_GUIDE.md` - Step-by-step for new specs
 - [ ] Update project `README.md` with Phase 3 section
-- [ ] Create `PHASE3_COMPLETE.md` - Summary of Phase 3
+- [ ] Document component patterns in project wiki/docs
+- [ ] Create troubleshooting guide
+- [ ] Add examples of common customizations
 
 **Files to create/update:**
-- `specs/README.md`
-- `specs/IMPLEMENTATION_GUIDE.md`
 - `README.md` (add Phase 3 section)
+- `docs/COMPONENT_PATTERNS.md` (optional detailed guide)
 
 ---
 
@@ -1598,7 +990,7 @@ private async Task LoadDataAsync()
 
         var parameters = new {ViewParameterType}
         {
-            // Bind from spec.view.parameters
+            // Bind your view parameters here
         };
 
         data = await ViewService.ExecuteViewAsync<{ViewModelType}>(
@@ -1619,7 +1011,7 @@ private async Task LoadDataAsync()
 
 ### Grid Column Mapping
 
-For each spec column, generate:
+For each ViewModel property, add a column:
 ```razor
 <RadzenDataGridColumn TItem="{ViewModelType}"
                      Property="@column.PropertyName"
@@ -1632,7 +1024,7 @@ For each spec column, generate:
 
 ### Handling View Parameters
 
-If spec.parameters exist:
+If your view has parameters:
 1. Create filter panel UI (RadzenNumeric, RadzenDropdown, etc.)
 2. Bind inputs to filterValues dictionary
 3. In OnApplyFilters, rebuild parameters object
@@ -1640,7 +1032,7 @@ If spec.parameters exist:
 
 ### Action Button Resolution
 
-For spec actions with {Id} placeholders:
+For action buttons with `{Id}` route placeholders:
 ```csharp
 private class ActionConfig
 {
@@ -1668,11 +1060,11 @@ Navigation.NavigateTo(action.ResolveRoute(record));
 
 ### Test Categories
 
-#### 1. Spec Schema Validation Tests
-- Ensure YAML deserializes correctly
-- Validate required fields present
-- Validate column properties match ViewModel
-- Validate view names exist in views.yaml
+#### 1. View Pipeline Tests (Phase 2)
+- Ensure views.yaml deserializes correctly
+- Validate view names exist in registry
+- Validate SQL files load correctly
+- Validate ViewModels map to SQL columns
 
 #### 2. Component Rendering Tests
 - Component renders without errors
@@ -1728,48 +1120,23 @@ dotnet test /p:CollectCoverage=true
 
 ## Phase 3H: Completion Checklist
 
-### Documentation
-- [ ] `specs/SPEC_FORMAT.md` created with complete schema
-- [ ] `specs/README.md` created with overview
-- [ ] `specs/IMPLEMENTATION_GUIDE.md` created
-- [ ] `specs/templates/README.md` created
-- [ ] `PHASE3_VIEW_UI.md` updated with completion notes
-
-### Templates
-- [ ] `specs/templates/grid-template.razor` created
-- [ ] `specs/templates/form-template.razor` created
-- [ ] `specs/templates/dashboard-template.razor` created
-- [ ] All templates compile without errors
-- [ ] All placeholder names documented
-
-### Example Specs
-- [ ] `specs/examples/ProductSalesGrid.yaml` created
-- [ ] `specs/examples/FilteredProductGrid.yaml` created
-- [ ] `specs/examples/ProductForm.yaml` created
-- [ ] `specs/examples/ExecutiveDashboard.yaml` created
-- [ ] All specs validate against schema
-
 ### Reference Components
-- [ ] `Components/Pages/ProductSalesGrid.razor` created
-- [ ] `Components/Pages/FilteredProductGrid.razor` created
+- [x] `Components/Pages/ProductDashboard.razor` created ✅
 - [ ] `Components/Pages/ProductForm.razor` created
 - [ ] `Components/Pages/ExecutiveDashboard.razor` created
-- [ ] All components render and load data correctly
+- [x] All components render and load data correctly ✅ (ProductDashboard)
 - [ ] Navigation links work
 
 ### SKILLS.md
-- [ ] "Building Blazor Components from Specs" section added
-- [ ] Spec format overview included
-- [ ] Implementation process documented
-- [ ] Common patterns documented
-- [ ] Full example implementation shown
-- [ ] Validation checklist provided
+- [ ] "Building Radzen Components" section added
+- [ ] IViewService integration patterns documented
+- [ ] State management patterns documented
+- [ ] Common patterns documented (grid, form, dashboard)
+- [ ] Error handling checklist provided
 
 ### Tests
-- [ ] `tests/DotNetWebApp.Tests/Specs/SpecValidationTests.cs` created
-- [ ] `tests/DotNetWebApp.Tests/Specs/ComponentIntegrationTests.cs` created
+- [ ] `tests/DotNetWebApp.Tests/Components/ProductDashboardTests.cs` created
 - [ ] All tests pass: `make test`
-- [ ] Test coverage for spec validation
 - [ ] Test coverage for component rendering
 
 ### Navigation
@@ -1791,24 +1158,22 @@ dotnet test /p:CollectCoverage=true
 
 After Phase 3 completion:
 
-✅ Developers can write YAML specs describing UI layouts
-✅ LLMs can read specs and implement consistent component patterns
-✅ Human + LLM collaboration is efficient (spec → implementation)
-✅ Components are type-safe (use generated ViewModels)
+✅ Developers can build Radzen components using reference patterns
+✅ LLMs can follow patterns to implement consistent components
+✅ Components are type-safe (use generated ViewModels from Phase 2)
 ✅ Data binding is automatic (IViewService + parameter binding)
-✅ Multi-tenant support works automatically
-✅ All components follow consistent patterns
-✅ New components can be added without boilerplate
+✅ Multi-tenant support works automatically (schema inheritance)
+✅ All components follow consistent patterns (state management, error handling)
+✅ New components can be built quickly by copying reference patterns
 
 ---
 
 ## Next Steps After Phase 3
 
-1. **Build domain-specific specs** for your actual use cases
-2. **Create more view models** in Phase 2 as needed
-3. **Extend SKILLS.md** with additional component patterns (charts, drilldown, etc.)
-4. **Automate spec→component generation** (future: Spec.yaml → ComponentName.razor generation)
-5. **Build spec validator CLI** to catch errors before implementation
+1. **Build additional reference components** (forms, dashboards) as needed
+2. **Create more SQL views** in Phase 2 as UI requirements emerge
+3. **Proceed to Phase 4** for editable components (SmartDataGrid<T>, inline editing)
+4. **Extend SKILLS.md** with additional component patterns (charts, drilldown, etc.)
 
 ---
 
@@ -1820,12 +1185,12 @@ After Phase 3 completion:
 - ✅ Existing: Radzen components (UI library)
 - ✅ Existing: Blazor Server (runtime)
 
-**Phase 3 provides for future phases:**
-- Spec format for describing UI
-- Template-based implementation patterns
-- SKILLS.md integration for LLM guidance
-- Foundation for automation (spec validation, generation)
+**Phase 3 provides for Phase 4:**
+- Reference patterns for read-only components
+- State management patterns (isLoading, errorMessage, data)
+- IViewService integration examples
+- Foundation for adding write capabilities (SmartDataGrid<T>)
 
 ---
 
-**End of Phase 3 Implementation Plan**
+**End of Phase 3 Reference Patterns Document**

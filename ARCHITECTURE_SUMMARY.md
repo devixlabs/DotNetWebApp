@@ -10,7 +10,8 @@
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
 | **PHASE2_VIEW_PIPELINE.md** | Detailed step-by-step implementation guide for View Pipeline | When implementing Phase 2 |
-| **PHASE3_VIEW_UI.md** | Blazor view components for Phase 3 | When implementing Phase 3 |
+| **PHASE3_VIEW_UI.md** | Read-only Radzen component patterns (IViewService integration) | When implementing Phase 3+4 |
+| **PHASE4_VIEW_EDIT.md** | Editable Radzen components (SmartDataGrid, IEntityOperationService) | When implementing Phase 3+4 |
 | **HYBRID_ARCHITECTURE.md** | Simplified EF+Dapper architecture reference | When understanding data access patterns |
 | **CLAUDE.md** | Project context for Claude Code sessions | Every new Claude session |
 
@@ -148,15 +149,28 @@
 
 **Architecture:** See `ARCHITECTURE_SUMMARY.md` (this document) for overview; see `HYBRID_ARCHITECTURE.md` for detailed patterns
 
-### 🔄 Phase 3: Validation Pipeline (1 day)
+### 🔄 Next: Phase 3+4 Combined - Radzen Component Patterns (1-2 weeks)
 
-**Goal:** Prevent invalid data entry
+**Goal:** Build reusable Blazor components with read and write capabilities
 
-**Deliverables:**
-- Validation middleware in controllers
-- Integration tests
+**Status:** PLANNED - See `PHASE3_VIEW_UI.md` for patterns, `PHASE4_VIEW_EDIT.md` for editable components
 
-### 🔄 Phase 4: Finbuckle Multi-Tenancy (2-3 days)
+**Deliverables (Phase 3 - Read Patterns):**
+- ✅ `ProductDashboard.razor` reference component (DONE)
+- `ProductForm.razor` form pattern example
+- `ExecutiveDashboard.razor` dashboard pattern example
+- Radzen component patterns documented in SKILLS.md
+
+**Deliverables (Phase 4 - Write Capabilities):**
+- `SmartDataGrid<T>` component (replaces/extends DynamicDataGrid)
+- Event-driven architecture with `EventCallback<T>`
+- Integration with `IEntityOperationService` for writes
+- `ColumnConfig` model for column configuration
+- `INotificationService` for toast feedback
+
+**Note:** Phase 3 (read-only patterns) and Phase 4 (editable patterns) are combined into a single PR.
+
+### 🔄 Future: Validation Pipeline (1 day) - As Needed
 
 **Goal:** Robust tenant isolation for multiple schemas
 
@@ -413,12 +427,12 @@ After completing all phases:
 ## Next Steps
 
 1. ✅ **Phase 1 COMPLETED:** `IEntityOperationService` with compiled delegates (2026-01-27)
-2. **Begin Phase 2:** Implement SQL-First View Pipeline (see PHASE2_VIEW_PIPELINE.md)
-3. **After Phase 2:** Continue with Phases 3-5 (see PHASE2_VIEW_PIPELINE.md for phase sequence)
+2. ✅ **Phase 2 COMPLETED:** SQL-First View Pipeline with IViewService (2026-01-27)
+3. **Next: Phase 3+4 Combined:** Radzen component patterns with CRUD support (see PHASE3_VIEW_UI.md + PHASE4_VIEW_EDIT.md)
 
 ---
 
 **For detailed implementation guidance, refer to:**
-- **PHASE2_VIEW_PIPELINE.md** - Step-by-step Phase 2 guide
-- **PHASE3_VIEW_UI.md** - Phase 3 Blazor view components
+- **PHASE3_VIEW_UI.md** - Read-only Radzen component patterns
+- **PHASE4_VIEW_EDIT.md** - Editable components (SmartDataGrid, writes)
 - **HYBRID_ARCHITECTURE.md** - Architecture patterns and reference
