@@ -141,7 +141,7 @@ public class YamlGeneratorTests
 
         // Assert
         Assert.NotEmpty(yaml);
-        Assert.Contains("app:", yaml, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("applications:", yaml, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("dataModel:", yaml, StringComparison.OrdinalIgnoreCase);
     }
 

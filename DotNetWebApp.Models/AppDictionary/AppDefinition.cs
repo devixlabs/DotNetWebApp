@@ -6,17 +6,21 @@ namespace DotNetWebApp.Models.AppDictionary
 {
     public class AppDefinition
     {
-        public AppMetadata App { get; set; }
-        public Theme Theme { get; set; }
+        public List<ApplicationInfo> Applications { get; set; } = new();
         public DataModel DataModel { get; set; }
+        public ViewsRoot Views { get; set; }
     }
 
-    public class AppMetadata
+    public class ApplicationInfo
     {
-        public string Name { get; set; }
-        public string Title { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
         public string Description { get; set; }
-        public string LogoUrl { get; set; }
+        public string Icon { get; set; }
+        public string Schema { get; set; } = string.Empty;
+        public List<string> Entities { get; set; } = new();
+        public List<string> Views { get; set; } = new();
+        public Theme Theme { get; set; }
     }
 
     public class Theme
@@ -59,5 +63,16 @@ namespace DotNetWebApp.Models.AppDictionary
         public string TargetEntity { get; set; }
         public string ForeignKey { get; set; }
         public string PrincipalKey { get; set; }
+    }
+
+    public class ViewsRoot
+    {
+        public List<View> Views { get; set; }
+    }
+
+    public class View
+    {
+        public string Name { get; set; }
+        public string SqlFile { get; set; }
     }
 }

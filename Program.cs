@@ -43,11 +43,12 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
+builder.Services.AddScoped<IApplicationContextAccessor, ApplicationContextAccessor>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
-    var yamlPath = Path.Combine(env.ContentRootPath, "app.yaml");
+    var yamlPath = Path.Combine(env.ContentRootPath, "apps.yaml");
     return new AppDictionaryService(yamlPath);
 });
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
@@ -67,7 +68,8 @@ builder.Services.AddSingleton<IViewRegistry>(sp =>
     var env = sp.GetRequiredService<IHostEnvironment>();
     var viewsYamlPath = Path.Combine(env.ContentRootPath, "views.yaml");
     var logger = sp.GetRequiredService<ILogger<ViewRegistry>>();
-    return new ViewRegistry(viewsYamlPath, logger);
+    var appDictionary = sp.GetRequiredService<IAppDictionaryService>();
+    return new ViewRegistry(viewsYamlPath, logger, appDictionary);
 });
 
 // View service (scoped, executes views)

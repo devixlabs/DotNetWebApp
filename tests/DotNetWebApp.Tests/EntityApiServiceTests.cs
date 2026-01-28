@@ -10,12 +10,20 @@ using DotNetWebApp.Models;
 using DotNetWebApp.Models.AppDictionary;
 using DotNetWebApp.Services;
 using DotNetWebApp.Tests.TestEntities;
+using Moq;
 using Xunit;
 
 namespace DotNetWebApp.Tests;
 
 public class EntityApiServiceTests
 {
+    private IApplicationContextAccessor CreateMockApplicationContext()
+    {
+        var mock = new Mock<IApplicationContextAccessor>();
+        mock.Setup(x => x.ApplicationName).Returns("admin");
+        return mock.Object;
+    }
+
     [Fact]
     public async Task GetEntitiesAsync_ReturnsProducts_WhenEntityExists()
     {
@@ -28,7 +36,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         var result = await service.GetEntitiesAsync("Product");
 
@@ -47,7 +56,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.GetEntitiesAsync("Unknown"));
@@ -61,7 +71,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.GetEntitiesAsync("Product"));
@@ -75,7 +86,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         var result = await service.GetCountAsync("Product");
 
@@ -90,7 +102,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.GetCountAsync("Unknown"));
@@ -104,7 +117,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.GetCountAsync("Product"));
@@ -121,7 +135,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
         var result = await service.CreateEntityAsync("Product", newProduct);
@@ -139,7 +154,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
@@ -155,7 +171,8 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var service = new EntityApiService(httpClient, metadataService);
+        var appContext = CreateMockApplicationContext();
+        var service = new EntityApiService(httpClient, metadataService, appContext);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
@@ -201,5 +218,10 @@ public class EntityApiServiceTests
             _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
 
         public EntityMetadata? Find(string entityName) => _metadata;
+
+        public IReadOnlyList<EntityMetadata> GetEntitiesForApplication(string appName) =>
+            _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
+
+        public bool IsEntityVisibleInApplication(EntityMetadata entity, string appName) => true;
     }
 }

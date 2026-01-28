@@ -78,11 +78,23 @@
     private bool isLoading = true;
     private IReadOnlyDictionary<string, int> entityCountsByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
+    [Parameter]
+    public string AppName { get; set; } = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            summary = await DashboardService.GetSummaryAsync();
+            // Get app-specific dashboard if AppName provided
+            if (!string.IsNullOrEmpty(AppName))
+            {
+                summary = await DashboardService.GetSummaryForApplicationAsync(AppName);
+            }
+            else
+            {
+                summary = await DashboardService.GetSummaryAsync();
+            }
+
             entityCountsByName = summary.EntityCounts.ToDictionary(
                 entityCount => entityCount.EntityName,
                 entityCount => entityCount.Count,

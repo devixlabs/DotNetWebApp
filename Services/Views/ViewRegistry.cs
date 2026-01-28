@@ -20,6 +20,7 @@ public class ViewRegistry : IViewRegistry
     private readonly ConcurrentDictionary<string, string> _sqlCache;
     private readonly string _sqlBasePath;
     private readonly ILogger<ViewRegistry> _logger;
+    private readonly IAppDictionaryService _appDictionary;
 
     /// <summary>
     /// Initializes a new instance of ViewRegistry.
@@ -27,11 +28,13 @@ public class ViewRegistry : IViewRegistry
     /// </summary>
     /// <param name="viewsYamlPath">Absolute path to views.yaml</param>
     /// <param name="logger">Logger instance</param>
+    /// <param name="appDictionary">Application dictionary for app-scoped view filtering</param>
     /// <exception cref="FileNotFoundException">Thrown if views.yaml does not exist (fail fast)</exception>
     /// <exception cref="InvalidOperationException">Thrown if views.yaml is invalid or empty</exception>
-    public ViewRegistry(string viewsYamlPath, ILogger<ViewRegistry> logger)
+    public ViewRegistry(string viewsYamlPath, ILogger<ViewRegistry> logger, IAppDictionaryService appDictionary)
     {
         _logger = logger;
+        _appDictionary = appDictionary;
         _views = new Dictionary<string, ViewDefinition>(StringComparer.OrdinalIgnoreCase);
         _sqlCache = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         _sqlBasePath = Path.GetDirectoryName(viewsYamlPath) ?? AppDomain.CurrentDomain.BaseDirectory;
@@ -304,5 +307,43 @@ public class ViewRegistry : IViewRegistry
     public IEnumerable<string> GetAllViewNames()
     {
         return _views.Keys;
+    }
+
+    /// <summary>
+    /// Gets all view definitions visible in a specific application.
+    /// </summary>
+    /// <param name="appName">Name of the application (e.g., "admin", "reporting")</param>
+    /// <returns>View definitions that the app is allowed to access</returns>
+    public IReadOnlyList<ViewDefinition> GetViewsForApplication(string appName)
+    {
+        var app = _appDictionary.GetApplication(appName);
+        if (app == null)
+            return Array.Empty<ViewDefinition>();
+
+        if (app.Views.Count == 0)
+            return Array.Empty<ViewDefinition>();
+
+        return _views.Values
+            .Where(v => app.Views.Contains(v.Name, StringComparer.OrdinalIgnoreCase))
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Checks if a view is visible/accessible within a specific application.
+    /// </summary>
+    /// <param name="viewName">Name of the view</param>
+    /// <param name="appName">Name of the application</param>
+    /// <returns>True if the view is visible in the app; false otherwise</returns>
+    public bool IsViewVisibleInApplication(string viewName, string appName)
+    {
+        if (string.IsNullOrWhiteSpace(viewName) || string.IsNullOrWhiteSpace(appName))
+            return false;
+
+        var app = _appDictionary.GetApplication(appName);
+        if (app == null || app.Views.Count == 0)
+            return false;
+
+        return app.Views.Contains(viewName, StringComparer.OrdinalIgnoreCase);
     }
 }

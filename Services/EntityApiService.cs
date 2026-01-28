@@ -6,11 +6,16 @@ public sealed class EntityApiService : IEntityApiService
 {
     private readonly HttpClient _httpClient;
     private readonly IEntityMetadataService _metadataService;
+    private readonly IApplicationContextAccessor _appContext;
 
-    public EntityApiService(HttpClient httpClient, IEntityMetadataService metadataService)
+    public EntityApiService(
+        HttpClient httpClient,
+        IEntityMetadataService metadataService,
+        IApplicationContextAccessor appContext)
     {
         _httpClient = httpClient;
         _metadataService = metadataService;
+        _appContext = appContext;
     }
 
     // Convert internal colon format (schema:EntityName) to URL slash format (schema/EntityName)
@@ -27,6 +32,9 @@ public sealed class EntityApiService : IEntityApiService
 
     public async Task<IEnumerable<object>> GetEntitiesAsync(string entityName)
     {
+        var appName = _appContext.ApplicationName
+            ?? throw new InvalidOperationException("No application context available");
+
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {
@@ -36,7 +44,7 @@ public sealed class EntityApiService : IEntityApiService
         try
         {
             var urlPath = ToUrlFormat(entityName);
-            var response = await _httpClient.GetAsync($"api/entities/{urlPath}");
+            var response = await _httpClient.GetAsync($"api/{appName}/entities/{urlPath}");
             if (!response.IsSuccessStatusCode)
             {
                 throw new HttpRequestException($"Failed to fetch {entityName} entities (HTTP {(int)response.StatusCode})");
@@ -57,6 +65,9 @@ public sealed class EntityApiService : IEntityApiService
 
     public async Task<int> GetCountAsync(string entityName)
     {
+        var appName = _appContext.ApplicationName
+            ?? throw new InvalidOperationException("No application context available");
+
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {
@@ -66,7 +77,7 @@ public sealed class EntityApiService : IEntityApiService
         try
         {
             var urlPath = ToUrlFormat(entityName);
-            var response = await _httpClient.GetAsync($"api/entities/{urlPath}/count");
+            var response = await _httpClient.GetAsync($"api/{appName}/entities/{urlPath}/count");
             if (!response.IsSuccessStatusCode)
             {
                 throw new HttpRequestException($"Failed to fetch {entityName} count (HTTP {(int)response.StatusCode})");
@@ -89,6 +100,9 @@ public sealed class EntityApiService : IEntityApiService
 
     public async Task<object> CreateEntityAsync(string entityName, object entity)
     {
+        var appName = _appContext.ApplicationName
+            ?? throw new InvalidOperationException("No application context available");
+
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {
@@ -100,7 +114,7 @@ public sealed class EntityApiService : IEntityApiService
             var json = JsonSerializer.Serialize(entity);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var urlPath = ToUrlFormat(entityName);
-            var response = await _httpClient.PostAsync($"api/entities/{urlPath}", content);
+            var response = await _httpClient.PostAsync($"api/{appName}/entities/{urlPath}", content);
 
             if (!response.IsSuccessStatusCode)
             {

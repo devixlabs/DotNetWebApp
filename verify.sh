@@ -85,7 +85,7 @@ print_info "Waiting for server to be ready..."
 MAX_WAIT=30
 WAIT_COUNT=0
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if curl -k -s https://localhost:7012/api/entities/acme/Product > /dev/null 2>&1; then
+    if curl -k -s https://localhost:7012/api/admin/entities/acme/Product > /dev/null 2>&1; then
         print_status "Server is ready!"
         break
     fi

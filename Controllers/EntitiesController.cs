@@ -6,11 +6,12 @@ using System.Text.Json;
 namespace DotNetWebApp.Controllers
 {
     [ApiController]
-    [Route("api/entities")]
+    [Route("api/{appName}/entities")]
     public class EntitiesController : ControllerBase
     {
         private readonly IEntityOperationService _operationService;
         private readonly IEntityMetadataService _metadataService;
+        private readonly IAppDictionaryService _appDictionary;
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -18,10 +19,12 @@ namespace DotNetWebApp.Controllers
 
         public EntitiesController(
             IEntityOperationService operationService,
-            IEntityMetadataService metadataService)
+            IEntityMetadataService metadataService,
+            IAppDictionaryService appDictionary)
         {
             _operationService = operationService;
             _metadataService = metadataService;
+            _appDictionary = appDictionary;
         }
 
         private string BuildQualifiedName(string schema, string entityName)
@@ -31,14 +34,35 @@ namespace DotNetWebApp.Controllers
             return $"{effectiveSchema}:{entityName}";
         }
 
-        [HttpGet("{schema}/{entityName}")]
-        public async Task<ActionResult> GetEntities(string schema, string entityName)
+        private ActionResult? ValidateApp(string appName)
         {
+            var app = _appDictionary.GetApplication(appName);
+            if (app == null)
+                return NotFound(new { error = $"Application '{appName}' not found" });
+
+            if (!app.Entities.Any())
+                return NoContent();
+
+            return null;
+        }
+
+        [HttpGet("{schema}/{entityName}")]
+        public async Task<ActionResult> GetEntities(string appName, string schema, string entityName)
+        {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             var list = await _operationService.GetAllAsync(metadata.ClrType);
@@ -47,13 +71,22 @@ namespace DotNetWebApp.Controllers
         }
 
         [HttpGet("{schema}/{entityName}/count")]
-        public async Task<ActionResult<int>> GetEntityCount(string schema, string entityName)
+        public async Task<ActionResult<int>> GetEntityCount(string appName, string schema, string entityName)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             var count = await _operationService.GetCountAsync(metadata.ClrType);
@@ -62,13 +95,22 @@ namespace DotNetWebApp.Controllers
         }
 
         [HttpPost("{schema}/{entityName}")]
-        public async Task<ActionResult> CreateEntity(string schema, string entityName)
+        public async Task<ActionResult> CreateEntity(string appName, string schema, string entityName)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             using var reader = new StreamReader(Request.Body);
@@ -97,18 +139,27 @@ namespace DotNetWebApp.Controllers
             await _operationService.CreateAsync(metadata.ClrType, entity);
 
             return CreatedAtAction(nameof(GetEntities),
-                new { schema = schema, entityName = entityName },
+                new { appName = appName, schema = schema, entityName = entityName },
                 entity);
         }
 
         [HttpGet("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> GetEntityById(string schema, string entityName, string id)
+        public async Task<ActionResult> GetEntityById(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             var pkProperty = metadata.Definition.Properties?
@@ -145,13 +196,22 @@ namespace DotNetWebApp.Controllers
         }
 
         [HttpPut("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> UpdateEntity(string schema, string entityName, string id)
+        public async Task<ActionResult> UpdateEntity(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             var pkProperty = metadata.Definition.Properties?
@@ -214,13 +274,22 @@ namespace DotNetWebApp.Controllers
         }
 
         [HttpDelete("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> DeleteEntity(string schema, string entityName, string id)
+        public async Task<ActionResult> DeleteEntity(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
             var metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
             }
 
             var pkProperty = metadata.Definition.Properties?
