@@ -1,4 +1,5 @@
 @page "/dashboard/products"
+@using DotNetWebApp.Constants
 @inject IViewService ViewService
 @inject ILogger<ProductDashboard> Logger
 
@@ -12,8 +13,17 @@
     1. Inject IViewService from DI container
     2. Call ExecuteViewAsync<T> to fetch view data (where T is the generated view model class)
     3. Pass optional parameters as an anonymous object (matches SQL parameter names)
-    4. Handle loading/error states
+    4. Handle loading/error states with user-friendly messages
     5. Render results using Radzen DataGrid with type-safe binding
+
+    ERROR HANDLING:
+    The error handling in this component demonstrates best practices:
+    - FileNotFoundException: Configuration error - admin must fix
+    - InvalidOperationException with VIEW_NOT_FOUND: View not registered - admin must fix
+    - InvalidOperationException with QUERY_TIMEOUT: Transient error - user can retry
+    - InvalidOperationException with SQL_ERROR: Database error - may be transient or permanent
+    - UnauthorizedAccessException: Permission error - admin must fix
+    - Other exceptions: Unexpected error - user should contact support
 
     VIEW MODEL BINDING:
     The ViewService.ExecuteViewAsync<ProductSalesView>(...) call returns an IEnumerable<ProductSalesView>,
@@ -44,8 +54,14 @@
     }
     else if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <div class="alert alert-danger" role="alert">
-            <strong>Error:</strong> @errorMessage
+        <div class="alert @errorAlertClass" role="alert">
+            <strong>@errorTitle</strong> @errorMessage
+            @if (canRetry)
+            {
+                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="RefreshAsync">
+                    Try Again
+                </button>
+            }
         </div>
     }
     else if (products != null && products.Any())
@@ -185,6 +201,21 @@
     private string? errorMessage;
 
     /// <summary>
+    /// Error title for the alert box
+    /// </summary>
+    private string errorTitle = "Error:";
+
+    /// <summary>
+    /// CSS class for the error alert (danger for permanent, warning for transient)
+    /// </summary>
+    private string errorAlertClass = "alert-danger";
+
+    /// <summary>
+    /// Whether the user can retry the operation
+    /// </summary>
+    private bool canRetry = false;
+
+    /// <summary>
     /// Blazor lifecycle hook - runs when component initializes
     /// Called once per component instance
     ///
@@ -199,19 +230,22 @@
     /// <summary>
     /// Loads dashboard data by executing the registered "ProductSalesView" view.
     ///
+    /// ERROR HANDLING STRATEGY:
+    /// - Configuration errors (missing files, views) -> Clear admin message, no retry
+    /// - Transient errors (timeout, network) -> User-friendly message with retry option
+    /// - Unexpected errors -> Generic message with support guidance
+    ///
     /// PARAMETER PASSING:
     /// The new { TopN = 50 } creates an anonymous object that Dapper maps to SQL parameters.
     /// The SQL query expects @TopN parameter, which gets the value 50.
-    ///
-    /// You can add more parameters:
-    ///   new { TopN = 50, CategoryId = 5 }
-    ///
-    /// Make sure your SQL query has corresponding @TopN and @CategoryId parameters.
     /// </summary>
     private async Task LoadDashboardDataAsync()
     {
         isLoading = true;
         errorMessage = null;
+        errorTitle = "Error:";
+        errorAlertClass = "alert-danger";
+        canRetry = false;
         products = null;
 
         try
@@ -230,13 +264,88 @@
 
             Logger.LogInformation("Loaded {Count} products for dashboard", products?.Count() ?? 0);
         }
+        catch (FileNotFoundException ex)
+        {
+            // SQL file or views.yaml is missing - this is a configuration error
+            Logger.LogError(ex, "[{ErrorId}] Dashboard view SQL file or configuration missing", ErrorIds.SqlFileNotFound);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard is not configured correctly. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Permission denied on file - this is a configuration error
+            Logger.LogError(ex, "[{ErrorId}] Permission denied accessing dashboard view files", ErrorIds.SqlFilePermissionDenied);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard cannot access required files. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.ViewNotFound))
+        {
+            // View not registered in views.yaml - configuration error
+            Logger.LogError(ex, "[{ErrorId}] Dashboard view not registered in views.yaml", ErrorIds.ViewNotFound);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard view is not available. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.QueryTimeout))
+        {
+            // Query timeout - transient error, user can retry
+            Logger.LogWarning(ex, "[{ErrorId}] Dashboard query timeout - database is slow", ErrorIds.QueryTimeout);
+
+            errorTitle = "Loading Slowly:";
+            errorMessage = "The dashboard is loading slowly. Please try again in a moment.";
+            errorAlertClass = "alert-warning";
+            canRetry = true;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.SqlError))
+        {
+            // SQL error - could be transient (deadlock) or permanent (syntax)
+            // Check for deadlock which is retryable
+            if (ex.Message.Contains("1205") || ex.Message.Contains("deadlock", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.LogWarning(ex, "[{ErrorId}] Dashboard query encountered deadlock", ErrorIds.SqlDeadlock);
+
+                errorTitle = "Temporary Error:";
+                errorMessage = "The database is busy. Please try again.";
+                errorAlertClass = "alert-warning";
+                canRetry = true;
+            }
+            else
+            {
+                Logger.LogError(ex, "[{ErrorId}] Dashboard query failed with SQL error", ErrorIds.SqlError);
+
+                errorTitle = "Database Error:";
+                errorMessage = "Unable to load dashboard data. If this persists, please contact support.";
+                errorAlertClass = "alert-danger";
+                canRetry = true;  // Allow retry in case it's a transient issue
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            // Invalid parameters - this is a programming error
+            Logger.LogError(ex, "[{ErrorId}] Invalid parameters passed to dashboard view", ErrorIds.QueryInvalidParameter);
+
+            errorTitle = "Error:";
+            errorMessage = "Unable to load dashboard due to an internal error. Please contact support.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
         catch (Exception ex)
         {
-            // Log the full exception for debugging
-            Logger.LogError(ex, "Failed to load product dashboard");
+            // Unexpected error - log full details, show generic message
+            Logger.LogError(ex, "[{ErrorId}] Unexpected error loading dashboard", ErrorIds.ViewExecutionFailed);
 
-            // Show user-friendly error message
-            errorMessage = $"Failed to load dashboard: {ex.Message}";
+            errorTitle = "Error:";
+            errorMessage = "Unable to load dashboard. Please refresh the page or contact support if the problem persists.";
+            errorAlertClass = "alert-danger";
+            canRetry = true;  // Allow retry for unexpected errors
         }
         finally
         {
@@ -245,11 +354,8 @@
     }
 
     /// <summary>
-    /// Optional: Refresh method that can be called from the UI
-    /// This could be triggered by a "Refresh" button
-    ///
-    /// Usage in Razor markup:
-    ///   <RadzenButton Text="Refresh" Click="@(async _ => await RefreshAsync())" />
+    /// Refresh method that can be called from the UI
+    /// Triggered by the "Try Again" button when errors occur
     /// </summary>
     private async Task RefreshAsync()
     {
@@ -267,17 +373,35 @@
     {
         isLoading = true;
         errorMessage = null;
+        errorTitle = "Error:";
+        errorAlertClass = "alert-danger";
+        canRetry = false;
 
         try
         {
             products = await ViewService.ExecuteViewAsync<ProductSalesView>(
                 "ProductSalesView",
                 new { TopN = topCount });  // Different parameter value
+
+            Logger.LogInformation("Loaded {Count} products for dashboard (top {TopCount})", products?.Count() ?? 0, topCount);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.QueryTimeout))
+        {
+            Logger.LogWarning(ex, "[{ErrorId}] Query timeout loading top {Count} products", ErrorIds.QueryTimeout, topCount);
+
+            errorTitle = "Loading Slowly:";
+            errorMessage = "The request is taking too long. Please try again with fewer products.";
+            errorAlertClass = "alert-warning";
+            canRetry = true;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to load top {Count} products", topCount);
-            errorMessage = $"Failed to load products: {ex.Message}";
+            Logger.LogError(ex, "[{ErrorId}] Failed to load top {Count} products", ErrorIds.ViewExecutionFailed, topCount);
+
+            errorTitle = "Error:";
+            errorMessage = "Failed to load products. Please try again or contact support.";
+            errorAlertClass = "alert-danger";
+            canRetry = true;
         }
         finally
         {

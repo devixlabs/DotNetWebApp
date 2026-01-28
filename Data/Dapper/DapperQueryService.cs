@@ -1,4 +1,7 @@
+using System.Data;
 using Dapper;
+using DotNetWebApp.Constants;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -32,6 +35,10 @@ public class DapperQueryService : IDapperQueryService
     /// </summary>
     public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? param = null)
     {
+        // Parameter validation
+        if (string.IsNullOrWhiteSpace(sql))
+            throw new ArgumentException($"[{ErrorIds.QueryInvalidParameter}] SQL query cannot be null or empty", nameof(sql));
+
         var connection = _dbContext.Database.GetDbConnection();
 
         try
@@ -45,17 +52,64 @@ public class DapperQueryService : IDapperQueryService
             // Connection state may be closed; Dapper will handle opening it
             return await connection.QueryAsync<T>(sql, param);
         }
-        catch (Exception ex)
+        catch (SqlException ex)
         {
             _logger.LogError(
                 ex,
-                "Dapper query failed (Schema: {Schema}, Type: {ResultType}): {Sql}",
+                "[{ErrorId}] SQL Server error executing query (Schema: {Schema}, Type: {ResultType}, ErrorCode: {ErrorCode}): {Sql}",
+                ErrorIds.SqlError,
                 _dbContext.Schema ?? "default",
+                typeof(T).Name,
+                ex.Number,
+                TruncateSql(sql));
+
+            var friendlyMessage = ErrorIds.GetFriendlySqlErrorMessage(ex.Number, ex.Message);
+            throw new InvalidOperationException(
+                $"[{ErrorIds.SqlError}] {friendlyMessage} (Code: {ex.Number})", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogError(
+                ex,
+                "[{ErrorId}] Query timeout for type {ResultType} (Schema: {Schema})",
+                ErrorIds.QueryTimeout,
+                typeof(T).Name,
+                _dbContext.Schema ?? "default");
+
+            throw new InvalidOperationException(
+                $"[{ErrorIds.QueryTimeout}] Query execution timed out. The database is responding slowly. Please try again.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            // This indicates a bug in SQL or parameter mapping - re-throw unchanged
+            _logger.LogError(
+                ex,
+                "[{ErrorId}] Invalid query or parameters for type {ResultType}: {Sql}",
+                ErrorIds.QueryInvalidParameter,
                 typeof(T).Name,
                 TruncateSql(sql));
 
-            throw new InvalidOperationException(
-                $"Query execution failed for type {typeof(T).Name}: {ex.Message}", ex);
+            throw;
+        }
+        catch (OutOfMemoryException ex)
+        {
+            // Critical condition - log and re-throw unchanged
+            _logger.LogCritical(
+                ex,
+                "[{ErrorId}] Out of memory executing query - result set may be too large (Type: {ResultType})",
+                ErrorIds.QueryOutOfMemory,
+                typeof(T).Name);
+
+            throw;
+        }
+        finally
+        {
+            // Explicitly close the connection if it was opened
+            // This ensures connection is returned to pool even on error
+            if (connection.State == ConnectionState.Open)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 
@@ -65,6 +119,10 @@ public class DapperQueryService : IDapperQueryService
     /// </summary>
     public async Task<T?> QuerySingleAsync<T>(string sql, object? param = null)
     {
+        // Parameter validation
+        if (string.IsNullOrWhiteSpace(sql))
+            throw new ArgumentException($"[{ErrorIds.QueryInvalidParameter}] SQL query cannot be null or empty", nameof(sql));
+
         var connection = _dbContext.Database.GetDbConnection();
 
         try
@@ -77,17 +135,64 @@ public class DapperQueryService : IDapperQueryService
 
             return await connection.QuerySingleOrDefaultAsync<T>(sql, param);
         }
-        catch (Exception ex)
+        catch (SqlException ex)
         {
             _logger.LogError(
                 ex,
-                "Dapper single query failed (Schema: {Schema}, Type: {ResultType}): {Sql}",
+                "[{ErrorId}] SQL Server error executing single query (Schema: {Schema}, Type: {ResultType}, ErrorCode: {ErrorCode}): {Sql}",
+                ErrorIds.SqlError,
                 _dbContext.Schema ?? "default",
+                typeof(T).Name,
+                ex.Number,
+                TruncateSql(sql));
+
+            var friendlyMessage = ErrorIds.GetFriendlySqlErrorMessage(ex.Number, ex.Message);
+            throw new InvalidOperationException(
+                $"[{ErrorIds.SqlError}] {friendlyMessage} (Code: {ex.Number})", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogError(
+                ex,
+                "[{ErrorId}] Single query timeout for type {ResultType} (Schema: {Schema})",
+                ErrorIds.QueryTimeout,
+                typeof(T).Name,
+                _dbContext.Schema ?? "default");
+
+            throw new InvalidOperationException(
+                $"[{ErrorIds.QueryTimeout}] Query execution timed out. The database is responding slowly. Please try again.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            // This indicates a bug in SQL or parameter mapping - re-throw unchanged
+            _logger.LogError(
+                ex,
+                "[{ErrorId}] Invalid query or parameters for type {ResultType}: {Sql}",
+                ErrorIds.QueryInvalidParameter,
                 typeof(T).Name,
                 TruncateSql(sql));
 
-            throw new InvalidOperationException(
-                $"Single query execution failed for type {typeof(T).Name}: {ex.Message}", ex);
+            throw;
+        }
+        catch (OutOfMemoryException ex)
+        {
+            // Critical condition - log and re-throw unchanged
+            _logger.LogCritical(
+                ex,
+                "[{ErrorId}] Out of memory executing single query - result set may be too large (Type: {ResultType})",
+                ErrorIds.QueryOutOfMemory,
+                typeof(T).Name);
+
+            throw;
+        }
+        finally
+        {
+            // Explicitly close the connection if it was opened
+            // This ensures connection is returned to pool even on error
+            if (connection.State == ConnectionState.Open)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 
