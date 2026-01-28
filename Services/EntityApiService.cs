@@ -6,16 +6,13 @@ public sealed class EntityApiService : IEntityApiService
 {
     private readonly HttpClient _httpClient;
     private readonly IEntityMetadataService _metadataService;
-    private readonly IApplicationContextAccessor _appContext;
 
     public EntityApiService(
         HttpClient httpClient,
-        IEntityMetadataService metadataService,
-        IApplicationContextAccessor appContext)
+        IEntityMetadataService metadataService)
     {
         _httpClient = httpClient;
         _metadataService = metadataService;
-        _appContext = appContext;
     }
 
     // Convert internal colon format (schema:EntityName) to URL slash format (schema/EntityName)
@@ -30,11 +27,8 @@ public sealed class EntityApiService : IEntityApiService
         return $"dbo/{entityName}";
     }
 
-    public async Task<IEnumerable<object>> GetEntitiesAsync(string entityName)
+    public async Task<IEnumerable<object>> GetEntitiesAsync(string appName, string entityName)
     {
-        var appName = _appContext.ApplicationName
-            ?? throw new InvalidOperationException("No application context available");
-
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {
@@ -63,11 +57,8 @@ public sealed class EntityApiService : IEntityApiService
         }
     }
 
-    public async Task<int> GetCountAsync(string entityName)
+    public async Task<int> GetCountAsync(string appName, string entityName)
     {
-        var appName = _appContext.ApplicationName
-            ?? throw new InvalidOperationException("No application context available");
-
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {
@@ -98,11 +89,8 @@ public sealed class EntityApiService : IEntityApiService
         }
     }
 
-    public async Task<object> CreateEntityAsync(string entityName, object entity)
+    public async Task<object> CreateEntityAsync(string appName, string entityName, object entity)
     {
-        var appName = _appContext.ApplicationName
-            ?? throw new InvalidOperationException("No application context available");
-
         var metadata = _metadataService.Find(entityName);
         if (metadata?.ClrType == null)
         {

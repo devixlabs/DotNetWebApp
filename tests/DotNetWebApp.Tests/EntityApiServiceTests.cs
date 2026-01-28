@@ -10,20 +10,12 @@ using DotNetWebApp.Models;
 using DotNetWebApp.Models.AppDictionary;
 using DotNetWebApp.Services;
 using DotNetWebApp.Tests.TestEntities;
-using Moq;
 using Xunit;
 
 namespace DotNetWebApp.Tests;
 
 public class EntityApiServiceTests
 {
-    private IApplicationContextAccessor CreateMockApplicationContext()
-    {
-        var mock = new Mock<IApplicationContextAccessor>();
-        mock.Setup(x => x.ApplicationName).Returns("admin");
-        return mock.Object;
-    }
-
     [Fact]
     public async Task GetEntitiesAsync_ReturnsProducts_WhenEntityExists()
     {
@@ -36,10 +28,9 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
-        var result = await service.GetEntitiesAsync("Product");
+        var result = await service.GetEntitiesAsync("admin", "Product");
 
         Assert.NotNull(result);
         var entities = result.Cast<Product>().ToList();
@@ -56,11 +47,10 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetEntitiesAsync("Unknown"));
+            () => service.GetEntitiesAsync("admin", "Unknown"));
     }
 
     [Fact]
@@ -71,11 +61,10 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetEntitiesAsync("Product"));
+            () => service.GetEntitiesAsync("admin", "Product"));
     }
 
     [Fact]
@@ -86,10 +75,9 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
-        var result = await service.GetCountAsync("Product");
+        var result = await service.GetCountAsync("admin", "Product");
 
         Assert.Equal(42, result);
     }
@@ -102,11 +90,10 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetCountAsync("Unknown"));
+            () => service.GetCountAsync("admin", "Unknown"));
     }
 
     [Fact]
@@ -117,11 +104,10 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetCountAsync("Product"));
+            () => service.GetCountAsync("admin", "Product"));
     }
 
     [Fact]
@@ -135,11 +121,10 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
-        var result = await service.CreateEntityAsync("Product", newProduct);
+        var result = await service.CreateEntityAsync("admin", "Product", newProduct);
 
         var createdProductResult = Assert.IsType<Product>(result);
         Assert.Equal(1, createdProductResult.Id);
@@ -154,13 +139,12 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(null, null);
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.CreateEntityAsync("Unknown", newProduct));
+            () => service.CreateEntityAsync("admin", "Unknown", newProduct));
     }
 
     [Fact]
@@ -171,13 +155,12 @@ public class EntityApiServiceTests
             BaseAddress = new Uri("http://localhost/")
         };
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var appContext = CreateMockApplicationContext();
-        var service = new EntityApiService(httpClient, metadataService, appContext);
+        var service = new EntityApiService(httpClient, metadataService);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.CreateEntityAsync("Product", newProduct));
+            () => service.CreateEntityAsync("admin", "Product", newProduct));
     }
 
     private sealed class FakeHttpMessageHandler : HttpMessageHandler

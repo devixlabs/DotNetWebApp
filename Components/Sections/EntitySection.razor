@@ -29,6 +29,9 @@
 
 @code {
     [Parameter]
+    public string AppName { get; set; } = "admin";
+
+    [Parameter]
     public string EntityName { get; set; } = string.Empty;
 
     private IReadOnlyList<object>? entities;
@@ -57,7 +60,7 @@
             }
 
             // Use the qualified EntityName (e.g., "initech:Company") to ensure correct schema lookup
-            var result = await EntityApiService.GetEntitiesAsync(EntityName);
+            var result = await EntityApiService.GetEntitiesAsync(AppName, EntityName);
             entities = result.ToList().AsReadOnly();
         }
         catch (Exception ex)

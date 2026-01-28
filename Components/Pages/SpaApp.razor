@@ -23,7 +23,7 @@
             else if (isEntitySection && activeEntityName != null)
             {
                 <SectionHeader Title="@activeSection.Title" IsLoading="@false" />
-                <EntitySection EntityName="@activeEntityName" />
+                <EntitySection AppName="@AppName" EntityName="@activeEntityName" />
             }
             else
             {

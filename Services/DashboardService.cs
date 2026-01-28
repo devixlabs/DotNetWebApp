@@ -19,9 +19,9 @@ public sealed class DashboardService : IDashboardService
         _logger = logger;
     }
 
-    public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
+    public async Task<DashboardSummary> GetSummaryAsync(string appName = "admin", CancellationToken cancellationToken = default)
     {
-        var entities = _entityMetadataService.Entities;
+        var entities = _entityMetadataService.GetEntitiesForApplication(appName);
 
         // Load counts in parallel
         var countTasks = entities
@@ -33,7 +33,7 @@ public sealed class DashboardService : IDashboardService
                     : $"{e.Definition.Schema}:{e.Definition.Name}";
                 try
                 {
-                    var count = await _entityApiService.GetCountAsync(qualifiedName);
+                    var count = await _entityApiService.GetCountAsync(appName, qualifiedName);
                     return new EntityCountInfo(qualifiedName, count);
                 }
                 catch (Exception ex)
@@ -75,7 +75,7 @@ public sealed class DashboardService : IDashboardService
                     : $"{e.Definition.Schema}:{e.Definition.Name}";
                 try
                 {
-                    var count = await _entityApiService.GetCountAsync(qualifiedName);
+                    var count = await _entityApiService.GetCountAsync(appName, qualifiedName);
                     return new EntityCountInfo(qualifiedName, count);
                 }
                 catch (Exception ex)
