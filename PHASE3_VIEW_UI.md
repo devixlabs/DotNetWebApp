@@ -569,6 +569,8 @@ Each pattern shows:
 
 This section provides guidance for implementing Blazor components using Radzen UI library with IViewService integration. These patterns should be documented in your project's `SKILLS.md` file.
 
+FIRST: Understand radzen-skill-creation-guide.md and make sure it aligns with this section. If not, reconcile with the human developer.
+
 ### Overview
 
 Building Blazor components with Radzen follows a consistent pattern:
