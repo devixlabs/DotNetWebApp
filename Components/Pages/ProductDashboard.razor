@@ -1,0 +1,411 @@
+@page "/dashboard/products"
+@using DotNetWebApp.Constants
+@inject IViewService ViewService
+@inject ILogger<ProductDashboard> Logger
+
+<PageTitle>Product Sales Dashboard</PageTitle>
+
+<!--
+    COMPONENT OVERVIEW:
+    This is an example Blazor Server component that demonstrates how to use IViewService to execute SQL views.
+
+    Key concepts:
+    1. Inject IViewService from DI container
+    2. Call ExecuteViewAsync<T> to fetch view data (where T is the generated view model class)
+    3. Pass optional parameters as an anonymous object (matches SQL parameter names)
+    4. Handle loading/error states with user-friendly messages
+    5. Render results using Radzen DataGrid with type-safe binding
+
+    ERROR HANDLING:
+    The error handling in this component demonstrates best practices:
+    - FileNotFoundException: Configuration error - admin must fix
+    - InvalidOperationException with VIEW_NOT_FOUND: View not registered - admin must fix
+    - InvalidOperationException with QUERY_TIMEOUT: Transient error - user can retry
+    - InvalidOperationException with SQL_ERROR: Database error - may be transient or permanent
+    - UnauthorizedAccessException: Permission error - admin must fix
+    - Other exceptions: Unexpected error - user should contact support
+
+    VIEW MODEL BINDING:
+    The ViewService.ExecuteViewAsync<ProductSalesView>(...) call returns an IEnumerable<ProductSalesView>,
+    where ProductSalesView is the auto-generated class from views.yaml code generation.
+    The @TItem="ProductSalesView" binding ensures full type safety and IntelliSense support.
+
+    PARAMETER PASSING:
+    SQL views may require parameters (e.g., @TopN). Pass them as an anonymous object:
+      new { TopN = 50 }  // Maps to @TopN in the SQL query
+
+    Dapper automatically maps property names to SQL parameter names, so ensure the anonymous object
+    property names match the SQL parameter names (case-insensitive with Dapper).
+
+    CUSTOMIZATION GUIDE:
+    - Change the view name from "ProductSalesView" to any other registered view
+    - Modify the generic type (ProductSalesView) to match the view model class you're using
+    - Add/remove columns from the DataGrid to match your view's properties
+    - Adjust PageSize, AllowFiltering, AllowSorting as needed for your use case
+    - Add sorting/grouping parameters in the ExecuteViewAsync call
+-->
+
+<div class="dashboard-container">
+    <h3>Top Selling Products</h3>
+
+    @if (isLoading)
+    {
+        <p><em>Loading dashboard data...</em></p>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert @errorAlertClass" role="alert">
+            <strong>@errorTitle</strong> @errorMessage
+            @if (canRetry)
+            {
+                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="RefreshAsync">
+                    Try Again
+                </button>
+            }
+        </div>
+    }
+    else if (products != null && products.Any())
+    {
+        <!--
+            RADZEN DATAGRID SETUP:
+            @TItem="ProductSalesView" - Type safety for the data grid
+            Data="@products" - Bind the view results
+            AllowFiltering="true" - Users can filter by column values
+            AllowSorting="true" - Users can sort by clicking column headers
+            AllowPaging="true" - Show page controls at the bottom
+            PageSize="20" - How many rows per page
+
+            For more complex scenarios:
+            - Add SelectionMode="DataGridSelectionMode.Multiple" for checkboxes
+            - Add Edit/Delete buttons in a command column
+            - Add custom CSS classes for styling
+            - Add LoadData event handler for server-side filtering/sorting/paging
+        -->
+        <RadzenDataGrid Data="@products"
+                        TItem="ProductSalesView"
+                        AllowFiltering="true"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="20"
+                        Style="width: 100%; height: 500px;">
+            <!--
+                COLUMN DEFINITIONS:
+                Each column maps to a property of ProductSalesView.
+                - Property: C# property name (case-sensitive)
+                - Title: Display header text
+                - FormatString: Optional formatting (e.g., {0:C} for currency, {0:N2} for decimals)
+                - Sortable: Allow sorting on this column (default: true)
+                - Filterable: Allow filtering on this column (default: true)
+            -->
+            <Columns>
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="Name"
+                                     Title="Product Name"
+                                     Width="20%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="CategoryName"
+                                     Title="Category"
+                                     Width="15%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="Price"
+                                     Title="Price"
+                                     FormatString="{0:C}"
+                                     Width="12%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="TotalSold"
+                                     Title="Units Sold"
+                                     FormatString="{0:N0}"
+                                     Width="12%" />
+
+                <RadzenDataGridColumn TItem="ProductSalesView"
+                                     Property="TotalRevenue"
+                                     Title="Total Revenue"
+                                     FormatString="{0:C}"
+                                     Width="15%" />
+
+                <!--
+                    CUSTOM COMPUTED COLUMN:
+                    You can add computed columns that aren't in the SQL view.
+                    These are calculated in C# (after data is loaded) using partial class methods.
+
+                    Example: If ProductSalesView has a custom property like "IsHighValue"
+                    defined in ProductSalesView.cs (the user-maintained partial class),
+                    you can display it here:
+
+                    <RadzenDataGridColumn TItem="ProductSalesView"
+                                         Title="Status"
+                                         Template="@(context => context.IsHighValue ? "High Value" : "Standard")"
+                                         Width="10%" />
+                -->
+            </Columns>
+        </RadzenDataGrid>
+
+        <!--
+            PAGINATION INFO:
+            Display summary information about the current page/results.
+            This helps users understand what data they're looking at.
+        -->
+        <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+            Showing @(products?.Count() ?? 0) products
+        </p>
+    }
+    else
+    {
+        <p>No products found. Please try different parameters.</p>
+    }
+</div>
+
+<!--
+    STYLING:
+    Optional: Add scoped CSS for this component.
+    Uncomment the <style> tag below to customize appearance.
+
+    <style>
+        .dashboard-container {
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+-->
+
+@code {
+    /// <summary>
+    /// Stores the view results - populated by ExecuteViewAsync<ProductSalesView>
+    /// </summary>
+    private IEnumerable<ProductSalesView>? products;
+
+    /// <summary>
+    /// Flag to show loading spinner while data is fetching
+    /// </summary>
+    private bool isLoading = true;
+
+    /// <summary>
+    /// Error message display - set if view execution fails
+    /// </summary>
+    private string? errorMessage;
+
+    /// <summary>
+    /// Error title for the alert box
+    /// </summary>
+    private string errorTitle = "Error:";
+
+    /// <summary>
+    /// CSS class for the error alert (danger for permanent, warning for transient)
+    /// </summary>
+    private string errorAlertClass = "alert-danger";
+
+    /// <summary>
+    /// Whether the user can retry the operation
+    /// </summary>
+    private bool canRetry = false;
+
+    /// <summary>
+    /// Blazor lifecycle hook - runs when component initializes
+    /// Called once per component instance
+    ///
+    /// For parameter-based loading (like with pagination or filters),
+    /// override OnParametersSetAsync instead to reload when parameters change.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    /// <summary>
+    /// Loads dashboard data by executing the registered "ProductSalesView" view.
+    ///
+    /// ERROR HANDLING STRATEGY:
+    /// - Configuration errors (missing files, views) -> Clear admin message, no retry
+    /// - Transient errors (timeout, network) -> User-friendly message with retry option
+    /// - Unexpected errors -> Generic message with support guidance
+    ///
+    /// PARAMETER PASSING:
+    /// The new { TopN = 50 } creates an anonymous object that Dapper maps to SQL parameters.
+    /// The SQL query expects @TopN parameter, which gets the value 50.
+    /// </summary>
+    private async Task LoadDashboardDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        errorTitle = "Error:";
+        errorAlertClass = "alert-danger";
+        canRetry = false;
+        products = null;
+
+        try
+        {
+            //
+            // EXECUTE VIEW:
+            // Calls IViewService.ExecuteViewAsync<T> to:
+            // 1. Look up "ProductSalesView" in the registry (from views.yaml)
+            // 2. Load the SQL from sql/views/ProductSalesView.sql
+            // 3. Execute the SQL with parameters { TopN = 50 }
+            // 4. Map results to ProductSalesView instances via Dapper
+            //
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = 50 });  // SQL parameter: @TopN = 50
+
+            Logger.LogInformation("Loaded {Count} products for dashboard", products?.Count() ?? 0);
+        }
+        catch (FileNotFoundException ex)
+        {
+            // SQL file or views.yaml is missing - this is a configuration error
+            Logger.LogError(ex, "[{ErrorId}] Dashboard view SQL file or configuration missing", ErrorIds.SqlFileNotFound);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard is not configured correctly. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Permission denied on file - this is a configuration error
+            Logger.LogError(ex, "[{ErrorId}] Permission denied accessing dashboard view files", ErrorIds.SqlFilePermissionDenied);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard cannot access required files. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.ViewNotFound))
+        {
+            // View not registered in views.yaml - configuration error
+            Logger.LogError(ex, "[{ErrorId}] Dashboard view not registered in views.yaml", ErrorIds.ViewNotFound);
+
+            errorTitle = "Configuration Error:";
+            errorMessage = "Dashboard view is not available. Please contact your administrator.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.QueryTimeout))
+        {
+            // Query timeout - transient error, user can retry
+            Logger.LogWarning(ex, "[{ErrorId}] Dashboard query timeout - database is slow", ErrorIds.QueryTimeout);
+
+            errorTitle = "Loading Slowly:";
+            errorMessage = "The dashboard is loading slowly. Please try again in a moment.";
+            errorAlertClass = "alert-warning";
+            canRetry = true;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.SqlError))
+        {
+            // SQL error - could be transient (deadlock) or permanent (syntax)
+            // Check for deadlock which is retryable
+            if (ex.Message.Contains("1205") || ex.Message.Contains("deadlock", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.LogWarning(ex, "[{ErrorId}] Dashboard query encountered deadlock", ErrorIds.SqlDeadlock);
+
+                errorTitle = "Temporary Error:";
+                errorMessage = "The database is busy. Please try again.";
+                errorAlertClass = "alert-warning";
+                canRetry = true;
+            }
+            else
+            {
+                Logger.LogError(ex, "[{ErrorId}] Dashboard query failed with SQL error", ErrorIds.SqlError);
+
+                errorTitle = "Database Error:";
+                errorMessage = "Unable to load dashboard data. If this persists, please contact support.";
+                errorAlertClass = "alert-danger";
+                canRetry = true;  // Allow retry in case it's a transient issue
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            // Invalid parameters - this is a programming error
+            Logger.LogError(ex, "[{ErrorId}] Invalid parameters passed to dashboard view", ErrorIds.QueryInvalidParameter);
+
+            errorTitle = "Error:";
+            errorMessage = "Unable to load dashboard due to an internal error. Please contact support.";
+            errorAlertClass = "alert-danger";
+            canRetry = false;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected error - log full details, show generic message
+            Logger.LogError(ex, "[{ErrorId}] Unexpected error loading dashboard", ErrorIds.ViewExecutionFailed);
+
+            errorTitle = "Error:";
+            errorMessage = "Unable to load dashboard. Please refresh the page or contact support if the problem persists.";
+            errorAlertClass = "alert-danger";
+            canRetry = true;  // Allow retry for unexpected errors
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Refresh method that can be called from the UI
+    /// Triggered by the "Try Again" button when errors occur
+    /// </summary>
+    private async Task RefreshAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    /// <summary>
+    /// Optional: Method to load a different subset of products
+    /// Demonstrates how to pass different parameters to the same view
+    ///
+    /// Usage in Razor markup:
+    ///   <RadzenButton Text="Top 100" Click="@(async _ => await LoadTopProductsAsync(100))" />
+    /// </summary>
+    private async Task LoadTopProductsAsync(int topCount)
+    {
+        isLoading = true;
+        errorMessage = null;
+        errorTitle = "Error:";
+        errorAlertClass = "alert-danger";
+        canRetry = false;
+
+        try
+        {
+            products = await ViewService.ExecuteViewAsync<ProductSalesView>(
+                "ProductSalesView",
+                new { TopN = topCount });  // Different parameter value
+
+            Logger.LogInformation("Loaded {Count} products for dashboard (top {TopCount})", products?.Count() ?? 0, topCount);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.QueryTimeout))
+        {
+            Logger.LogWarning(ex, "[{ErrorId}] Query timeout loading top {Count} products", ErrorIds.QueryTimeout, topCount);
+
+            errorTitle = "Loading Slowly:";
+            errorMessage = "The request is taking too long. Please try again with fewer products.";
+            errorAlertClass = "alert-warning";
+            canRetry = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] Failed to load top {Count} products", ErrorIds.ViewExecutionFailed, topCount);
+
+            errorTitle = "Error:";
+            errorMessage = "Failed to load products. Please try again or contact support.";
+            errorAlertClass = "alert-danger";
+            canRetry = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

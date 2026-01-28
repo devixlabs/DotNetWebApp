@@ -17,11 +17,13 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 **Before starting any refactoring or architectural work, read these documents in order:**
 
 1. **ARCHITECTURE_SUMMARY.md** - Quick overview of architecture decisions and current state
-2. **PHASE2_VIEW_PIPELINE.md** - Detailed implementation guide for SQL-first view pipeline
-3. **HYBRID_ARCHITECTURE.md** - EF Core + Dapper architecture reference
+2. **HYBRID_ARCHITECTURE.md** - EF Core + Dapper architecture reference and data access patterns
+3. **PHASE4_VIEW_EDIT.md** - Next phase implementation guide for Radzen-first UI components (Phase 4)
+4. **SKILLS.md** - Comprehensive developer guides including Phase 2B patterns (IViewService, views.yaml, SQL views)
 
 **Key Architectural Decisions (2026-01-27):**
 - ✅ **Phase 1 COMPLETED (2026-01-27):** Extracted reflection logic to `IEntityOperationService` with compiled delegates for 250x performance optimization
+- ✅ **Phase 2B COMPLETED (2026-01-27):** SQL-First View Pipeline - `IViewRegistry`, `IViewService`, `IDapperQueryService` services with 18 unit tests; Dapper ORM integration; ProductDashboard example component
 - ✅ **Hybrid data access:** EF Core for writes (200+ entities), Dapper for complex reads (SQL-first views)
 - ✅ **SQL-first everything:** Both entities (DDL) and views (SELECT queries) start as SQL
 - ✅ **Single-project organization:** Namespace-based separation (NOT 4 separate projects)
@@ -29,7 +31,7 @@ This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQ
 - ✅ **No Repository Pattern:** `IEntityOperationService` + `IViewService` provide sufficient abstraction
 - ✅ **Scale target:** 200+ entities, multiple schemas, small team
 
-**Current Phase:** Ready to begin Phase 2 (SQL-First View Pipeline) or Phase 3 (Validation Pipeline)
+**Current Phase:** Phase 2B complete (192 tests passing); ready for Phase 4 (Radzen-First UI Components - see PHASE4_VIEW_EDIT.md)
 
 ## 🧪 CRITICAL: Unit Testing Requirements
 
@@ -179,7 +181,8 @@ DotNetWebApp/
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
 ├── PHASE2_VIEW_PIPELINE.md       # Detailed Phase 2 implementation guide
-├── PHASE3_VIEW_UI.md             # Phase 3 Blazor view components
+├── PHASE3_VIEW_UI.md             # ⚠️ ABANDONED - YAML-driven UI approach (historical)
+├── PHASE4_VIEW_EDIT.md           # Phase 4 Radzen-first UI components (CURRENT PLAN)
 ├── HYBRID_ARCHITECTURE.md        # EF+Dapper architecture reference
 ├── ARCHITECTURE_SUMMARY.md       # Quick architecture overview
 ├── DotNetWebApp.sln              # Solution file (includes all projects)

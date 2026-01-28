@@ -200,6 +200,7 @@ stop-dev:
 	else \
 		echo "No orphaned dev processes found."; \
 	fi
+	@$(MAKE) shutdown-build-servers
 
 # Start the SQL Server Docker container used for local dev
 db-start:

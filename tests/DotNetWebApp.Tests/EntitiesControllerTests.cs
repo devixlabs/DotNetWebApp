@@ -36,7 +36,7 @@ public class EntitiesControllerTests
         var operationService = new EntityOperationService(context, metadataService);
         var controller = new EntitiesController(operationService, metadataService);
 
-        var result = await controller.GetEntities("product");
+        var result = await controller.GetEntities("dbo", "Product");
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var products = Assert.IsAssignableFrom<IEnumerable<Product>>(okResult.Value);
@@ -63,7 +63,7 @@ public class EntitiesControllerTests
         var operationService = new EntityOperationService(context, metadataService);
         var controller = new EntitiesController(operationService, metadataService);
 
-        var result = await controller.GetEntities("category");
+        var result = await controller.GetEntities("dbo", "Category");
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var categories = Assert.IsAssignableFrom<IEnumerable<Category>>(okResult.Value);
@@ -85,7 +85,7 @@ public class EntitiesControllerTests
         var operationService = new EntityOperationService(context, metadataService);
         var controller = new EntitiesController(operationService, metadataService);
 
-        var result = await controller.GetEntities("invalid");
+        var result = await controller.GetEntities("dbo", "invalid");
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         Assert.NotNull(notFoundResult.Value);
@@ -114,7 +114,7 @@ public class EntitiesControllerTests
         var operationService = new EntityOperationService(context, metadataService);
         var controller = new EntitiesController(operationService, metadataService);
 
-        var result = await controller.GetEntityCount("product");
+        var result = await controller.GetEntityCount("dbo", "Product");
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal(3, okResult.Value);
@@ -134,7 +134,7 @@ public class EntitiesControllerTests
         var operationService = new EntityOperationService(context, metadataService);
         var controller = new EntitiesController(operationService, metadataService);
 
-        var result = await controller.GetEntityCount("invalid");
+        var result = await controller.GetEntityCount("dbo", "invalid");
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         Assert.NotNull(notFoundResult.Value);
@@ -164,7 +164,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("category");
+        var result = await controller.CreateEntity("dbo", "Category");
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result);
         var category = Assert.IsType<Category>(createdResult.Value);
@@ -195,7 +195,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("invalid");
+        var result = await controller.CreateEntity("dbo", "invalid");
 
         Assert.IsType<NotFoundObjectResult>(result);
     }
@@ -221,7 +221,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("category");
+        var result = await controller.CreateEntity("dbo", "Category");
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequestResult.Value);
@@ -248,7 +248,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("category");
+        var result = await controller.CreateEntity("dbo", "Category");
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequestResult.Value);

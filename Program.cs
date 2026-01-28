@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
 using DotNetWebApp.Data;
+using DotNetWebApp.Data.Dapper;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
+using DotNetWebApp.Services.Views;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -55,6 +57,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 builder.Services.AddScoped<DataSeeder>();
+
+// Dapper infrastructure (read-only, shares EF connection)
+builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
+
+// View registry (singleton, loaded once at startup)
+builder.Services.AddSingleton<IViewRegistry>(sp =>
+{
+    var env = sp.GetRequiredService<IHostEnvironment>();
+    var viewsYamlPath = Path.Combine(env.ContentRootPath, "views.yaml");
+    var logger = sp.GetRequiredService<ILogger<ViewRegistry>>();
+    return new ViewRegistry(viewsYamlPath, logger);
+});
+
+// View service (scoped, executes views)
+builder.Services.AddScoped<IViewService, ViewService>();
 
 var seedMode = args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase));
 var app = builder.Build();

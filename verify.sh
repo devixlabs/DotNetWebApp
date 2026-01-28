@@ -85,7 +85,7 @@ print_info "Waiting for server to be ready..."
 MAX_WAIT=30
 WAIT_COUNT=0
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if curl -k -s https://localhost:7012/api/entities/product > /dev/null 2>&1; then
+    if curl -k -s https://localhost:7012/api/entities/acme/Product > /dev/null 2>&1; then
         print_status "Server is ready!"
         break
     fi
@@ -108,7 +108,7 @@ echo ""
 
 # Test 1: GET all products
 print_info "Test 1: GET all products"
-RESPONSE=$(curl -k -s https://localhost:7012/api/entities/product)
+RESPONSE=$(curl -k -s https://localhost:7012/api/entities/acme/Product)
 COUNT=$(echo "$RESPONSE" | jq 'length')
 print_status "Found $COUNT products"
 echo "$RESPONSE" | jq '.[0:2]' # Show first 2 products
@@ -116,7 +116,7 @@ echo ""
 
 # Test 2: GET product by ID
 print_info "Test 2: GET product by ID (id=1)"
-RESPONSE=$(curl -k -s https://localhost:7012/api/entities/product/1)
+RESPONSE=$(curl -k -s https://localhost:7012/api/entities/acme/Product/1)
 PRODUCT_NAME=$(echo "$RESPONSE" | jq -r '.name')
 print_status "Retrieved product: $PRODUCT_NAME"
 echo "$RESPONSE" | jq .
@@ -124,13 +124,13 @@ echo ""
 
 # Test 3: GET count
 print_info "Test 3: GET product count"
-COUNT=$(curl -k -s https://localhost:7012/api/entities/product/count)
+COUNT=$(curl -k -s https://localhost:7012/api/entities/acme/Product/count)
 print_status "Product count: $COUNT"
 echo ""
 
 # Test 4: POST - Create new product
 print_info "Test 4: POST - Create new product"
-RESPONSE=$(curl -k -s -X POST https://localhost:7012/api/entities/product \
+RESPONSE=$(curl -k -s -X POST https://localhost:7012/api/entities/acme/Product \
   -H "Content-Type: application/json" \
   -d '{
     "Name": "Verification Test Product",
@@ -145,7 +145,7 @@ echo ""
 
 # Test 5: GET the newly created product
 print_info "Test 5: GET newly created product (id=$NEW_ID)"
-RESPONSE=$(curl -k -s https://localhost:7012/api/entities/product/"$NEW_ID")
+RESPONSE=$(curl -k -s https://localhost:7012/api/entities/acme/Product/"$NEW_ID")
 PRODUCT_NAME=$(echo "$RESPONSE" | jq -r '.name')
 print_status "Retrieved: $PRODUCT_NAME"
 echo "$RESPONSE" | jq .
@@ -153,7 +153,7 @@ echo ""
 
 # Test 6: PUT - Update the product
 print_info "Test 6: PUT - Update product (id=$NEW_ID)"
-RESPONSE=$(curl -k -s -X PUT https://localhost:7012/api/entities/product/"$NEW_ID" \
+RESPONSE=$(curl -k -s -X PUT https://localhost:7012/api/entities/acme/Product/"$NEW_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "Name": "UPDATED Test Product",
@@ -169,7 +169,7 @@ echo ""
 
 # Test 7: Verify update persisted
 print_info "Test 7: GET updated product to verify persistence (id=$NEW_ID)"
-RESPONSE=$(curl -k -s https://localhost:7012/api/entities/product/"$NEW_ID")
+RESPONSE=$(curl -k -s https://localhost:7012/api/entities/acme/Product/"$NEW_ID")
 PRODUCT_NAME=$(echo "$RESPONSE" | jq -r '.name')
 PRODUCT_PRICE=$(echo "$RESPONSE" | jq -r '.price')
 if [ "$PRODUCT_NAME" = "UPDATED Test Product" ] && [ "$PRODUCT_PRICE" = "999.99" ]; then
@@ -183,7 +183,7 @@ echo ""
 
 # Test 8: DELETE the product
 print_info "Test 8: DELETE product (id=$NEW_ID)"
-HTTP_CODE=$(curl -k -s -X DELETE https://localhost:7012/api/entities/product/"$NEW_ID" \
+HTTP_CODE=$(curl -k -s -X DELETE https://localhost:7012/api/entities/acme/Product/"$NEW_ID" \
   -w "%{http_code}" -o /dev/null)
 if [ "$HTTP_CODE" = "204" ]; then
     print_status "Product deleted (HTTP 204 No Content)"
@@ -195,7 +195,7 @@ echo ""
 
 # Test 9: Verify deletion (should return 404)
 print_info "Test 9: GET deleted product (should return 404)"
-HTTP_CODE=$(curl -k -s https://localhost:7012/api/entities/product/"$NEW_ID" \
+HTTP_CODE=$(curl -k -s https://localhost:7012/api/entities/acme/Product/"$NEW_ID" \
   -w "%{http_code}" -o /tmp/delete-check.json)
 RESPONSE=$(cat /tmp/delete-check.json)
 if [ "$HTTP_CODE" = "404" ]; then
@@ -209,7 +209,7 @@ echo ""
 
 # Test 10: Error handling - Non-existent ID
 print_info "Test 10: GET non-existent product (id=99999)"
-HTTP_CODE=$(curl -k -s https://localhost:7012/api/entities/product/99999 \
+HTTP_CODE=$(curl -k -s https://localhost:7012/api/entities/acme/Product/99999 \
   -w "%{http_code}" -o /tmp/notfound-check.json)
 RESPONSE=$(cat /tmp/notfound-check.json)
 if [ "$HTTP_CODE" = "404" ]; then
@@ -241,8 +241,8 @@ echo ""
 print_info "Test 12: Multi-schema entity isolation (acme:Company vs initech:Company)"
 
 # 12a: Verify acme:Company returns data with 'name' field (not 'companyName')
-RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/acme:Company")
-HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/acme:Company")
+RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/acme/Company")
+HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/acme/Company")
 if [ "$HTTP_CODE" != "200" ]; then
     print_error "Failed to fetch acme:Company (HTTP $HTTP_CODE)"
     exit 1
@@ -259,8 +259,8 @@ else
 fi
 
 # 12b: Verify initech:Company returns data with 'companyName' field (not 'name')
-RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/initech:Company")
-HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/initech:Company")
+RESPONSE=$(curl -k -s "https://localhost:7012/api/entities/initech/Company")
+HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost:7012/api/entities/initech/Company")
 if [ "$HTTP_CODE" != "200" ]; then
     print_error "Failed to fetch initech:Company (HTTP $HTTP_CODE)"
     exit 1
@@ -280,7 +280,7 @@ echo ""
 
 # Final count verification
 print_info "Final verification: Product count"
-FINAL_COUNT=$(curl -k -s https://localhost:7012/api/entities/product/count)
+FINAL_COUNT=$(curl -k -s https://localhost:7012/api/entities/acme/Product/count)
 print_status "Final product count: $FINAL_COUNT (should equal initial count)"
 echo ""
 
