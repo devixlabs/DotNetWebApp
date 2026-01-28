@@ -1,0 +1,182 @@
+================================================================================
+ERROR HANDLING AUDIT - EXECUTIVE SUMMARY
+Branch: refactor_phase_2 (PR #7)
+Date: 2026-01-27
+Status: CRITICAL ISSUES FOUND
+================================================================================
+
+AUDIT SCOPE
+-----------
+Reviewed error handling in the new Dapper services and view pipeline implementation:
+- Data/Dapper/DapperQueryService.cs (2 issues)
+- Services/Views/ViewRegistry.cs (2 issues)
+- Services/Views/ViewService.cs (1 issue)
+- Components/Pages/ProductDashboard.razor (1 issue)
+- tests/DotNetWebApp.Tests/ViewPipelineTests.cs (1 issue)
+- General error handling patterns (2 issues)
+
+CRITICAL FINDINGS (Must Fix Before Merge)
+==========================================
+
+ISSUE 1: OVERLY BROAD EXCEPTION CATCHING - DapperQueryService.cs
+  Severity: CRITICAL
+  Lines: 48-59, 80-91
+  Problem: bare catch (Exception ex) hides OutOfMemoryException, StackOverflowException,
+           SqlException details, ArgumentException, etc.
+  Impact: Users see generic "Query execution failed" message instead of root cause
+  Action: Replace with specific catch blocks for SqlException, OperationCanceledException, 
+          ArgumentException, OutOfMemoryException
+
+ISSUE 2: SILENT FAILURE ON MISSING VIEWS.YAML - ViewRegistry.cs
+  Severity: CRITICAL
+  Lines: 43-46
+  Problem: If views.yaml is missing during deployment, app boots successfully but views
+           fail only when accessed
+  Impact: Configuration error goes unnoticed until first user tries to use dashboard
+  Action: Fail fast with FileNotFoundException or log as ERROR (not WARNING)
+
+ISSUE 3: OVERLY BROAD FILE I/O EXCEPTION CATCHING - ViewRegistry.cs
+  Severity: CRITICAL
+  Lines: 113-125
+  Problem: catch (Exception ex) hides FileNotFoundException, UnauthorizedAccessException,
+           DirectoryNotFoundException, OutOfMemoryException, disk full errors
+  Impact: User can't distinguish between "file missing" vs "permission denied" vs "disk full"
+  Action: Catch specific exception types (FileNotFoundException, UnauthorizedAccessException, 
+          DirectoryNotFoundException, IOException, OutOfMemoryException)
+
+ISSUE 4: OVERLY BROAD EXCEPTION CATCHING + DOUBLE WRAPPING - ViewService.cs
+  Severity: CRITICAL
+  Lines: 38-59, 66-87
+  Problem: catch (Exception ex) catches both registry AND dapper errors; re-wraps in
+           InvalidOperationException creating double-nested exceptions
+  Impact: Original error buried in exception chain; user message loses all context
+  Action: Let registry exceptions propagate directly; only catch Dapper execution errors
+
+HIGH-SEVERITY FINDINGS (Must Fix Before Release)
+=================================================
+
+ISSUE 5: POOR ERROR MESSAGES TO USER - ProductDashboard.razor
+  Severity: HIGH
+  Lines: 233-240, 276-280
+  Problem: Shows raw exception message to user ("Query execution failed for type X")
+           instead of user-friendly message; no retry guidance
+  Impact: Users confused by technical error messages
+  Action: Provide user-friendly messages; differentiate transient vs permanent errors
+
+ISSUE 6: MISSING ERROR SCENARIO TEST COVERAGE - ViewPipelineTests.cs
+  Severity: HIGH
+  Problem: Tests don't cover database connection failures, SQL syntax errors, type mapping
+           failures, permission errors, parameter validation
+  Impact: Critical failure scenarios not validated
+  Action: Add 20+ new test cases covering error scenarios
+
+MEDIUM-SEVERITY FINDINGS (Should Fix Before Release)
+====================================================
+
+ISSUE 7: UNCLEAR CONNECTION RESOURCE MANAGEMENT - DapperQueryService.cs
+  Severity: MEDIUM
+  Lines: 35-46, 68-78
+  Problem: Connection obtained but not explicitly managed; unclear if orphaned on error
+  Impact: Potential connection pool exhaustion under load
+  Action: Add explicit cleanup in finally block or verify EF Core's guarantee
+
+ISSUE 8: MISSING PARAMETER VALIDATION - All services
+  Severity: MEDIUM
+  Problem: No null/empty validation on viewName and sql parameters
+  Impact: Null parameters cause cryptic "not found" errors
+  Action: Add ArgumentException checks at method entry
+
+ISSUE 9: INCONSISTENT ERROR MESSAGE FORMAT - All services
+  Severity: MEDIUM
+  Problem: Different error message formats across services; no error IDs for Sentry
+  Impact: Hard to recognize error type; no support reference number
+  Action: Standardize format with error IDs (e.g., "VIEW_NOT_FOUND", "SQL_ERROR")
+
+SUMMARY BY FILE
+===============
+
+Data/Dapper/DapperQueryService.cs
+  - CRITICAL: Replace bare catch (Exception) with specific catches
+  - MEDIUM: Add parameter validation
+  - MEDIUM: Standardize error messages
+  - MEDIUM: Clarify connection cleanup
+
+Services/Views/ViewRegistry.cs
+  - CRITICAL: Fail fast or log ERROR on missing views.yaml
+  - CRITICAL: Replace bare catch (Exception) with specific catches for file I/O
+  - MEDIUM: Add parameter validation
+  - MEDIUM: Standardize error messages
+
+Services/Views/ViewService.cs
+  - CRITICAL: Let registry errors propagate; only catch Dapper errors
+  - MEDIUM: Add parameter validation
+  - MEDIUM: Standardize error messages
+
+Components/Pages/ProductDashboard.razor
+  - HIGH: Provide user-friendly error messages
+  - HIGH: Differentiate transient vs permanent errors
+  - HIGH: Add retry guidance
+
+tests/DotNetWebApp.Tests/ViewPipelineTests.cs
+  - HIGH: Add 20+ test cases for error scenarios
+  - HIGH: Add tests for connection failures, SQL errors, type mapping failures
+  - HIGH: Add tests for parameter validation
+
+RECOMMENDED FIX TIMELINE
+========================
+
+Priority 1 (Fix Before Merge):
+  1. Fix DapperQueryService exception handling (4-6 hours)
+  2. Fix ViewRegistry initialization (2-3 hours)
+  3. Fix ViewRegistry file I/O exception handling (4-6 hours)
+  4. Fix ViewService exception propagation (2-3 hours)
+  Total: ~12-18 hours
+
+Priority 2 (Before Production Release):
+  5. Improve ProductDashboard error messages (3-4 hours)
+  6. Add comprehensive error scenario tests (8-12 hours)
+  7. Add parameter validation (1-2 hours)
+  8. Standardize error message format (2-3 hours)
+  Total: ~14-21 hours
+
+Priority 3 (Nice to Have):
+  9. Connection resource management explicit cleanup (1-2 hours)
+  10. Circuit breaker pattern for database failures (4-6 hours)
+  11. Distributed tracing/correlation IDs (3-4 hours)
+
+ESTIMATED TOTAL EFFORT
+======================
+Critical fixes: 12-18 hours
+High-priority fixes: 14-21 hours
+Optional improvements: 8-12 hours
+Total: 34-51 hours
+
+DOCS GENERATED
+==============
+1. ERROR_HANDLING_AUDIT_PR7.md (Main audit report with all 9 issues)
+2. ERROR_HANDLING_AUDIT_DETAILS.md (Code examples showing problems and solutions)
+3. ERROR_HANDLING_TEST_RECOMMENDATIONS.md (Specific test cases to add)
+4. ERROR_HANDLING_AUDIT_SUMMARY.txt (This file)
+
+NEXT STEPS
+==========
+1. Review audit findings with team
+2. Prioritize fixes based on risk/effort assessment
+3. Create bug tickets for each issue
+4. Assign to developers with target deadlines
+5. Implement fixes according to priority
+6. Add recommended test cases
+7. Run full test suite before merging to master
+8. Document changes in PR description
+
+KEY SUCCESS METRICS
+===================
+- All CRITICAL issues fixed before merge
+- All HIGH issues fixed before production release
+- Test coverage increased from 65% to 95%
+- No silent failures in error handling
+- All error messages are specific and actionable
+- Exception chains are minimal (max 1 level of wrapping)
+- Database/file I/O errors are distinguishable
+
+================================================================================
