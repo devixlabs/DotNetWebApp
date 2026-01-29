@@ -30,7 +30,7 @@ public class EntityApiServiceTests
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
         var service = new EntityApiService(httpClient, metadataService);
 
-        var result = await service.GetEntitiesAsync("Product");
+        var result = await service.GetEntitiesAsync("admin", "Product");
 
         Assert.NotNull(result);
         var entities = result.Cast<Product>().ToList();
@@ -50,7 +50,7 @@ public class EntityApiServiceTests
         var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetEntitiesAsync("Unknown"));
+            () => service.GetEntitiesAsync("admin", "Unknown"));
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class EntityApiServiceTests
         var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetEntitiesAsync("Product"));
+            () => service.GetEntitiesAsync("admin", "Product"));
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class EntityApiServiceTests
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
         var service = new EntityApiService(httpClient, metadataService);
 
-        var result = await service.GetCountAsync("Product");
+        var result = await service.GetCountAsync("admin", "Product");
 
         Assert.Equal(42, result);
     }
@@ -93,7 +93,7 @@ public class EntityApiServiceTests
         var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetCountAsync("Unknown"));
+            () => service.GetCountAsync("admin", "Unknown"));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class EntityApiServiceTests
         var service = new EntityApiService(httpClient, metadataService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GetCountAsync("Product"));
+            () => service.GetCountAsync("admin", "Product"));
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class EntityApiServiceTests
         var service = new EntityApiService(httpClient, metadataService);
 
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
-        var result = await service.CreateEntityAsync("Product", newProduct);
+        var result = await service.CreateEntityAsync("admin", "Product", newProduct);
 
         var createdProductResult = Assert.IsType<Product>(result);
         Assert.Equal(1, createdProductResult.Id);
@@ -144,7 +144,7 @@ public class EntityApiServiceTests
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.CreateEntityAsync("Unknown", newProduct));
+            () => service.CreateEntityAsync("admin", "Unknown", newProduct));
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class EntityApiServiceTests
         var newProduct = new Product { Name = "New Product", Price = 15.99m };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.CreateEntityAsync("Product", newProduct));
+            () => service.CreateEntityAsync("admin", "Product", newProduct));
     }
 
     private sealed class FakeHttpMessageHandler : HttpMessageHandler
@@ -201,5 +201,10 @@ public class EntityApiServiceTests
             _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
 
         public EntityMetadata? Find(string entityName) => _metadata;
+
+        public IReadOnlyList<EntityMetadata> GetEntitiesForApplication(string appName) =>
+            _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
+
+        public bool IsEntityVisibleInApplication(EntityMetadata entity, string appName) => true;
     }
 }

@@ -19,27 +19,35 @@ public sealed class DashboardService : IDashboardService
         _logger = logger;
     }
 
-    public async Task<DashboardSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
+    public async Task<DashboardSummary> GetSummaryAsync(string appName = "admin", CancellationToken cancellationToken = default)
     {
-        var entities = _entityMetadataService.Entities;
+        return await GetSummaryForApplicationAsync(appName, cancellationToken);
+    }
+
+    public async Task<DashboardSummary> GetSummaryForApplicationAsync(string appName, CancellationToken cancellationToken = default)
+    {
+        var entities = _entityMetadataService.GetEntitiesForApplication(appName);
 
         // Load counts in parallel
         var countTasks = entities
             .Select(async e =>
             {
-                // Use schema-qualified name for lookup to support multiple schemas with same table name
-                var qualifiedName = string.IsNullOrWhiteSpace(e.Definition.Schema)
-                    ? e.Definition.Name
-                    : $"{e.Definition.Schema}:{e.Definition.Name}";
+                var qualifiedName = EntityNameFormatter.BuildQualifiedName(e);
                 try
                 {
-                    var count = await _entityApiService.GetCountAsync(qualifiedName);
+                    var count = await _entityApiService.GetCountAsync(appName, qualifiedName);
                     return new EntityCountInfo(qualifiedName, count);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error getting count for {EntityName}", qualifiedName);
-                    return new EntityCountInfo(qualifiedName, 0);
+                    _logger.LogError(ex, "[{ErrorId}] Error getting count for {EntityName}",
+                        "ENTITY_COUNT_FAILED", qualifiedName);
+                    return new EntityCountInfo(
+                        qualifiedName,
+                        0,
+                        ErrorMessage: $"Failed to load count: {ex.Message}",
+                        HasError: true
+                    );
                 }
             })
             .ToArray();

@@ -1,4 +1,12 @@
 <RadzenStack Gap="20px">
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" Style="margin-bottom: 1rem;">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H4">Dashboard Load Error</RadzenText>
+            <RadzenText>@errorMessage</RadzenText>
+        </RadzenAlert>
+    }
+
     <RadzenRow Gap="20px">
         @foreach (var entityMeta in EntityMetadataService.Entities)
         {
@@ -7,7 +15,10 @@
             var lookupKey = string.IsNullOrWhiteSpace(entityMeta.Definition.Schema)
                 ? displayName
                 : $"{entityMeta.Definition.Schema}:{displayName}";
-            var count = entityCountsByName.GetValueOrDefault(lookupKey, 0);
+            var countInfo = summary.EntityCounts.FirstOrDefault(ec => ec.EntityName == lookupKey);
+            var count = countInfo?.Count ?? 0;
+            var hasError = countInfo?.HasError ?? false;
+            var errorMsg = countInfo?.ErrorMessage;
 
             <RadzenColumn Size="12" Medium="6" Large="3">
                 <RadzenCard>
@@ -16,6 +27,12 @@
                         @if (isLoading)
                         {
                             <RadzenText Text="Loading..." TextStyle="TextStyle.H5" />
+                        }
+                        else if (hasError)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Size="AlertSize.Small" Style="margin-top: 0.5rem;">
+                                <RadzenText TextStyle="TextStyle.Caption">@errorMsg</RadzenText>
+                            </RadzenAlert>
                         }
                         else
                         {
@@ -76,17 +93,42 @@
 @code {
     private DashboardSummary summary = new();
     private bool isLoading = true;
+    private string? errorMessage;
     private IReadOnlyDictionary<string, int> entityCountsByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter]
+    public string AppName { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            summary = await DashboardService.GetSummaryAsync();
+            // Get app-specific dashboard if AppName provided
+            if (!string.IsNullOrEmpty(AppName))
+            {
+                summary = await DashboardService.GetSummaryForApplicationAsync(AppName);
+            }
+            else
+            {
+                summary = await DashboardService.GetSummaryAsync();
+            }
+
             entityCountsByName = summary.EntityCounts.ToDictionary(
                 entityCount => entityCount.EntityName,
                 entityCount => entityCount.Count,
                 StringComparer.OrdinalIgnoreCase);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            errorMessage = $"Application '{AppName}' not found. Please check the application name and try again.";
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Could not load dashboard data. The server may be temporarily unavailable. Please try refreshing the page.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load dashboard: {ex.Message}";
         }
         finally
         {

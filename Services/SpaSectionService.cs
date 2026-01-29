@@ -10,13 +10,18 @@ public sealed class SpaSectionService : ISpaSectionService
     private readonly IReadOnlyList<SpaSectionInfo> _sections;
     private readonly Dictionary<SpaSection, SpaSectionInfo> _staticSections;
     private readonly Dictionary<string, SpaSectionInfo> _byRouteSegment;
+    private readonly IAppDictionaryService _appDictionary;
+    private readonly IEntityMetadataService _entityMetadataService;
 
     public SpaSectionService(
         NavigationManager navigationManager,
         IOptions<AppCustomizationOptions> options,
-        IAppDictionaryService appDictionary)
+        IAppDictionaryService appDictionary,
+        IEntityMetadataService entityMetadataService)
     {
         _navigationManager = navigationManager;
+        _appDictionary = appDictionary;
+        _entityMetadataService = entityMetadataService;
 
         var labels = options.Value.SpaSections;
         var sections = new List<SpaSectionInfo>();
@@ -32,14 +37,8 @@ public sealed class SpaSectionService : ISpaSectionService
                     continue;
                 }
 
-                // RouteSegment uses slash for URL paths (e.g., "acme/Company")
-                // EntityName uses colon for API calls (e.g., "acme:Company")
-                var routeSegment = string.IsNullOrWhiteSpace(entity.Schema)
-                    ? entity.Name
-                    : $"{entity.Schema}/{entity.Name}";
-                var entityName = string.IsNullOrWhiteSpace(entity.Schema)
-                    ? entity.Name
-                    : $"{entity.Schema}:{entity.Name}";
+                var routeSegment = EntityNameFormatter.BuildUrlPath(entity.Schema, entity.Name);
+                var entityName = EntityNameFormatter.BuildQualifiedName(entity.Schema, entity.Name);
 
                 var label = string.IsNullOrWhiteSpace(entity.Schema)
                     ? entity.Name
@@ -105,4 +104,42 @@ public sealed class SpaSectionService : ISpaSectionService
             : $"app/{section.RouteSegment}";
         _navigationManager.NavigateTo(path, replace: replace);
     }
+
+    public IReadOnlyList<SpaSectionInfo> GetSectionsForApplication(string appName)
+    {
+        var sections = new List<SpaSectionInfo>();
+
+        // Dashboard section (always present)
+        sections.Add(new SpaSectionInfo(
+            Section: SpaSection.Dashboard,
+            NavLabel: "Dashboard",
+            Title: "Dashboard",
+            RouteSegment: "dashboard"));
+
+        // Entity sections filtered by app
+        var entities = _entityMetadataService.GetEntitiesForApplication(appName);
+        foreach (var entity in entities)
+        {
+            sections.Add(new SpaSectionInfo(
+                Section: SpaSection.Entity,
+                NavLabel: entity.Definition.Name,
+                Title: entity.Definition.Name,
+                RouteSegment: EntityNameFormatter.BuildUrlPath(entity),
+                EntityName: EntityNameFormatter.BuildQualifiedName(entity)));
+        }
+
+        // Settings section (only if app has entities)
+        var app = _appDictionary.GetApplication(appName);
+        if (app?.Entities.Any() == true)
+        {
+            sections.Add(new SpaSectionInfo(
+                Section: SpaSection.Settings,
+                NavLabel: "Settings",
+                Title: "Settings",
+                RouteSegment: "settings"));
+        }
+
+        return sections.AsReadOnly();
+    }
+
 }

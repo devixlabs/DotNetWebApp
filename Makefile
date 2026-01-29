@@ -20,20 +20,14 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-all build-release https migrate test run-ddl-pipeline run-view-pipeline run-all-pipelines verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
+.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline run-view-pipeline run-all-pipelines verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
-	rm -f msbuild.binlog
-	$(DOTNET) clean DotNetWebApp.Models/DotNetWebApp.Models.csproj
-	$(DOTNET) clean DotNetWebApp.csproj
-	$(DOTNET) clean ModelGenerator/ModelGenerator.csproj
-	$(DOTNET) clean DdlParser/DdlParser.csproj
-	$(DOTNET) clean tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
-	$(DOTNET) clean tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
+	$(DOTNET) clean DotNetWebApp.sln
 	@$(MAKE) cleanup-nested-dirs
-	@$(MAKE) shutdown-build-servers
+	rm -f msbuild.binlog
 
-# Internal helper: Remove nested project directories created by MSBuild during test/build-all
+# Internal helper: Remove nested project directories created by MSBuild during build/test
 # Prevents inotify watch exhaustion on Linux (limit: 65,536)
 cleanup-nested-dirs:
 	@find . -type d -path "*/bin/*/tests" -o -path "*/bin/*/DotNetWebApp.Models" -o -path "*/bin/*/ModelGenerator" -o -path "*/bin/*/DdlParser" | xargs rm -rf 2>/dev/null || true
@@ -63,36 +57,21 @@ check:
 	$(MAKE) build
 
 restore:
-	$(DOTNET) restore DotNetWebApp.Models/DotNetWebApp.Models.csproj
-	$(DOTNET) restore DotNetWebApp.csproj
-	$(DOTNET) restore ModelGenerator/ModelGenerator.csproj
-	$(DOTNET) restore DdlParser/DdlParser.csproj
-	$(DOTNET) restore tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj
-	$(DOTNET) restore tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj
+	$(DOTNET) restore DotNetWebApp.sln
 
 # Build with configurable configuration (Debug by default for fast dev iteration)
-# Builds main projects only (excludes test projects to avoid OOM on memory-limited systems)
+# Builds entire solution including test projects with reduced parallelism
 # Note: Reduced parallelism (-maxcpucount:2) to prevent memory exhaustion
 # If error(s) contain "Run a NuGet package restore", try 'make restore'
 build:
-	$(DOTNET) build DotNetWebApp.Models/DotNetWebApp.Models.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DdlParser/DdlParser.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
-
-# Build everything including test projects (higher memory usage)
-# Note: Cleans up nested project directories after build to prevent inotify exhaustion on Linux
-build-all:
 	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	@$(MAKE) cleanup-nested-dirs
 
 # Build with Release configuration for production deployments
 # This target always uses Release regardless of BUILD_CONFIGURATION variable
 build-release:
-	$(DOTNET) build DotNetWebApp.Models/DotNetWebApp.Models.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DotNetWebApp.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build ModelGenerator/ModelGenerator.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
-	$(DOTNET) build DdlParser/DdlParser.csproj --configuration Release --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.sln --configuration Release --no-restore -maxcpucount:2 --nologo
+	@$(MAKE) cleanup-nested-dirs
 
 migrate: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update

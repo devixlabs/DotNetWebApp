@@ -30,4 +30,19 @@ public interface IViewRegistry
     /// </summary>
     /// <returns>Enumerable of view names</returns>
     IEnumerable<string> GetAllViewNames();
+
+    /// <summary>
+    /// Gets all view definitions visible in a specific application.
+    /// </summary>
+    /// <param name="appName">Name of the application (e.g., "admin", "reporting")</param>
+    /// <returns>View definitions that the app is allowed to access</returns>
+    IReadOnlyList<ViewDefinition> GetViewsForApplication(string appName);
+
+    /// <summary>
+    /// Checks if a view is visible/accessible within a specific application.
+    /// </summary>
+    /// <param name="viewName">Name of the view</param>
+    /// <param name="appName">Name of the application</param>
+    /// <returns>True if the view is visible in the app; false otherwise</returns>
+    bool IsViewVisibleInApplication(string viewName, string appName);
 }

@@ -1,36 +1,29 @@
-@page "/app"
-@page "/app/{*Section}"
+@page "/"
+@page "/{AppName}"
+@page "/{AppName}/{*Section}"
+@inject NavigationManager NavigationManager
+@inject IAppDictionaryService AppDictionary
 @inject ISpaSectionService SpaSections
 @inject IEntityMetadataService EntityMetadataService
-@inject IOptions<AppCustomizationOptions> AppOptions
 
-<PageTitle>DotNet SPA</PageTitle>
+<PageTitle>DotNet Multi-App SPA</PageTitle>
 
 <RadzenRow Gap="20px" Style="min-height: calc(100vh - 140px);">
     <RadzenColumn Size="12">
         <RadzenStack Gap="20px">
-            @if (!IsSpaEnabled)
+            @if (activeSection == null)
             {
                 <RadzenCard>
                     <RadzenStack Gap="12px">
-                        <RadzenText Text="SPA example disabled." TextStyle="TextStyle.Subtitle1" />
-                        <RadzenText Text="Enable AppCustomization:EnableSpaExample to use the /app routes." TextStyle="TextStyle.Body2" />
-                    </RadzenStack>
-                </RadzenCard>
-            }
-            else if (activeSection == null)
-            {
-                <RadzenCard>
-                    <RadzenStack Gap="12px">
-                        <RadzenText Text="No SPA sections are configured." TextStyle="TextStyle.Subtitle1" />
-                        <RadzenText Text="Add entities to app.yaml or enable SPA sections in appsettings.json." TextStyle="TextStyle.Body2" />
+                        <RadzenText Text="No application selected." TextStyle="TextStyle.Subtitle1" />
+                        <RadzenText Text="Please select an application from the menu." TextStyle="TextStyle.Body2" />
                     </RadzenStack>
                 </RadzenCard>
             }
             else if (isEntitySection && activeEntityName != null)
             {
                 <SectionHeader Title="@activeSection.Title" IsLoading="@false" />
-                <EntitySection EntityName="@activeEntityName" />
+                <EntitySection AppName="@AppName" EntityName="@activeEntityName" />
             }
             else
             {
@@ -38,7 +31,7 @@
 
                 @if (activeSection.Section == SpaSection.Dashboard)
                 {
-                    <DashboardSection />
+                    <DashboardSection AppName="@AppName" />
                 }
                 else if (activeSection.Section == SpaSection.Settings)
                 {
@@ -50,36 +43,61 @@
 </RadzenRow>
 
 @code {
+    private static readonly HashSet<string> StaticPaths = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "css", "js", "lib", "images", "_framework", "_blazor"
+    };
+
     private SpaSectionInfo? activeSection;
     private string? activeEntityName;
     private bool isEntitySection => activeSection?.Section == SpaSection.Entity && activeEntityName != null;
     private AsyncUiState? loadingState;
 
     private bool IsLoading => loadingState?.IsBusy == true;
-    private bool IsSpaEnabled => AppOptions.Value.EnableSpaExample;
 
+    [Parameter] public string? AppName { get; set; }
     [Parameter] public string? Section { get; set; }
 
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
         loadingState = new AsyncUiState(() => InvokeAsync(StateHasChanged));
-        activeSection = SpaSections.DefaultSection;
-    }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!IsSpaEnabled)
+        // Handle root "/" route - redirect to first app
+        if (string.IsNullOrEmpty(AppName))
         {
-            activeSection = null;
-            activeEntityName = null;
+            var firstApp = AppDictionary.GetAllApplications().FirstOrDefault();
+            if (firstApp != null)
+            {
+                NavigationManager.NavigateTo($"/{firstApp.Name}/dashboard", replace: true);
+            }
             return;
         }
 
+        // Skip static resource paths (let static file middleware handle)
+        if (StaticPaths.Contains(AppName))
+        {
+            return;
+        }
+
+        // Validate AppName exists
+        var app = AppDictionary.GetApplication(AppName);
+        if (app == null)
+        {
+            // Invalid app, redirect to first app
+            var firstApp = AppDictionary.GetAllApplications().FirstOrDefault();
+            if (firstApp != null)
+            {
+                NavigationManager.NavigateTo($"/{firstApp.Name}/dashboard", replace: true);
+            }
+            return;
+        }
+
+        // Process section
         var segment = Section?.Trim();
         if (string.IsNullOrEmpty(segment))
         {
-            // Default to the first SPA section.
-            activeSection = SpaSections.DefaultSection;
+            // Default to dashboard
+            activeSection = new SpaSectionInfo(SpaSection.Dashboard, "dashboard", "Dashboard", "dashboard");
             activeEntityName = null;
             return;
         }
@@ -90,11 +108,6 @@
         {
             activeSection = section;
             activeEntityName = section.Section == SpaSection.Entity ? section.EntityName : null;
-
-            if (section.Section != SpaSection.Entity)
-            {
-                await LoadSection(section);
-            }
             return;
         }
 
@@ -106,21 +119,4 @@
         activeSection = new SpaSectionInfo(SpaSection.Entity, segment, segment, segment, entityName);
         activeEntityName = entityName;
     }
-
-    private async Task LoadSection(SpaSectionInfo section)
-    {
-        if (activeSection == section && !IsLoading)
-        {
-            return;
-        }
-
-        activeSection = section;
-
-        await loadingState!.RunAsync(async () =>
-        {
-            SpaSections.NavigateTo(section);
-            await Task.Delay(500);
-        });
-    }
-
 }

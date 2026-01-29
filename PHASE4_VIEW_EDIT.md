@@ -1,10 +1,48 @@
 # Phase 4: Editable View Components & UI-Driven Architecture
 
 **Status:** PLANNING PHASE - REVISED (2026-01-27)
+**Last Updated:** 2026-01-28 (Updated for multi-app architecture, IEntityOperationService status)
 **Duration:** 1-2 weeks (hybrid approach reduces complexity)
 **Priority:** MEDIUM (enables advanced CRUD patterns for complex views)
 **Prerequisite:** Phase 2 (View Pipeline) must be complete
 **Approach:** HYBRID - Reusable components + optional YAML config (see "REVISED APPROACH" section)
+
+---
+
+## ⚠️ IMPORTANT - Pre-Implementation Context (2026-01-28)
+
+### Multi-App Architecture Now Active
+This project uses **multi-app architecture** with `apps.yaml`. Before implementing Phase 4:
+- Views are **app-scoped**: `IViewRegistry.GetViewsForApplication(appName)`
+- Entities are **app-scoped**: `IEntityMetadataService.GetEntitiesForApplication(appName)`
+- Routes are **app-prefixed**: `/{appName}/...` (e.g., `/admin/dashboard`)
+- See `MULTI_APP_IMPLEMENTATION_SUMMARY.md` for full details
+
+### Current State of Key Components
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| `IEntityOperationService` | ✅ COMPLETE | `Services/IEntityOperationService.cs` | Full CRUD: GetAll, GetById, Create, Update, Delete |
+| `EntityOperationService` | ✅ COMPLETE | `Services/EntityOperationService.cs` | Compiled delegates for performance |
+| `DynamicDataGrid.razor` | ✅ EXISTS (Read-only) | `Shared/DynamicDataGrid.razor` | Reflection-based grid, NO edit capabilities |
+| `EntitySection.razor` | ✅ EXISTS (Read-only) | `Components/Sections/EntitySection.razor` | Uses DynamicDataGrid |
+| `IViewService` | ✅ COMPLETE | `Services/Views/IViewService.cs` | ExecuteViewAsync, ExecuteViewSingleAsync |
+| `ViewDefinition.cs` | ⚠️ NEEDS EXTENSION | `Models/AppDictionary/ViewDefinition.cs` | Missing Phase 4 UI metadata classes |
+| `SmartDataGrid<T>` | ❌ NOT STARTED | N/A | This is what Phase 4 implements |
+| `ColumnConfig` | ❌ NOT STARTED | N/A | This is what Phase 4 implements |
+
+### IEntityOperationService Interface (Already Available)
+```csharp
+public interface IEntityOperationService
+{
+    Task<IList> GetAllAsync(Type entityType, CancellationToken ct = default);
+    Task<int> GetCountAsync(Type entityType, CancellationToken ct = default);
+    Task<object> CreateAsync(Type entityType, object entity, CancellationToken ct = default);
+    Task<object?> GetByIdAsync(Type entityType, object id, CancellationToken ct = default);
+    Task<object> UpdateAsync(Type entityType, object entity, CancellationToken ct = default);
+    Task DeleteAsync(Type entityType, object id, CancellationToken ct = default);
+}
+```
 
 ---
 
@@ -255,20 +293,29 @@ views:
 
 **File:** `DotNetWebApp.Models/AppDictionary/ViewDefinition.cs` (add to existing)
 
+> **⚠️ Note (2026-01-28):** `ViewDefinition.cs` already exists with basic Phase 2 classes (ViewDefinition, ViewParameter, ViewProperty, ValidationConfig). The classes below are **additions** for Phase 4 UI metadata support.
+
 ```csharp
+// ============================================================
+// ALREADY EXISTS in ViewDefinition.cs (from Phase 2)
+// ============================================================
 public class ViewDefinition
 {
-    public string Name { get; set; } = null!;
-    public string Description { get; set; } = null!;
-    public string SqlFile { get; set; } = null!;
+    public string Name { get; set; }
+    public string Description { get; set; }
+    [YamlMember(Alias = "sql_file")]
+    public string SqlFile { get; set; }
+    [YamlMember(Alias = "generate_partial")]
     public bool GeneratePartial { get; set; } = true;
-
-    // EXISTING
     public List<ViewParameter>? Parameters { get; set; }
     public List<ViewProperty> Properties { get; set; } = new();
 
-    // NEW: Phase 4 UI metadata
+    // ============================================================
+    // NEW: Add these properties for Phase 4 UI metadata
+    // ============================================================
+    [YamlMember(Alias = "ui_hints")]
     public UiHints? UiHints { get; set; }
+    [YamlMember(Alias = "writable_sources")]
     public List<WritableSource>? WritableSources { get; set; }
 }
 
@@ -525,10 +572,12 @@ Before implementing, research:
 
 ### 5.1 Generic ViewEditGrid<T> Component
 
+> **Note (2026-01-28):** The existing `DynamicDataGrid.razor` in `Shared/` is read-only and uses reflection. Phase 4 introduces `SmartDataGrid<T>` as a generic, editable replacement. Consider placing it in `Shared/SmartDataGrid.razor`.
+
 Create a reusable component that:
 
 ```razor
-@* Components/Sections/ViewEditGrid.razor *@
+@* Shared/SmartDataGrid.razor (replaces/enhances DynamicDataGrid) *@
 @typeparam T where T : class
 @inject IViewService ViewService
 @inject IEntityOperationService EntityOperationService
@@ -784,20 +833,22 @@ public async Task ViewEditGrid_OnUpdateRow_CallsEntityOperationService()
 
 **Original Total Effort:** 2-4 weeks
 
-### Revised Plan (Hybrid Approach)
-| Component | Difficulty | Effort | Blocker? |
-|-----------|-----------|--------|----------|
-| **ColumnConfig model** | ✅ Trivial | 30 min | No |
-| **SmartDataGrid<T> component** | ⚠️ Moderate | 4-6 hours | No |
-| **INotificationService** | ✅ Easy | 1-2 hours | No |
-| **EventCallback wiring** | ✅ Easy | 1-2 hours | No |
-| **IEntityOperationService integration** | ✅ Easy | 2-3 hours | No |
-| **Confirmation dialogs** | ✅ Easy | 1-2 hours | No |
-| **Optional: ui_config.yaml schema** | ✅ Easy | 2-3 hours | No |
-| **Optional: IUiConfigService** | ⚠️ Moderate | 3-4 hours | No |
-| **Tests + documentation** | ⚠️ Moderate | 3-4 hours | No |
+### Revised Plan (Hybrid Approach) - Updated 2026-01-28
+| Component | Difficulty | Effort | Blocker? | Status |
+|-----------|-----------|--------|----------|--------|
+| **ColumnConfig model** | ✅ Trivial | 30 min | No | ❌ Not started |
+| **SmartDataGrid<T> component** | ⚠️ Moderate | 4-6 hours | No | ❌ Not started |
+| **INotificationService** | ✅ Easy | 1-2 hours | No | Can use Radzen's built-in |
+| **EventCallback wiring** | ✅ Easy | 1-2 hours | No | ❌ Not started |
+| **IEntityOperationService integration** | ✅ Easy | 2-3 hours | No | ✅ Service exists, just wire up |
+| **Confirmation dialogs** | ✅ Easy | 1-2 hours | No | Use Radzen DialogService |
+| **Optional: ViewDefinition.cs extensions** | ✅ Easy | 1-2 hours | No | ❌ Not started |
+| **Optional: views.yaml UI metadata** | ⚠️ Moderate | 2-3 hours | No | Can defer |
+| **Tests + documentation** | ⚠️ Moderate | 3-4 hours | No | ❌ Not started |
 
 **Revised Total Effort:** 1-2 weeks (no blockers, incremental delivery possible)
+
+> **Note:** IEntityOperationService with full CRUD already exists and has 30+ unit tests. This significantly reduces Phase 4 effort since the service layer is complete.
 
 ---
 
@@ -827,7 +878,9 @@ After Phase 4 completion:
 **Integration:**
 - [ ] EntitySection.razor uses SmartDataGrid instead of DynamicDataGrid
 - [ ] Full CRUD flow works end-to-end for existing entities
+- [ ] Multi-app architecture respected (entities scoped per app)
 - [ ] Multi-tenant schema isolation respected in all operations
+- [ ] Test in all three apps: admin (acme schema), reporting (acme schema), metrics (initech schema)
 
 ### Original Success Criteria (Heavy YAML - Deferred)
 
@@ -886,8 +939,12 @@ After analyzing the existing codebase patterns (DynamicDataGrid.razor, EntitySec
 
 Instead of generating components from YAML, build a **configurable** Radzen wrapper:
 
+> **File Location:** `Shared/SmartDataGrid.razor` (same directory as existing `DynamicDataGrid.razor`)
+>
+> **Existing Reference:** See `Shared/DynamicDataGrid.razor` for current reflection-based read-only implementation.
+
 ```csharp
-// Components/Shared/SmartDataGrid.razor
+// Shared/SmartDataGrid.razor
 @typeparam T where T : class, new()
 
 <RadzenDataGrid @ref="grid"
@@ -1001,8 +1058,10 @@ Instead of generating components from YAML, build a **configurable** Radzen wrap
 
 ### Column Configuration Model
 
+> **Note:** The `DotNetWebApp.Models/UI/` directory does not exist yet. Create it when implementing this class.
+
 ```csharp
-// Models/UI/ColumnConfig.cs
+// DotNetWebApp.Models/UI/ColumnConfig.cs (NEW FILE - directory must be created)
 public class ColumnConfig
 {
     public string Property { get; set; } = null!;
@@ -1018,13 +1077,16 @@ public class ColumnConfig
 
 ### Usage Example - Without YAML (Code-First)
 
-```razor
-@* Pages/Products.razor - Simple usage, no YAML needed *@
-@page "/products"
-@inject IEntityOperationService EntityOperationService
+> **Multi-App Context (2026-01-28):** Routes are now app-prefixed. The example below shows integration with the multi-app architecture.
 
-<SmartDataGrid T="Product"
-               Data="@products"
+```razor
+@* Components/Sections/EntitySection.razor - Updated to use SmartDataGrid *@
+@* Note: EntitySection already exists and passes EntityName (e.g., "acme:Product") *@
+@inject IEntityOperationService EntityOperationService
+@inject IEntityMetadataService EntityMetadataService
+
+<SmartDataGrid T="object"
+               Data="@entities"
                AllowEdit="true"
                AllowDelete="true"
                ShowActionColumn="true"
@@ -1032,18 +1094,40 @@ public class ColumnConfig
                OnRowDelete="@HandleDelete" />
 
 @code {
-    private List<Product> products = new();
+    [Parameter]
+    public string EntityName { get; set; } = string.Empty;  // e.g., "acme:Product"
 
-    private async Task HandleUpdate(Product product)
+    private IReadOnlyList<object>? entities;
+    private Type? entityType;
+
+    protected override async Task OnParametersSetAsync()
     {
-        await EntityOperationService.UpdateAsync(typeof(Product), product);
-        // Refresh, show toast, etc.
+        var metadata = EntityMetadataService.Find(EntityName);
+        if (metadata == null) return;
+
+        entityType = metadata.ClrType;
+        var result = await EntityOperationService.GetAllAsync(entityType);
+        entities = result.Cast<object>().ToList().AsReadOnly();
     }
 
-    private async Task HandleDelete(Product product)
+    private async Task HandleUpdate(object entity)
     {
-        await EntityOperationService.DeleteAsync(typeof(Product), product.Id);
-        products.Remove(product);
+        if (entityType == null) return;
+        await EntityOperationService.UpdateAsync(entityType, entity);
+        // Refresh, show toast notification, etc.
+    }
+
+    private async Task HandleDelete(object entity)
+    {
+        if (entityType == null) return;
+        // Get the Id property via reflection
+        var idProp = entityType.GetProperty("Id");
+        var id = idProp?.GetValue(entity);
+        if (id != null)
+        {
+            await EntityOperationService.DeleteAsync(entityType, id);
+            // Refresh list
+        }
     }
 }
 ```
@@ -1093,38 +1177,39 @@ grids:
 }
 ```
 
-### Revised Implementation Path
+### Revised Implementation Path (Updated 2026-01-28)
 
 **Phase A: Core Components (1-2 days)**
-1. `SmartDataGrid<T>` - Configurable grid with events (replaces DynamicDataGrid)
-2. `EntityForm<T>` - Auto-generated form from type with validation
-3. `ColumnConfig` / `FormFieldConfig` models
+1. Create `DotNetWebApp.Models/UI/ColumnConfig.cs` - Column configuration model
+2. Create `Shared/SmartDataGrid.razor` - Configurable grid with edit/delete capabilities
+3. Reference `Shared/DynamicDataGrid.razor` for reflection patterns (read-only baseline)
 
 **Phase B: Event Infrastructure (1 day)**
-1. Standardize `EventCallback<T>` patterns across all components
-2. Extend `AsyncUiState` wrapper for all async operations (already exists)
-3. Add toast notification service (`INotificationService`) for user feedback
+1. Standardize `EventCallback<T>` patterns in SmartDataGrid
+2. Use Radzen's built-in `NotificationService` for toast notifications
+3. Reference `ProductDashboard.razor` for error handling patterns (already documented)
 
-**Phase C: Optional YAML Layer (1-2 days)**
-1. Define `ui_config.yaml` schema (grids, forms, dashboards)
-2. Create `IUiConfigService` to load and cache config
-3. Components check for config, fall back to reflection-based defaults
+**Phase C: Write Operations Integration (2-3 days)**
+1. Wire SmartDataGrid to `IEntityOperationService.UpdateAsync()` - service already exists!
+2. Wire SmartDataGrid to `IEntityOperationService.DeleteAsync()` - service already exists!
+3. Use Radzen's `DialogService` for confirmation dialogs
+4. Update `EntitySection.razor` to use SmartDataGrid instead of DynamicDataGrid
+5. Test in multi-app context: `/admin/acme/Product`, `/metrics/initech/User`
 
-**Phase D: Write Operations Integration (2-3 days)**
-1. Integrate `IEntityOperationService` calls in SmartDataGrid
-2. Add validation feedback via Radzen's built-in validation
-3. Implement confirmation dialogs for destructive actions (delete)
-4. Handle optimistic updates with rollback on failure
+**Phase D: Optional YAML Layer (can defer)**
+1. Extend `ViewDefinition.cs` with `UiHints` and `WritableSource` classes
+2. Update `views.yaml` to support UI metadata
+3. Add `ColumnOverrides` parameter to SmartDataGrid for YAML-driven config
 
 ### What Changes from Original Phase 4
 
-| Original Plan | Revised Approach |
-|---------------|------------------|
-| Generate metadata classes from YAML | Build reusable generic components |
-| `ViewModelTemplate.scriban` extensions | `SmartDataGrid<T>` with EventCallbacks |
-| `[Editable]` / `[ReadOnly]` attributes | `ColumnConfig.Editable` property |
-| `WritableSource` complex mapping | Direct `IEntityOperationService` calls |
-| Permission checks in generated code | Permission checks in page components |
+| Original Plan | Revised Approach | Status (2026-01-28) |
+|---------------|------------------|---------------------|
+| Generate metadata classes from YAML | Build reusable generic components | Recommended approach |
+| `ViewModelTemplate.scriban` extensions | `SmartDataGrid<T>` with EventCallbacks | Template exists, SmartDataGrid to be built |
+| `[Editable]` / `[ReadOnly]` attributes | `ColumnConfig.Editable` property | ColumnConfig to be created |
+| `WritableSource` complex mapping | Direct `IEntityOperationService` calls | ✅ Service already exists! |
+| Permission checks in generated code | Permission checks in page components | Use app-scoped access from multi-app architecture |
 
 ### Benefits of Revised Approach
 
@@ -1155,30 +1240,44 @@ grids:
 
 ### Remaining Questions
 
-1. **Entity Operation Service**
-   - Does `IEntityOperationService.UpdateAsync()` handle partial updates correctly?
-   - How to handle foreign key constraint violations (show user-friendly message)?
-   - Should we add a `ValidateAsync()` method before update?
+1. **Entity Operation Service** ✅ MOSTLY ANSWERED
+   - `IEntityOperationService.UpdateAsync()` updates the full entity (not partial) - pass complete entity object
+   - FK constraint violations will throw `DbUpdateException` - catch and show user-friendly message
+   - No `ValidateAsync()` method exists - use DataAnnotations validation in form before calling service
 
-2. **Multi-Tenant Edge Cases**
-   - Verify schema-qualified names work in SmartDataGrid for multi-tenant
-   - Test update operations across different schemas
-   - Ensure `X-Customer-Schema` header flows through all operations
+2. **Multi-App/Multi-Tenant Edge Cases** (2026-01-28 Update)
+   - Multi-app architecture now uses `apps.yaml` with app-scoped entities/views
+   - Schema-qualified names (e.g., `acme:Product`) are used throughout
+   - Verify `IEntityOperationService` respects schema context via `IEntityMetadataService.Find()`
+   - Test CRUD operations within app context (admin app vs reporting app)
+   - `X-Customer-Schema` header still flows through for tenant isolation
 
 3. **Validation UX**
-   - Should validation errors show inline (Radzen default) or as toast?
-   - How to handle server-side validation errors (unique constraints)?
-   - Cross-field validation (e.g., StartDate < EndDate) - component or service?
+   - Recommend: Show validation errors inline (Radzen's default behavior)
+   - Server-side errors (unique constraints, FK violations) → show as toast notification
+   - Cross-field validation → implement in the calling component before service call
 
 ---
 
 ## References & Next Steps
 
-- **Phase 2 (Prerequisite):** PHASE2_VIEW_PIPELINE.md
-- **Phase 3 (Related):** PHASE3_VIEW_UI.md (static view rendering)
+- **Phase 2 (Prerequisite):** PHASE2_VIEW_PIPELINE.md ✅ COMPLETE
+- **Phase 3 (Related):** PHASE3_VIEW_UI.md (static view rendering) - ProductDashboard reference exists
+- **Multi-App Architecture:** MULTI_APP_IMPLEMENTATION_SUMMARY.md ⚠️ READ THIS FIRST
 - **Radzen Documentation:** https://blazor.radzen.com/datagrid (to be researched)
 - **Blazor Patterns:** Research component lifecycle, parameter binding, event handling
-- **Entity Operation Service:** Review IEntityOperationService for update capabilities
+- **Entity Operation Service:** `Services/IEntityOperationService.cs` ✅ Already complete with full CRUD
+
+### Key Files to Review Before Implementation
+
+| File | Purpose |
+|------|---------|
+| `Shared/DynamicDataGrid.razor` | Existing read-only grid (to be enhanced/replaced) |
+| `Components/Sections/EntitySection.razor` | Current entity display (uses DynamicDataGrid) |
+| `Components/Pages/ProductDashboard.razor` | Reference for error handling, loading states |
+| `Services/EntityOperationService.cs` | CRUD implementation with compiled delegates |
+| `DotNetWebApp.Models/AppDictionary/ViewDefinition.cs` | Extend with Phase 4 UI classes |
+| `apps.yaml` | Multi-app configuration (entities/views per app) |
 
 ---
 
@@ -1188,25 +1287,29 @@ grids:
 
 ## Quick Checklist - Revised Approach
 
+> **Important (2026-01-28):** `IEntityOperationService` already exists with full CRUD support. `DynamicDataGrid.razor` exists but is read-only. The goal is to create `SmartDataGrid<T>` that adds edit capabilities.
+
 **Phase A: Core Components**
-- [ ] Create `ColumnConfig.cs` model in `DotNetWebApp.Models/UI/`
-- [ ] Implement `SmartDataGrid<T>` component (replaces/extends DynamicDataGrid)
+- [ ] Create `ColumnConfig.cs` model in `DotNetWebApp.Models/UI/` (directory doesn't exist yet)
+- [ ] Implement `SmartDataGrid<T>` in `Shared/SmartDataGrid.razor` (enhances read-only DynamicDataGrid)
 - [ ] Add action column with Edit/Delete buttons
 - [ ] Wire up `EventCallback<T>` for OnRowUpdate, OnRowDelete, OnRowEdit
-- [ ] Test with existing Product entity
+- [ ] Test with existing Product entity (via `acme:Product` in admin app)
 
 **Phase B: Event Infrastructure**
-- [ ] Create `INotificationService` for toast notifications
+- [ ] Create `INotificationService` for toast notifications (or use Radzen's `NotificationService` directly)
 - [ ] Integrate with Radzen's `NotificationService`
-- [ ] Extend AsyncUiState pattern to SmartDataGrid operations
+- [ ] Reuse existing error handling patterns from `ProductDashboard.razor`
 
 **Phase C: Optional YAML Layer (can defer)**
-- [ ] Define `ui_config.yaml` schema
-- [ ] Create `IUiConfigService` interface and implementation
-- [ ] Add column override support to SmartDataGrid
+- [ ] Extend `ViewDefinition.cs` with `UiHints` and `WritableSource` classes
+- [ ] Update `views.yaml` schema to support `ui_hints:` and `writable_sources:` sections
+- [ ] Add column override support to SmartDataGrid (optional)
 
 **Phase D: Write Operations**
-- [ ] Wire SmartDataGrid to `IEntityOperationService.UpdateAsync()`
-- [ ] Add confirmation dialog for delete operations
+- [ ] Wire SmartDataGrid to `IEntityOperationService.UpdateAsync()` (service already exists!)
+- [ ] Wire SmartDataGrid to `IEntityOperationService.DeleteAsync()` (service already exists!)
+- [ ] Add confirmation dialog for delete operations (use Radzen's `DialogService`)
 - [ ] Implement validation error display (Radzen built-in)
-- [ ] Test full CRUD flow with EntitySection
+- [ ] Update `EntitySection.razor` to use SmartDataGrid instead of DynamicDataGrid
+- [ ] Test full CRUD flow in multi-app context (e.g., `/admin/acme/Product`)

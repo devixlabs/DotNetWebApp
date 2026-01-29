@@ -11,12 +11,28 @@ using DotNetWebApp.Tests.TestEntities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace DotNetWebApp.Tests;
 
 public class EntitiesControllerTests
 {
+    private IAppDictionaryService CreateMockAppDictionary()
+    {
+        var mock = new Mock<IAppDictionaryService>();
+        var appDef = new AppDefinition { Applications = new List<ApplicationInfo>() };
+        var adminApp = new ApplicationInfo
+        {
+            Name = "admin",
+            Entities = new List<string> { "Product", "Category" }
+        };
+        appDef.Applications.Add(adminApp);
+        mock.Setup(x => x.AppDefinition).Returns(appDef);
+        mock.Setup(x => x.GetApplication("admin")).Returns(adminApp);
+        return mock.Object;
+    }
+
     [Fact]
     public async Task GetEntities_ReturnsProducts_WhenEntityExists()
     {
@@ -34,9 +50,10 @@ public class EntitiesControllerTests
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
-        var result = await controller.GetEntities("dbo", "Product");
+        var result = await controller.GetEntities("admin", "dbo", "Product");
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var products = Assert.IsAssignableFrom<IEnumerable<Product>>(okResult.Value);
@@ -61,9 +78,10 @@ public class EntitiesControllerTests
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
-        var result = await controller.GetEntities("dbo", "Category");
+        var result = await controller.GetEntities("admin", "dbo", "Category");
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var categories = Assert.IsAssignableFrom<IEnumerable<Category>>(okResult.Value);
@@ -83,9 +101,10 @@ public class EntitiesControllerTests
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
-        var result = await controller.GetEntities("dbo", "invalid");
+        var result = await controller.GetEntities("admin", "dbo", "invalid");
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         Assert.NotNull(notFoundResult.Value);
@@ -112,9 +131,10 @@ public class EntitiesControllerTests
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
-        var result = await controller.GetEntityCount("dbo", "Product");
+        var result = await controller.GetEntityCount("admin", "dbo", "Product");
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal(3, okResult.Value);
@@ -132,9 +152,10 @@ public class EntitiesControllerTests
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
-        var result = await controller.GetEntityCount("dbo", "invalid");
+        var result = await controller.GetEntityCount("admin", "dbo", "invalid");
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         Assert.NotNull(notFoundResult.Value);
@@ -154,7 +175,8 @@ public class EntitiesControllerTests
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         var jsonBody = "{\"Name\":\"New Category\"}";
@@ -164,7 +186,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("dbo", "Category");
+        var result = await controller.CreateEntity("admin", "dbo", "Category");
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result);
         var category = Assert.IsType<Category>(createdResult.Value);
@@ -186,7 +208,8 @@ public class EntitiesControllerTests
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("{}"));
@@ -195,7 +218,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("dbo", "invalid");
+        var result = await controller.CreateEntity("admin", "dbo", "invalid");
 
         Assert.IsType<NotFoundObjectResult>(result);
     }
@@ -212,7 +235,8 @@ public class EntitiesControllerTests
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(""));
@@ -221,7 +245,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("dbo", "Category");
+        var result = await controller.CreateEntity("admin", "dbo", "Category");
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequestResult.Value);
@@ -239,7 +263,8 @@ public class EntitiesControllerTests
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
         var operationService = new EntityOperationService(context, metadataService);
-        var controller = new EntitiesController(operationService, metadataService);
+        var appDictionary = CreateMockAppDictionary();
+        var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         httpContext.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("{invalid json}"));
@@ -248,7 +273,7 @@ public class EntitiesControllerTests
             HttpContext = httpContext
         };
 
-        var result = await controller.CreateEntity("dbo", "Category");
+        var result = await controller.CreateEntity("admin", "dbo", "Category");
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequestResult.Value);
@@ -277,5 +302,10 @@ public class EntitiesControllerTests
             _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
 
         public EntityMetadata? Find(string entityName) => _metadata;
+
+        public IReadOnlyList<EntityMetadata> GetEntitiesForApplication(string appName) =>
+            _metadata != null ? new[] { _metadata } : System.Array.Empty<EntityMetadata>();
+
+        public bool IsEntityVisibleInApplication(EntityMetadata entity, string appName) => true;
     }
 }

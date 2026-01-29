@@ -6,11 +6,12 @@ using System.Text.Json;
 namespace DotNetWebApp.Controllers
 {
     [ApiController]
-    [Route("api/entities")]
+    [Route("api/{appName}/entities")]
     public class EntitiesController : ControllerBase
     {
         private readonly IEntityOperationService _operationService;
         private readonly IEntityMetadataService _metadataService;
+        private readonly IAppDictionaryService _appDictionary;
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -18,58 +19,112 @@ namespace DotNetWebApp.Controllers
 
         public EntitiesController(
             IEntityOperationService operationService,
-            IEntityMetadataService metadataService)
+            IEntityMetadataService metadataService,
+            IAppDictionaryService appDictionary)
         {
             _operationService = operationService;
             _metadataService = metadataService;
+            _appDictionary = appDictionary;
         }
 
         private string BuildQualifiedName(string schema, string entityName)
         {
-            // Default to 'dbo' if schema is not provided
             var effectiveSchema = string.IsNullOrWhiteSpace(schema) ? "dbo" : schema;
-            return $"{effectiveSchema}:{entityName}";
+            return EntityNameFormatter.BuildQualifiedName(effectiveSchema, entityName);
         }
 
-        [HttpGet("{schema}/{entityName}")]
-        public async Task<ActionResult> GetEntities(string schema, string entityName)
+        private ActionResult? ValidateEntity(string appName, string qualifiedName, out EntityMetadata? metadata)
         {
-            var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
+            metadata = _metadataService.Find(qualifiedName);
             if (metadata == null || metadata.ClrType == null)
             {
                 return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
             }
 
-            var list = await _operationService.GetAllAsync(metadata.ClrType);
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
+            }
 
+            return null;
+        }
+
+        private object? ParsePrimaryKey(string id, string pkType)
+        {
+            return pkType.ToLowerInvariant() switch
+            {
+                "int" => int.Parse(id),
+                "long" => long.Parse(id),
+                "guid" => Guid.Parse(id),
+                "string" => id,
+                _ => throw new InvalidOperationException($"Unsupported primary key type: {pkType}")
+            };
+        }
+
+        private ActionResult? ValidateApp(string appName)
+        {
+            var app = _appDictionary.GetApplication(appName);
+            if (app == null)
+                return NotFound(new { error = $"Application '{appName}' not found" });
+
+            if (!app.Entities.Any())
+                return NoContent();
+
+            return null;
+        }
+
+        [HttpGet("{schema}/{entityName}")]
+        public async Task<ActionResult> GetEntities(string appName, string schema, string entityName)
+        {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
+            var qualifiedName = BuildQualifiedName(schema, entityName);
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            var list = await _operationService.GetAllAsync(metadata.ClrType);
             return Ok(list);
         }
 
         [HttpGet("{schema}/{entityName}/count")]
-        public async Task<ActionResult<int>> GetEntityCount(string schema, string entityName)
+        public async Task<ActionResult<int>> GetEntityCount(string appName, string schema, string entityName)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
 
             var count = await _operationService.GetCountAsync(metadata.ClrType);
-
             return Ok(count);
         }
 
         [HttpPost("{schema}/{entityName}")]
-        public async Task<ActionResult> CreateEntity(string schema, string entityName)
+        public async Task<ActionResult> CreateEntity(string appName, string schema, string entityName)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
 
             using var reader = new StreamReader(Request.Body);
             var json = await reader.ReadToEndAsync();
@@ -97,19 +152,27 @@ namespace DotNetWebApp.Controllers
             await _operationService.CreateAsync(metadata.ClrType, entity);
 
             return CreatedAtAction(nameof(GetEntities),
-                new { schema = schema, entityName = entityName },
+                new { appName = appName, schema = schema, entityName = entityName },
                 entity);
         }
 
         [HttpGet("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> GetEntityById(string schema, string entityName, string id)
+        public async Task<ActionResult> GetEntityById(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
@@ -121,19 +184,34 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
             }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
+            }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            if (pkValue == null)
+                return BadRequest(new { error = "Primary key value could not be parsed" });
 
             var entity = await _operationService.GetByIdAsync(metadata.ClrType, pkValue);
             if (entity == null)
@@ -145,14 +223,22 @@ namespace DotNetWebApp.Controllers
         }
 
         [HttpPut("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> UpdateEntity(string schema, string entityName, string id)
+        public async Task<ActionResult> UpdateEntity(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
@@ -164,18 +250,27 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
             }
 
             using var reader = new StreamReader(Request.Body);
@@ -185,6 +280,9 @@ namespace DotNetWebApp.Controllers
             {
                 return BadRequest(new { error = "Request body is empty" });
             }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
 
             object? updatedEntity;
             try
@@ -209,19 +307,26 @@ namespace DotNetWebApp.Controllers
             }
 
             var entity = await _operationService.UpdateAsync(metadata.ClrType, updatedEntity);
-
             return Ok(entity);
         }
 
         [HttpDelete("{schema}/{entityName}/{id}")]
-        public async Task<ActionResult> DeleteEntity(string schema, string entityName, string id)
+        public async Task<ActionResult> DeleteEntity(string appName, string schema, string entityName, string id)
         {
+            var appValidation = ValidateApp(appName);
+            if (appValidation != null)
+                return appValidation;
+
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
+
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
 
             var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
@@ -233,22 +338,36 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
             }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
+            }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            if (pkValue == null)
+                return BadRequest(new { error = "Primary key value could not be parsed" });
 
             await _operationService.DeleteAsync(metadata.ClrType, pkValue);
-
             return NoContent();
         }
     }

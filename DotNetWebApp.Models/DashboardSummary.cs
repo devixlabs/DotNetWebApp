@@ -9,5 +9,10 @@ public class DashboardSummary
     public IReadOnlyList<ActivityItem> RecentActivities { get; set; } = Array.Empty<ActivityItem>();
 }
 
-public sealed record EntityCountInfo(string EntityName, int Count);
+public sealed record EntityCountInfo(
+    string EntityName,
+    int Count,
+    string? ErrorMessage = null,
+    bool HasError = false
+);
 public sealed record ActivityItem(string When, string Description);

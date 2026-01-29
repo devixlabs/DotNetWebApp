@@ -8,25 +8,39 @@ public class YamlGenerator
 {
     public string Generate(List<TableMetadata> tables)
     {
+        var entities = ConvertTablesToEntities(tables);
+
         var appDefinition = new AppDefinition
         {
-            App = new AppMetadata
+            Applications = new List<ApplicationInfo>
             {
-                Name = "ImportedApp",
-                Title = "Imported Application",
-                Description = "Generated from DDL file",
-                LogoUrl = "/images/logo.png"
-            },
-            Theme = new Theme
-            {
-                PrimaryColor = "#007bff",
-                SecondaryColor = "#6c757d",
-                BackgroundColor = "#ffffff",
-                TextColor = "#212529"
+                new ApplicationInfo
+                {
+                    Name = "default",
+                    Title = "Default Application",
+                    Description = "Generated from DDL file",
+                    Icon = "apps",
+                    Schema = "dbo",
+                    Entities = entities
+                        .Select(e => string.IsNullOrEmpty(e.Schema) ? e.Name : $"{e.Schema}:{e.Name}")
+                        .ToList(),
+                    Views = new List<string>(),
+                    Theme = new Theme
+                    {
+                        PrimaryColor = "#007bff",
+                        SecondaryColor = "#6c757d",
+                        BackgroundColor = "#ffffff",
+                        TextColor = "#212529"
+                    }
+                }
             },
             DataModel = new DataModel
             {
-                Entities = ConvertTablesToEntities(tables)
+                Entities = entities
+            },
+            Views = new ViewsRoot
+            {
+                Views = new List<View>()
             }
         };
 

@@ -6,6 +6,7 @@ using DotNetWebApp.Data.Dapper;
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models.AppDictionary;
 using DotNetWebApp.Models.ViewModels;
+using DotNetWebApp.Services;
 using DotNetWebApp.Services.Views;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,7 @@ namespace DotNetWebApp.Tests
         private ILogger<ViewRegistry> _loggerViewRegistry = null!;
         private ILogger<DapperQueryService> _loggerDapperService = null!;
         private ILogger<ViewService> _loggerViewService = null!;
+        private IAppDictionaryService _mockAppDictionary = null!;
 
         public async Task InitializeAsync()
         {
@@ -86,6 +88,20 @@ SELECT
             _loggerViewRegistry = loggerFactory.CreateLogger<ViewRegistry>();
             _loggerDapperService = loggerFactory.CreateLogger<DapperQueryService>();
             _loggerViewService = loggerFactory.CreateLogger<ViewService>();
+
+            // Set up mock app dictionary (permissive for tests - all views visible to all apps)
+            var mockAppDict = new Mock<IAppDictionaryService>();
+            var testApp = new ApplicationInfo
+            {
+                Name = "test",
+                Title = "Test App",
+                Schema = "test",
+                Entities = new List<string>(),
+                Views = new List<string> { "TestView" }  // Test view is visible
+            };
+            mockAppDict.Setup(x => x.GetApplication(It.IsAny<string>()))
+                .Returns(testApp);
+            _mockAppDictionary = mockAppDict.Object;
         }
 
         public async Task DisposeAsync()
@@ -105,7 +121,7 @@ SELECT
         public void ViewRegistry_LoadsViewsFromYaml()
         {
             // Arrange & Act
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var viewNames = registry.GetAllViewNames().ToList();
 
             // Assert
@@ -117,7 +133,7 @@ SELECT
         public void ViewRegistry_GetViewDefinition_ReturnsCorrectMetadata()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act
             var definition = registry.GetViewDefinition("TestView");
@@ -136,7 +152,7 @@ SELECT
         public void ViewRegistry_GetViewDefinition_ThrowsForUnknownView()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(() => registry.GetViewDefinition("UnknownView"));
@@ -147,7 +163,7 @@ SELECT
         public async Task ViewRegistry_GetViewSqlAsync_LoadsSqlContent()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act
             var sql = await registry.GetViewSqlAsync("TestView");
@@ -163,7 +179,7 @@ SELECT
         public async Task ViewRegistry_GetViewSqlAsync_CachesSqlForSubsequentCalls()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act
             var sql1 = await registry.GetViewSqlAsync("TestView");
@@ -178,7 +194,7 @@ SELECT
         public async Task ViewRegistry_GetViewSqlAsync_ThrowsForUnknownView()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -203,7 +219,7 @@ views:
         nullable: false
 ";
             await File.WriteAllTextAsync(brokenYamlPath, brokenYaml);
-            var registry = new ViewRegistry(brokenYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(brokenYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<FileNotFoundException>(
@@ -215,7 +231,7 @@ views:
         public void ViewRegistry_GetAllViewNames_ReturnsAllRegisteredViews()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act
             var viewNames = registry.GetAllViewNames().ToList();
@@ -238,7 +254,7 @@ views:
 
             // Act & Assert - Now throws FileNotFoundException (fail fast)
             var ex = Assert.Throws<FileNotFoundException>(
-                () => new ViewRegistry(nonExistentPath, _loggerViewRegistry));
+                () => new ViewRegistry(nonExistentPath, _loggerViewRegistry, _mockAppDictionary));
             Assert.Contains(ErrorIds.ViewsYamlMissing, ex.Message);
             Assert.Contains("views.yaml not found", ex.Message);
         }
@@ -252,7 +268,7 @@ views:
 
             // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(
-                () => new ViewRegistry(emptyYamlPath, _loggerViewRegistry));
+                () => new ViewRegistry(emptyYamlPath, _loggerViewRegistry, _mockAppDictionary));
             Assert.Contains(ErrorIds.ViewsYamlEmpty, ex.Message);
         }
 
@@ -273,7 +289,7 @@ views:
 
             // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(
-                () => new ViewRegistry(invalidYamlPath, _loggerViewRegistry));
+                () => new ViewRegistry(invalidYamlPath, _loggerViewRegistry, _mockAppDictionary));
             Assert.Contains(ErrorIds.ViewNameInvalid, ex.Message);
         }
 
@@ -294,7 +310,7 @@ views:
 
             // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(
-                () => new ViewRegistry(invalidYamlPath, _loggerViewRegistry));
+                () => new ViewRegistry(invalidYamlPath, _loggerViewRegistry, _mockAppDictionary));
             Assert.Contains(ErrorIds.ViewSqlFileInvalid, ex.Message);
         }
 
@@ -302,7 +318,7 @@ views:
         public void ViewRegistry_GetViewDefinition_ThrowsForNullViewName()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => registry.GetViewDefinition(null!));
@@ -312,7 +328,7 @@ views:
         public void ViewRegistry_GetViewDefinition_ThrowsForEmptyViewName()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => registry.GetViewDefinition(""));
@@ -322,7 +338,7 @@ views:
         public void ViewRegistry_GetViewDefinition_ThrowsForWhitespaceViewName()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => registry.GetViewDefinition("   "));
@@ -332,7 +348,7 @@ views:
         public async Task ViewRegistry_GetViewSqlAsync_ThrowsForNullViewName()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(
@@ -343,7 +359,7 @@ views:
         public async Task ViewRegistry_GetViewSqlAsync_ThrowsForEmptyViewName()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(
@@ -415,7 +431,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ReturnsAsync(testResults);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, _loggerViewService);
 
             // Act
@@ -440,7 +456,7 @@ views:
                 .Setup(d => d.QuerySingleAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ReturnsAsync(testResult);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, _loggerViewService);
 
             // Act
@@ -459,7 +475,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             // Use NullLogger to suppress log output for this exception test
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
@@ -482,7 +498,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ReturnsAsync(testResults);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, _loggerViewService);
 
             var parameters = new { TopN = 50 };
@@ -505,7 +521,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -518,7 +534,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -531,7 +547,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -555,7 +571,7 @@ views:
             await File.WriteAllTextAsync(brokenYamlPath, brokenYaml);
 
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(brokenYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(brokenYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert - FileNotFoundException should propagate directly
@@ -575,7 +591,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ThrowsAsync(sqlError);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert - SQL error should propagate without double-wrapping
@@ -596,7 +612,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ThrowsAsync(timeoutError);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert - Timeout error should propagate without double-wrapping
@@ -615,7 +631,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ThrowsAsync(argError);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert - ArgumentException should propagate unchanged
@@ -635,7 +651,7 @@ views:
                 .Setup(d => d.QuerySingleAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ThrowsAsync(sqlError);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -652,7 +668,7 @@ views:
         public void ViewService_ThrowsForNullDapper()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(
@@ -675,7 +691,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(
@@ -737,7 +753,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ReturnsAsync(testResults);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, _loggerViewService);
 
             // Act: Execute view through the full pipeline
@@ -755,7 +771,7 @@ views:
         {
             // Arrange
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -784,7 +800,7 @@ views:
             await File.WriteAllTextAsync(missingFileYamlPath, yaml);
 
             var mockDapper = new Mock<IDapperQueryService>();
-            var registry = new ViewRegistry(missingFileYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(missingFileYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, NullLogger<ViewService>.Instance);
 
             // Act & Assert
@@ -805,7 +821,7 @@ views:
         public async Task ViewRegistry_ConcurrentAccess_IsSafe()
         {
             // Arrange
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var tasks = new List<Task<string>>();
 
             // Act: Multiple concurrent requests for same view
@@ -830,7 +846,7 @@ views:
                 .Setup(d => d.QueryAsync<TestDataDto>(It.IsAny<string>(), It.IsAny<object>()))
                 .ReturnsAsync(testResults);
 
-            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry);
+            var registry = new ViewRegistry(_viewsYamlPath, _loggerViewRegistry, _mockAppDictionary);
             var service = new ViewService(mockDapper.Object, registry, _loggerViewService);
 
             var tasks = new List<Task<IEnumerable<TestDataDto>>>();

@@ -8,9 +8,11 @@ public sealed class EntityMetadataService : IEntityMetadataService
     private readonly IReadOnlyList<EntityMetadata> _entities;
     private readonly Dictionary<string, EntityMetadata> _byQualifiedName;
     private readonly Dictionary<string, List<EntityMetadata>> _byPlainName;
+    private readonly IAppDictionaryService _appDictionary;
 
     public EntityMetadataService(IAppDictionaryService appDictionary)
     {
+        _appDictionary = appDictionary;
         var entityDefinitions = appDictionary.AppDefinition.DataModel?.Entities ?? new List<Entity>();
         // Scan the Models assembly instead of the web app assembly to support separated project structure
         var assembly = typeof(EntityMetadata).Assembly;
@@ -34,9 +36,7 @@ public sealed class EntityMetadataService : IEntityMetadataService
 
         // Build dictionaries for efficient lookup
         _byQualifiedName = entities.ToDictionary(
-            item => string.IsNullOrWhiteSpace(item.Definition.Schema)
-                ? item.Definition.Name
-                : $"{item.Definition.Schema}:{item.Definition.Name}",
+            item => EntityNameFormatter.BuildQualifiedName(item),
             StringComparer.OrdinalIgnoreCase);
 
         // Group by plain name for fallback lookup
@@ -69,5 +69,32 @@ public sealed class EntityMetadataService : IEntityMetadataService
         }
 
         return null;
+    }
+
+    public IReadOnlyList<EntityMetadata> GetEntitiesForApplication(string appName)
+    {
+        var app = _appDictionary.GetApplication(appName);
+        if (app == null)
+            return Array.Empty<EntityMetadata>();
+
+        if (app.Entities.Count == 0)
+            return Array.Empty<EntityMetadata>();
+
+        return _entities
+            .Where(e => IsEntityVisibleInApplication(e, app))
+            .ToList()
+            .AsReadOnly();
+    }
+
+    public bool IsEntityVisibleInApplication(EntityMetadata entity, string appName)
+    {
+        var app = _appDictionary.GetApplication(appName);
+        return app != null && IsEntityVisibleInApplication(entity, app);
+    }
+
+    private bool IsEntityVisibleInApplication(EntityMetadata entity, ApplicationInfo app)
+    {
+        var qualifiedName = EntityNameFormatter.BuildQualifiedName(entity);
+        return app.Entities.Contains(qualifiedName, StringComparer.OrdinalIgnoreCase);
     }
 }

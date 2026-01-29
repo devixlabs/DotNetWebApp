@@ -10,4 +10,5 @@ public interface ISpaSectionService
     SpaSectionInfo? FromRouteSegment(string? segment);
     SpaSectionInfo? GetInfo(SpaSection section);
     void NavigateTo(SpaSectionInfo section, bool replace = true);
+    IReadOnlyList<SpaSectionInfo> GetSectionsForApplication(string appName);
 }

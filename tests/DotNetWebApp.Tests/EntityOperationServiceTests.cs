@@ -404,5 +404,10 @@ public class EntityOperationServiceTests
             return _entities.FirstOrDefault(e =>
                 e.Definition.Name.Equals(entityName, StringComparison.OrdinalIgnoreCase));
         }
+
+        public IReadOnlyList<EntityMetadata> GetEntitiesForApplication(string appName) =>
+            _entities.AsReadOnly();
+
+        public bool IsEntityVisibleInApplication(EntityMetadata entity, string appName) => true;
     }
 }
