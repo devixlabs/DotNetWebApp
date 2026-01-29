@@ -54,7 +54,8 @@ wwwroot/css/
 <link href="_content/Radzen.Blazor/css/material.css" rel="stylesheet" />
 ```
 
-**Radzen Version**: v7.1.0 (pinned in project)
+**Radzen Version**: v7.1.0 (pinned in project, see DotNetWebApp.csproj)
+**NuGet Package**: `Radzen.Blazor` 7.1.0
 
 ### Theme Options
 Radzen offers multiple theme families:
@@ -130,8 +131,67 @@ This directive is **required** for Radzen features like toast notifications, dia
 - `MenuItemDisplayStyle` - `Icon`, `Text`, `IconAndText`
 - `Orientation` - `Horizontal`, `Vertical`
 - `AlignItems` - `Start`, `Center`, `End`, `Stretch`
-- `ButtonStyle` - `Primary`, `Secondary`, `Danger`, `Warning`, `Success`, `Light`
-- `TextStyle` - `Subtitle1`, `Subtitle2`, `Body1`, `Body2`, etc.
+- `JustifyContent` - `Start`, `Center`, `End`, `SpaceBetween`, `SpaceAround`, `SpaceEvenly`
+- `ButtonStyle` - `Primary`, `Secondary`, `Danger`, `Warning`, `Success`, `Light`, `Info`
+- `TextStyle` - `H1`, `H2`, `H3`, `H4`, `H5`, `H6`, `Subtitle1`, `Subtitle2`, `Body1`, `Body2`, `Caption`, `Overline`
+- `AlertStyle` - `Danger`, `Warning`, `Info`, `Success`
+- `Variant` - `Filled`, `Flat`, `Outlined`, `Text`
+- `Shade` - `Default`, `Lighter`, `Darker`, `Light`, `Dark`
+- `DataGridEditMode` - `Single`, `Multiple`
+- `ButtonSize` - `Small`, `Medium`, `Large`
+- `TextAlign` - `Left`, `Center`, `Right`
+- `TagName` - `H1`, `H2`, `H3`, `H4`, `H5`, `H6`, `P`, `Span`, `Div`
+
+---
+
+## Radzen Components Used in This Project
+
+### Layout & Structure
+- **RadzenLayout** - Main application layout wrapper (see MainLayout.razor)
+- **RadzenHeader** - Application header with logo and navigation
+- **RadzenSidebar** - Collapsible sidebar with navigation menu
+- **RadzenBody** - Main content area
+- **RadzenSidebarToggle** - Toggle button for sidebar
+- **RadzenComponents** - Required directive for dialogs/notifications (end of MainLayout.razor)
+
+### Navigation
+- **RadzenPanelMenu** - Hierarchical navigation menu (see NavMenu.razor)
+- **RadzenPanelMenuItem** - Individual menu items with icons
+- **RadzenLink** - Hyperlinks with Radzen styling
+
+### Layout Containers
+- **RadzenStack** - Flexible vertical/horizontal layout (see DashboardSection.razor)
+- **RadzenRow** - Responsive grid row
+- **RadzenColumn** - Responsive grid column with size breakpoints
+- **RadzenCard** - Card container for content grouping
+
+### Data Display
+- **RadzenDataGrid** - Advanced data grid with sorting, filtering, paging, editing (see SmartDataGrid.razor)
+- **RadzenDataGridColumn** - Grid column configuration
+- **RadzenText** - Styled text with typography variants
+- **RadzenLabel** - Form labels
+
+### Forms & Input
+- **RadzenTextBox** - Text input field
+- **RadzenNumeric<T>** - Numeric input with type safety
+- **RadzenButton** - Styled buttons with icons
+- **RadzenFieldset** - Form fieldset container
+
+### Feedback & Notifications
+- **RadzenAlert** - Alert/message boxes (see DashboardSection.razor)
+- **DialogService** - Modal dialog service (injected)
+- **NotificationService** - Toast notification service (injected)
+
+### Services (Injected)
+```csharp
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+```
+
+**Required Setup:**
+1. Add `builder.Services.AddRadzenComponents();` in Program.cs
+2. Add `<RadzenComponents />` at end of MainLayout.razor
+3. Include Radzen CSS/JS in _Layout.cshtml
 
 ---
 
@@ -218,12 +278,75 @@ These components are loaded dynamically by the main SPA page and styled with sco
 
 ---
 
+## Common Patterns in This Project
+
+### Dashboard Cards (DashboardSection.razor)
+```razor
+<RadzenRow Gap="20px">
+    <RadzenColumn Size="12" Medium="6" Large="3">
+        <RadzenCard>
+            <RadzenStack Gap="8px">
+                <RadzenText Text="Total Products" TextStyle="@TextStyle.Subtitle2" />
+                <RadzenText Text="@count.ToString()" TextStyle="@TextStyle.H4" />
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+```
+
+### Error Alerts (DashboardSection.razor)
+```razor
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <RadzenAlert AlertStyle="@AlertStyle.Danger" Variant="@Variant.Flat" Shade="@Shade.Lighter">
+        <RadzenText TextStyle="@TextStyle.Subtitle2" TagName="@TagName.H4">Error</RadzenText>
+        <RadzenText>@errorMessage</RadzenText>
+    </RadzenAlert>
+}
+```
+
+### Action Buttons in DataGrid (SmartDataGrid.razor)
+```razor
+<RadzenDataGridColumn TItem="T" Title="Actions" Width="120px" TextAlign="@TextAlign.Center">
+    <Template Context="row">
+        <RadzenButton Icon="edit"
+                    Size="@ButtonSize.Small"
+                    Click="@(_ => OnEdit(row))"
+                    ButtonStyle="@ButtonStyle.Light" />
+        <RadzenButton Icon="delete"
+                    Size="@ButtonSize.Small"
+                    Click="@(_ => OnDelete(row))"
+                    ButtonStyle="@ButtonStyle.Danger" />
+    </Template>
+</RadzenDataGridColumn>
+```
+
+### Form Layout (EntityEditDialog.razor)
+```razor
+<RadzenFieldset Text="Edit Entity">
+    <RadzenStack Gap="12px">
+        <div class="rz-form-group">
+            <RadzenLabel Text="Name" />
+            <RadzenTextBox @bind-Value="@entity.Name" />
+        </div>
+    </RadzenStack>
+</RadzenFieldset>
+
+<RadzenStack Orientation="@Orientation.Horizontal" JustifyContent="@JustifyContent.End" Gap="8px">
+    <RadzenButton Text="Cancel" ButtonStyle="@ButtonStyle.Light" Click="@Cancel" />
+    <RadzenButton Text="Save" ButtonStyle="@ButtonStyle.Primary" Click="@Save" />
+</RadzenStack>
+```
+
+---
+
 ## Resources
 
 - **Radzen Blazor Docs**: https://blazor.radzen.com/
 - **Radzen Themes**: https://blazor.radzen.com/themes
-- **Radzen Component API**: https://blazor.radzen.com/docs/api/ (see MenuItemDisplayStyle, AlignItems, Orientation, etc.)
+- **Radzen Component API**: https://blazor.radzen.com/docs/api/
 - **Project Root SKILLS.md**: `/SKILLS.md` (Blazor components and JavaScript interop)
+- **Radzen Claude Code Skill**: `/.claude/skills/radzen-blazor/SKILL.md` (comprehensive Radzen component reference for Claude Code)
 
 ---
 
