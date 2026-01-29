@@ -1,4 +1,5 @@
 @using DotNetWebApp.Models.UI
+@using Microsoft.EntityFrameworkCore
 @inject IEntityApiService EntityApiService
 @inject IEntityMetadataService EntityMetadataService
 @inject IEntityOperationService EntityOperationService
@@ -231,41 +232,112 @@
     }
 
     /// <summary>
-    /// Handles row edit from SmartDataGrid
-    /// Currently just logs - extend this to open a modal, navigate to edit page, or implement inline editing
+    /// Handles row edit from SmartDataGrid - opens modal dialog with form
     /// </summary>
-    private Task HandleRowEdit(object row)
+    private async Task HandleRowEdit(object row)
     {
-        try
+        if (entityMetadata?.ClrType == null)
         {
-            Logger.LogInformation("Edit button clicked for entity {EntityName}", EntityName);
-
-            // TODO: Implement edit action - options include:
-            // 1. Open a modal dialog with form
-            // 2. Navigate to an edit detail page
-            // 3. Enable inline editing mode
-
-            NotificationService.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Info,
-                Summary = "Edit",
-                Detail = "Edit action not yet implemented for this entity",
-                Duration = 3000
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error handling row edit for {EntityName}", EntityName);
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
                 Summary = "Error",
-                Detail = $"Failed to handle edit: {ex.Message}",
+                Detail = "Entity metadata not available",
                 Duration = 4000
             });
+            return;
         }
 
-        return Task.CompletedTask;
+        try
+        {
+            Logger.LogInformation("Opening edit dialog for entity {EntityName}", EntityName);
+
+            // Open Radzen modal dialog with EntityEditDialog component
+            var result = await DialogService.OpenAsync<EntityEditDialog>(
+                $"Edit {entityMetadata.Definition.Name}",
+                new Dictionary<string, object>
+                {
+                    { "EntityMetadata", entityMetadata },
+                    { "Entity", row }
+                },
+                new DialogOptions
+                {
+                    Width = "700px",
+                    Height = "auto",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false  // Prevent accidental closes
+                }
+            );
+
+            // Check if user saved (result != null) or cancelled (result == null)
+            if (result == null)
+            {
+                Logger.LogInformation("Edit cancelled for entity {EntityName}", EntityName);
+                return;
+            }
+
+            Logger.LogInformation("Saving edited entity {EntityName}", EntityName);
+
+            // Persist changes via EntityOperationService
+            await EntityOperationService.UpdateAsync(entityMetadata.ClrType, result);
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Record updated successfully",
+                Duration = 3000
+            });
+
+            // Refresh the entity list to show updated data
+            await RefreshEntitiesAsync();
+        }
+        catch (DbUpdateConcurrencyException concEx)
+        {
+            Logger.LogWarning(concEx, "Concurrency conflict updating {EntityName}", EntityName);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Concurrency Conflict",
+                Detail = "Record was modified by another user. Refreshing data...",
+                Duration = 5000
+            });
+            await RefreshEntitiesAsync();
+        }
+        catch (DbUpdateException dbEx)
+        {
+            Logger.LogError(dbEx, "Database error updating {EntityName}", EntityName);
+
+            var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
+            var errorDetail = "Database error - please check your input and try again";
+
+            if (innerMessage.Contains("FOREIGN KEY constraint"))
+                errorDetail = "Cannot save - invalid reference to related data";
+            else if (innerMessage.Contains("UNIQUE constraint"))
+                errorDetail = "Cannot save - value must be unique";
+            else if (innerMessage.Contains("cannot insert NULL"))
+                errorDetail = "Cannot save - required field is missing";
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Database Error",
+                Detail = errorDetail,
+                Duration = 5000
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected error updating {EntityName}", EntityName);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update record: {ex.Message}",
+                Duration = 5000
+            });
+        }
     }
 
     /// <summary>
