@@ -4,36 +4,23 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace DdlParser;
 
+// Simple POCO for serializing data.yaml (without Applications field)
+public class DataDefinition
+{
+    public DataModel DataModel { get; set; } = new();
+    public ViewsRoot Views { get; set; } = new();
+}
+
 public class YamlGenerator
 {
     public string Generate(List<TableMetadata> tables)
     {
         var entities = ConvertTablesToEntities(tables);
 
-        var appDefinition = new AppDefinition
+        // Generate data.yaml with ONLY dataModel and views sections (no applications)
+        // Applications are configured separately in appsettings.json and merged by AppsYamlGenerator
+        var dataDefinition = new DataDefinition
         {
-            Applications = new List<ApplicationInfo>
-            {
-                new ApplicationInfo
-                {
-                    Name = "default",
-                    Title = "Default Application",
-                    Description = "Generated from DDL file",
-                    Icon = "apps",
-                    Schema = "dbo",
-                    Entities = entities
-                        .Select(e => string.IsNullOrEmpty(e.Schema) ? e.Name : $"{e.Schema}:{e.Name}")
-                        .ToList(),
-                    Views = new List<string>(),
-                    Theme = new Theme
-                    {
-                        PrimaryColor = "#007bff",
-                        SecondaryColor = "#6c757d",
-                        BackgroundColor = "#ffffff",
-                        TextColor = "#212529"
-                    }
-                }
-            },
             DataModel = new DataModel
             {
                 Entities = entities
@@ -48,7 +35,7 @@ public class YamlGenerator
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
-        return serializer.Serialize(appDefinition);
+        return serializer.Serialize(dataDefinition);
     }
 
     private List<Entity> ConvertTablesToEntities(List<TableMetadata> tables)

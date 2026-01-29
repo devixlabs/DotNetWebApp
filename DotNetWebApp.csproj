@@ -53,6 +53,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="AppsYamlGenerator\**" />
+    <Content Remove="AppsYamlGenerator\**" />
+    <EmbeddedResource Remove="AppsYamlGenerator\**" />
+    <None Remove="AppsYamlGenerator\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Content Remove="tests/**/*.cs" />

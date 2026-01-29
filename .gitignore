@@ -490,9 +490,7 @@ $RECYCLE.BIN/
 
 # Project and App Specific
 .env.local
-app.yaml
-app-generated.yaml
-app-test.yaml
-research/
 tmp/
-research.sh
+specs/
+# Generated YAML file (regenerated from pipeline)
+app.yaml

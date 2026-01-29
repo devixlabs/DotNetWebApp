@@ -1,0 +1,336 @@
+@* Non-generic wrapper for SmartDataGrid<object> - used when parent component has object-typed data *@
+@using System.Reflection
+@using Microsoft.AspNetCore.Components
+@using Radzen
+@using Radzen.Blazor
+@using DotNetWebApp.Models.UI
+
+@inject NotificationService NotificationService
+@inject ILogger<SmartDataGridObject> Logger
+
+<RadzenCard>
+    <RadzenStack Gap="8px">
+        @if (Data != null && Data.Any())
+        {
+            @if (AllowInlineEdit)
+            {
+                <RadzenDataGrid @ref="grid"
+                               Data="@Data"
+                               TItem="object"
+                               EditMode="DataGridEditMode.Single"
+                               RowUpdate="@OnRowUpdated"
+                               RowCreate="@OnRowCreated"
+                               AllowFiltering="@AllowFiltering"
+                               AllowSorting="@AllowSorting"
+                               AllowPaging="@AllowPaging"
+                               PageSize="20"
+                               Style="width: 100%;">
+
+                <Columns>
+                    @foreach (var column in GetColumnConfig())
+                    {
+                        @if (!column.Hidden)
+                        {
+                            @if (column.Editable && AllowInlineEdit)
+                            {
+                                <RadzenDataGridColumn TItem="object"
+                                                     Property="@column.Property"
+                                                     Title="@column.DisplayName"
+                                                     FormatString="@column.FormatString"
+                                                     Width="@(column.Width.HasValue ? $"{column.Width}px" : null)"
+                                                     Sortable="@column.Sortable"
+                                                     Filterable="@column.Filterable"
+                                                     Editable="true" />
+                            }
+                            else
+                            {
+                                <RadzenDataGridColumn TItem="object"
+                                                     Property="@column.Property"
+                                                     Title="@column.DisplayName"
+                                                     FormatString="@column.FormatString"
+                                                     Width="@(column.Width.HasValue ? $"{column.Width}px" : null)"
+                                                     Sortable="@column.Sortable"
+                                                     Filterable="@column.Filterable" />
+                            }
+                        }
+                    }
+
+                    @if (ShowActionColumn)
+                    {
+                        <RadzenDataGridColumn TItem="object"
+                                             Title="Actions"
+                                             Sortable="false"
+                                             Filterable="false"
+                                             Width="120px"
+                                             TextAlign="TextAlign.Center">
+                            <Template Context="row">
+                                @if (AllowEdit && !AllowInlineEdit)
+                                {
+                                    <RadzenButton Icon="edit"
+                                                Size="ButtonSize.Small"
+                                                Click="@(_ => OnEditRow(row))"
+                                                ButtonStyle="ButtonStyle.Light"
+                                                Class="me-1" />
+                                }
+                                @if (AllowDelete)
+                                {
+                                    <RadzenButton Icon="delete"
+                                                Size="ButtonSize.Small"
+                                                Click="@(_ => OnDeleteRow(row))"
+                                                ButtonStyle="ButtonStyle.Danger"
+                                                Class="ms-1" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                    }
+                </Columns>
+                </RadzenDataGrid>
+            }
+            else
+            {
+                <RadzenDataGrid @ref="grid"
+                               Data="@Data"
+                               TItem="object"
+                               AllowFiltering="@AllowFiltering"
+                               AllowSorting="@AllowSorting"
+                               AllowPaging="@AllowPaging"
+                               PageSize="20"
+                               Style="width: 100%;">
+                    <Columns>
+                        @foreach (var column in GetColumnConfig())
+                        {
+                            @if (!column.Hidden)
+                            {
+                                <RadzenDataGridColumn TItem="object"
+                                                     Property="@column.Property"
+                                                     Title="@column.DisplayName"
+                                                     FormatString="@column.FormatString"
+                                                     Width="@(column.Width.HasValue ? $"{column.Width}px" : null)"
+                                                     Sortable="@column.Sortable"
+                                                     Filterable="@column.Filterable" />
+                            }
+                        }
+
+                        @if (ShowActionColumn)
+                        {
+                            <RadzenDataGridColumn TItem="object"
+                                                 Title="Actions"
+                                                 Sortable="false"
+                                                 Filterable="false"
+                                                 Width="120px"
+                                                 TextAlign="TextAlign.Center">
+                                <Template Context="row">
+                                    @if (AllowEdit && !AllowInlineEdit)
+                                    {
+                                        <RadzenButton Icon="edit"
+                                                    Size="ButtonSize.Small"
+                                                    Click="@(_ => OnEditRow(row))"
+                                                    ButtonStyle="ButtonStyle.Light"
+                                                    Class="me-1" />
+                                    }
+                                    @if (AllowDelete)
+                                    {
+                                        <RadzenButton Icon="delete"
+                                                    Size="ButtonSize.Small"
+                                                    Click="@(_ => OnDeleteRow(row))"
+                                                    ButtonStyle="ButtonStyle.Danger"
+                                                    Class="ms-1" />
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
+                        }
+                    </Columns>
+                </RadzenDataGrid>
+            }
+
+            @if (Data != null)
+            {
+                <div style="font-size: 0.9em; color: #666; margin-top: 8px;">
+                    Showing @Data.Count() records
+                </div>
+            }
+        }
+        else
+        {
+            <RadzenText Text="No data available" TextStyle="TextStyle.Body2" />
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    /// <summary>
+    /// Data to display in the grid (object type)
+    /// </summary>
+    [Parameter]
+    public IEnumerable<object>? Data { get; set; }
+
+    [Parameter]
+    public bool AllowFiltering { get; set; } = true;
+
+    [Parameter]
+    public bool AllowSorting { get; set; } = true;
+
+    [Parameter]
+    public bool AllowPaging { get; set; } = true;
+
+    [Parameter]
+    public bool AllowInlineEdit { get; set; } = false;
+
+    [Parameter]
+    public bool AllowEdit { get; set; } = false;
+
+    [Parameter]
+    public bool AllowDelete { get; set; } = false;
+
+    [Parameter]
+    public bool ShowActionColumn { get; set; } = false;
+
+    [Parameter]
+    public IEnumerable<ColumnConfig>? ColumnOverrides { get; set; }
+
+    [Parameter]
+    public EventCallback<object> OnRowUpdate { get; set; }
+
+    [Parameter]
+    public EventCallback<object> OnRowCreate { get; set; }
+
+    [Parameter]
+    public EventCallback<object> OnRowDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<object> OnRowEdit { get; set; }
+
+    private RadzenDataGrid<object>? grid;
+
+    private IEnumerable<ColumnConfig> GetColumnConfig()
+    {
+        if (ColumnOverrides != null && ColumnOverrides.Any())
+        {
+            return ColumnOverrides;
+        }
+
+        try
+        {
+            // Get the actual type of the data, not the object type
+            Type dataType = typeof(object);
+            if (Data != null && Data.Any())
+            {
+                var firstItem = Data.First();
+                dataType = firstItem.GetType();
+            }
+
+            return dataType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .Select(p => new ColumnConfig
+                {
+                    Property = p.Name,
+                    DisplayName = p.Name,
+                    Sortable = true,
+                    Filterable = true,
+                    Editable = false,
+                    Hidden = false
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to discover columns for object type");
+            return Enumerable.Empty<ColumnConfig>();
+        }
+    }
+
+    private async Task OnRowUpdated(object row)
+    {
+        try
+        {
+            Logger.LogInformation("Row update triggered for object");
+
+            if (OnRowUpdate.HasDelegate)
+            {
+                await OnRowUpdate.InvokeAsync(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating row");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update row: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task OnRowCreated(object row)
+    {
+        try
+        {
+            Logger.LogInformation("Row create triggered for object");
+
+            if (OnRowCreate.HasDelegate)
+            {
+                await OnRowCreate.InvokeAsync(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating row");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to create row: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task OnDeleteRow(object row)
+    {
+        try
+        {
+            Logger.LogInformation("Row delete initiated for object");
+
+            if (OnRowDelete.HasDelegate)
+            {
+                await OnRowDelete.InvokeAsync(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting row");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to delete row: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task OnEditRow(object row)
+    {
+        try
+        {
+            Logger.LogInformation("Row edit triggered for object");
+
+            if (OnRowEdit.HasDelegate)
+            {
+                await OnRowEdit.InvokeAsync(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error editing row");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to edit record: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+}

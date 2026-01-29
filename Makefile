@@ -53,6 +53,8 @@ check:
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
 	shellcheck verify.sh
+	$(DOTNET) format whitespace DotNetWebApp.csproj
+	$(DOTNET) format style DotNetWebApp.csproj
 	$(MAKE) restore
 	$(MAKE) build
 
@@ -87,6 +89,8 @@ test:
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	$(DOTNET) build tests/AppsYamlGenerator.Tests/AppsYamlGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/AppsYamlGenerator.Tests/AppsYamlGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/DdlParser.Tests/DdlParser.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/DdlParser.Tests/DdlParser.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	@$(MAKE) cleanup-nested-dirs
@@ -95,21 +99,27 @@ test:
 # WARNING: This removes all existing migrations
 run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
-	@echo " -- Parsing DDL to YAML..."
-	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../app.yaml
+	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
+	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../data.yaml
 	@echo ""
-	@echo " -- Generating models from YAML..."
-	cd ModelGenerator && "../$(DOTNET)" run ../app.yaml
+	@echo " -- Step 2: Generating C# models from data.yaml..."
+	cd ModelGenerator && "../$(DOTNET)" run ../data.yaml
 	@echo ""
-	@echo " -- Regenerating EF Core migration..."
+	@echo " -- Step 3: Merging appsettings.json + data.yaml → app.yaml (final)..."
+	cd AppsYamlGenerator && "../$(DOTNET)" run -- ../appsettings.json ../data.yaml ../app.yaml
+	@echo ""
+	@echo " -- Step 4: Cleaning up intermediate data.yaml..."
+	rm -f data.yaml
+	@echo ""
+	@echo " -- Step 5: Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
 	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
-	@echo " -- Building project..."
+	@echo " -- Step 6: Building project..."
 	$(MAKE) build
 	@echo ""
-	@echo "✅ DDL pipeline test completed!"
+	@echo "✅ DDL pipeline completed!"
 	@echo ""
 	@echo "🚀 Next: Run 'make dev' to start the application"
 
@@ -122,6 +132,12 @@ verify-pipeline: run-ddl-pipeline
 	@test -f app.yaml || (echo "❌ app.yaml not found" && exit 1)
 	@test -s app.yaml || (echo "❌ app.yaml is empty" && exit 1)
 	@echo "✅ app.yaml exists and is not empty"
+	@# Validate app.yaml has both applications and dataModel sections
+	@grep -q "applications:" app.yaml || (echo "❌ app.yaml missing applications section" && exit 1)
+	@grep -q "dataModel:" app.yaml || (echo "❌ app.yaml missing dataModel section" && exit 1)
+	@echo "✅ app.yaml structure valid (applications + dataModel merged)"
+	@# Validate data.yaml does NOT exist (cleaned up after pipeline)
+	@test ! -f data.yaml || (echo "⚠️  data.yaml still exists (should have been cleaned up)" && true)
 	@# Validate generated models directory exists
 	@test -d DotNetWebApp.Models/Generated || (echo "❌ Generated/ directory not found" && exit 1)
 	@# Validate at least one generated model file exists
@@ -131,10 +147,6 @@ verify-pipeline: run-ddl-pipeline
 	@test -d Migrations || (echo "❌ Migrations/ directory not found" && exit 1)
 	@test -n "$$(find Migrations -name '*.cs' 2>/dev/null)" || (echo "❌ No migration files found" && exit 1)
 	@echo "✅ Migrations created"
-	@# Validate YAML structure (basic check)
-	@grep -q "dataModel:" app.yaml || (echo "❌ app.yaml missing dataModel section" && exit 1)
-	@grep -q "entities:" app.yaml || (echo "❌ app.yaml missing entities section" && exit 1)
-	@echo "✅ app.yaml structure valid"
 	@echo ""
 	@echo "✅ All pipeline verifications passed!"
 	@echo "Pipeline is ready for use."

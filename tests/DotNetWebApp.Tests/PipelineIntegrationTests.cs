@@ -69,7 +69,8 @@ CREATE TABLE Products (
 
             // Assert Phase 3: Verify deserialized structure
             Assert.NotNull(appDefinition);
-            Assert.NotNull(appDefinition.Applications);
+            // Applications should be null in data.yaml (applications are configured separately in appsettings.json)
+            Assert.Null(appDefinition.Applications);
             Assert.NotNull(appDefinition.DataModel);
             Assert.Equal(2, appDefinition.DataModel.Entities.Count);
 
@@ -114,10 +115,9 @@ CREATE TABLE Products (
             Assert.Equal("CategoryId", relationship.ForeignKey);
             Assert.Equal("Id", relationship.PrincipalKey);
 
-            // Assert Phase 4: Verify generated YAML would work with ModelGenerator
-            // This verifies the complete pipeline readiness for code generation
-            Assert.NotEmpty(appDefinition.Applications);
-            Assert.NotEmpty(appDefinition.Applications[0].Name);
+            // Assert Phase 4: Verify dataModel is populated
+            // (Applications are configured separately in appsettings.json, not in data.yaml)
+            Assert.NotEmpty(appDefinition.DataModel.Entities);
         }
         finally
         {
@@ -275,7 +275,8 @@ CREATE TABLE CompanyProducts (
         // Assert
         Assert.Empty(tables);
         Assert.NotEmpty(yaml);
-        Assert.Contains("applications:", yaml, StringComparison.OrdinalIgnoreCase);
+        // data.yaml should only contain dataModel (no applications key)
+        Assert.DoesNotContain("applications:", yaml, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("dataModel:", yaml, StringComparison.OrdinalIgnoreCase);
 
         var deserializer = new DeserializerBuilder()

@@ -7,7 +7,8 @@ using System.Reflection;
 
 namespace DotNetWebApp.Data
 {
-    public class AppDbContext : DbContext {
+    public class AppDbContext : DbContext
+    {
         public AppDbContext(
             DbContextOptions<AppDbContext> options,
             ITenantSchemaAccessor tenantSchemaAccessor) : base(options)
@@ -17,7 +18,8 @@ namespace DotNetWebApp.Data
 
         public string Schema { get; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder) {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
             base.OnModelCreating(modelBuilder);
 
             if (!string.IsNullOrWhiteSpace(Schema))

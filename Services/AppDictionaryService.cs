@@ -11,7 +11,7 @@ namespace DotNetWebApp.Services
         public AppDictionaryService(string yamlFilePath)
         {
             if (!File.Exists(yamlFilePath))
-                throw new FileNotFoundException($"apps.yaml not found at {yamlFilePath}");
+                throw new FileNotFoundException($"app.yaml not found at {yamlFilePath}");
 
             var yamlContent = File.ReadAllText(yamlFilePath);
 
@@ -20,10 +20,10 @@ namespace DotNetWebApp.Services
                 .Build();
 
             AppDefinition = deserializer.Deserialize<AppDefinition>(yamlContent)
-                ?? throw new InvalidOperationException("Failed to deserialize apps.yaml");
+                ?? throw new InvalidOperationException("Failed to deserialize app.yaml");
 
             if (!AppDefinition.Applications.Any())
-                throw new InvalidOperationException("apps.yaml must define at least one application");
+                throw new InvalidOperationException("app.yaml must define at least one application");
         }
 
         public IReadOnlyList<ApplicationInfo> GetAllApplications()

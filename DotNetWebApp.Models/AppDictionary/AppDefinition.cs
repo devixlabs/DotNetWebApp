@@ -6,7 +6,7 @@ namespace DotNetWebApp.Models.AppDictionary
 {
     public class AppDefinition
     {
-        public List<ApplicationInfo> Applications { get; set; } = new();
+        public List<ApplicationInfo> Applications { get; set; }
         public DataModel DataModel { get; set; }
         public ViewsRoot Views { get; set; }
     }
@@ -21,6 +21,15 @@ namespace DotNetWebApp.Models.AppDictionary
         public List<string> Entities { get; set; } = new();
         public List<string> Views { get; set; } = new();
         public Theme Theme { get; set; }
+        public SpaSectionConfiguration SpaSections { get; set; }
+    }
+
+    public class SpaSectionConfiguration
+    {
+        public string DashboardNav { get; set; }
+        public string DashboardTitle { get; set; }
+        public string SettingsNav { get; set; }
+        public string SettingsTitle { get; set; }
     }
 
     public class Theme

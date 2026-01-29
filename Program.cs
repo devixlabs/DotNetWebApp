@@ -47,7 +47,7 @@ builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
-    var yamlPath = Path.Combine(env.ContentRootPath, "apps.yaml");
+    var yamlPath = Path.Combine(env.ContentRootPath, "app.yaml");
     return new AppDictionaryService(yamlPath);
 });
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
