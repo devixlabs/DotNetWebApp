@@ -85,7 +85,10 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
-            var list = await _operationService.GetAllAsync(metadata!.ClrType);
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            var list = await _operationService.GetAllAsync(metadata.ClrType);
             return Ok(list);
         }
 
@@ -101,7 +104,10 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
-            var count = await _operationService.GetCountAsync(metadata!.ClrType);
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            var count = await _operationService.GetCountAsync(metadata.ClrType);
             return Ok(count);
         }
 
@@ -117,6 +123,9 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
+            if (metadata?.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
             using var reader = new StreamReader(Request.Body);
             var json = await reader.ReadToEndAsync();
 
@@ -128,7 +137,7 @@ namespace DotNetWebApp.Controllers
             object? entity;
             try
             {
-                entity = JsonSerializer.Deserialize(json, metadata!.ClrType, _jsonOptions);
+                entity = JsonSerializer.Deserialize(json, metadata.ClrType, _jsonOptions);
             }
             catch (JsonException ex)
             {
@@ -159,7 +168,13 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
-            var pkProperty = metadata!.Definition.Properties?
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
+
+            var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -171,10 +186,32 @@ namespace DotNetWebApp.Controllers
             {
                 pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
             }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
+            }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            if (pkValue == null)
+                return BadRequest(new { error = "Primary key value could not be parsed" });
 
             var entity = await _operationService.GetByIdAsync(metadata.ClrType, pkValue);
             if (entity == null)
@@ -197,7 +234,13 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
-            var pkProperty = metadata!.Definition.Properties?
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
+
+            var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -209,9 +252,25 @@ namespace DotNetWebApp.Controllers
             {
                 pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
             }
 
             using var reader = new StreamReader(Request.Body);
@@ -221,6 +280,9 @@ namespace DotNetWebApp.Controllers
             {
                 return BadRequest(new { error = "Request body is empty" });
             }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
 
             object? updatedEntity;
             try
@@ -260,7 +322,13 @@ namespace DotNetWebApp.Controllers
             if (entityValidation != null)
                 return entityValidation;
 
-            var pkProperty = metadata!.Definition.Properties?
+            if (metadata == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' metadata is unavailable" });
+
+            if (string.IsNullOrEmpty(id))
+                return BadRequest(new { error = "Primary key value cannot be empty" });
+
+            var pkProperty = metadata.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -272,10 +340,32 @@ namespace DotNetWebApp.Controllers
             {
                 pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                return BadRequest(new { error = $"Invalid primary key value: {ex.Message}" });
+                return BadRequest(new {
+                    error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
+                    details = ex.Message
+                });
             }
+            catch (OverflowException ex)
+            {
+                return BadRequest(new {
+                    error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
+                    details = ex.Message
+                });
+            }
+            catch (ArgumentNullException)
+            {
+                return BadRequest(new {
+                    error = "Primary key value cannot be null."
+                });
+            }
+
+            if (metadata.ClrType == null)
+                return BadRequest(new { error = $"Entity '{qualifiedName}' does not have a valid CLR type" });
+
+            if (pkValue == null)
+                return BadRequest(new { error = "Primary key value could not be parsed" });
 
             await _operationService.DeleteAsync(metadata.ClrType, pkValue);
             return NoContent();

@@ -40,8 +40,14 @@ public sealed class DashboardService : IDashboardService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error getting count for {EntityName}", qualifiedName);
-                    return new EntityCountInfo(qualifiedName, 0);
+                    _logger.LogError(ex, "[{ErrorId}] Error getting count for {EntityName}",
+                        "ENTITY_COUNT_FAILED", qualifiedName);
+                    return new EntityCountInfo(
+                        qualifiedName,
+                        0,
+                        ErrorMessage: $"Failed to load count: {ex.Message}",
+                        HasError: true
+                    );
                 }
             })
             .ToArray();

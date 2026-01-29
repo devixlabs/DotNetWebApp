@@ -43,7 +43,6 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISpaSectionService, SpaSectionService>();
 builder.Services.AddScoped<ITenantSchemaAccessor, HeaderTenantSchemaAccessor>();
-builder.Services.AddScoped<IApplicationContextAccessor, ApplicationContextAccessor>();
 builder.Services.AddSingleton<IModelCacheKeyFactory, AppModelCacheKeyFactory>();
 builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 {
