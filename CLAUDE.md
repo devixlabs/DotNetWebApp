@@ -12,6 +12,38 @@ You're an expert .NET/C# engineer with deep knowledge of:
 ## Project Overview
 This is a .NET 8 Web API + Blazor Server SPA with Entity Framework Core and a SQL DDL-driven data model/branding configuration.
 
+## 🎨 UI Framework: Radzen Blazor Components
+
+**This project uses Radzen Blazor components for ALL UI elements.**
+
+### When to Use the Radzen Skill
+Consult the `radzen-blazor` skill (`.claude/skills/radzen-blazor/SKILL.md`) when:
+- Creating or editing any `.razor` files in `Components/`, `Pages/`, `Shared/`
+- Working with buttons, forms, inputs, data grids, layouts, dialogs, notifications
+- User asks to "add a button", "create a form", "show a dialog", "display data", etc.
+- Any UI-related requests, even if "Radzen" is not mentioned
+
+### Critical Radzen Rules
+1. **Enum properties MUST use @ prefix:** `ButtonStyle="@ButtonStyle.Primary"` (NOT `ButtonStyle="ButtonStyle.Primary"`)
+2. **Use Radzen components, NOT plain HTML:** `<RadzenButton>` not `<button>`
+3. **RadzenComponents directive required:** Must have `<RadzenComponents />` at end of MainLayout.razor
+4. **Interactive render mode for events:** Components with Click/Change events need `@rendermode InteractiveServer`
+
+### Quick Reference
+- **Full skill:** `.claude/skills/radzen-blazor/SKILL.md`
+- **Component API:** `.claude/skills/radzen-blazor/references/components-quick-ref.md`
+- **Styling guide:** `wwwroot/css/SKILLS.md`
+- **Version:** Radzen.Blazor 7.1.0
+
+### Common Components
+- Layout: RadzenLayout, RadzenHeader, RadzenSidebar, RadzenBody
+- Navigation: RadzenPanelMenu, RadzenPanelMenuItem
+- Containers: RadzenStack, RadzenRow, RadzenColumn, RadzenCard
+- Data: RadzenDataGrid, RadzenDataGridColumn
+- Forms: RadzenButton, RadzenTextBox, RadzenNumeric, RadzenDropDown, RadzenDatePicker
+- Feedback: RadzenAlert, RadzenText
+- Services: DialogService, NotificationService (inject with `@inject`)
+
 ## 🚨 IMPORTANT: Architecture Documentation (READ FIRST)
 
 **Before starting any refactoring or architectural work, read these documents in order:**
