@@ -71,9 +71,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="apps.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="app.yaml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="views.yaml" CopyToOutputDirectory="PreserveNewest" />
-    <!-- data.yaml is NOT copied - used only for model generation -->
   </ItemGroup>
 
 </Project>

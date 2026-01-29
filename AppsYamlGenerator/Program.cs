@@ -8,8 +8,8 @@ using YamlDotNet.Serialization.NamingConventions;
 
 if (args.Length < 3)
 {
-    Console.WriteLine("Usage: AppsYamlGenerator <appsettings.json> <data.yaml> <output_apps.yaml>");
-    Console.WriteLine("Example: AppsYamlGenerator appsettings.json data.yaml apps.yaml");
+    Console.WriteLine("Usage: AppsYamlGenerator <appsettings.json> <data.yaml> <output_app.yaml>");
+    Console.WriteLine("Example: AppsYamlGenerator appsettings.json data.yaml app.yaml");
     Environment.Exit(1);
 }
 

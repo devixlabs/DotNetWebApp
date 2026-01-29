@@ -6,7 +6,7 @@ namespace DotNetWebApp.Models.AppDictionary
 {
     public class AppDefinition
     {
-        public List<ApplicationInfo> Applications { get; set; } = new();
+        public List<ApplicationInfo> Applications { get; set; }
         public DataModel DataModel { get; set; }
         public ViewsRoot Views { get; set; }
     }

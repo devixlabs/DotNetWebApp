@@ -99,21 +99,24 @@ test:
 # WARNING: This removes all existing migrations
 run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
-	@echo " -- Step 1: Parsing DDL to data.yaml (dataModel only)..."
+	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
 	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../data.yaml
 	@echo ""
-	@echo " -- Step 2: Merging appsettings.json + data.yaml → apps.yaml..."
-	cd AppsYamlGenerator && "../$(DOTNET)" run -- ../appsettings.json ../data.yaml ../apps.yaml
-	@echo ""
-	@echo " -- Step 3: Generating C# models from data.yaml..."
+	@echo " -- Step 2: Generating C# models from data.yaml..."
 	cd ModelGenerator && "../$(DOTNET)" run ../data.yaml
 	@echo ""
-	@echo " -- Step 4: Regenerating EF Core migration..."
+	@echo " -- Step 3: Merging appsettings.json + data.yaml → app.yaml (final)..."
+	cd AppsYamlGenerator && "../$(DOTNET)" run -- ../appsettings.json ../data.yaml ../app.yaml
+	@echo ""
+	@echo " -- Step 4: Cleaning up intermediate data.yaml..."
+	rm -f data.yaml
+	@echo ""
+	@echo " -- Step 5: Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
 	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
-	@echo " -- Step 5: Building project..."
+	@echo " -- Step 6: Building project..."
 	$(MAKE) build
 	@echo ""
 	@echo "✅ DDL pipeline completed!"
@@ -121,26 +124,20 @@ run-ddl-pipeline: clean
 	@echo "🚀 Next: Run 'make dev' to start the application"
 
 # Verify pipeline outputs are valid
-# Validates that data.yaml, apps.yaml, generated models, and migrations were created correctly
+# Validates that app.yaml, generated models, and migrations were created correctly
 verify-pipeline: run-ddl-pipeline
 	@echo ""
 	@echo "Verifying pipeline outputs..."
-	@# Validate data.yaml exists and is not empty
-	@test -f data.yaml || (echo "❌ data.yaml not found" && exit 1)
-	@test -s data.yaml || (echo "❌ data.yaml is empty" && exit 1)
-	@echo "✅ data.yaml exists and is not empty"
-	@# Validate data.yaml has dataModel section
-	@grep -q "dataModel:" data.yaml || (echo "❌ data.yaml missing dataModel section" && exit 1)
-	@grep -q "entities:" data.yaml || (echo "❌ data.yaml missing entities section" && exit 1)
-	@echo "✅ data.yaml structure valid"
-	@# Validate apps.yaml exists and is not empty
-	@test -f apps.yaml || (echo "❌ apps.yaml not found" && exit 1)
-	@test -s apps.yaml || (echo "❌ apps.yaml is empty" && exit 1)
-	@echo "✅ apps.yaml exists and is not empty"
-	@# Validate apps.yaml has both applications and dataModel sections
-	@grep -q "applications:" apps.yaml || (echo "❌ apps.yaml missing applications section" && exit 1)
-	@grep -q "dataModel:" apps.yaml || (echo "❌ apps.yaml missing dataModel section (merged)" && exit 1)
-	@echo "✅ apps.yaml structure valid (merged)"
+	@# Validate app.yaml exists and is not empty
+	@test -f app.yaml || (echo "❌ app.yaml not found" && exit 1)
+	@test -s app.yaml || (echo "❌ app.yaml is empty" && exit 1)
+	@echo "✅ app.yaml exists and is not empty"
+	@# Validate app.yaml has both applications and dataModel sections
+	@grep -q "applications:" app.yaml || (echo "❌ app.yaml missing applications section" && exit 1)
+	@grep -q "dataModel:" app.yaml || (echo "❌ app.yaml missing dataModel section" && exit 1)
+	@echo "✅ app.yaml structure valid (applications + dataModel merged)"
+	@# Validate data.yaml does NOT exist (cleaned up after pipeline)
+	@test ! -f data.yaml || (echo "⚠️  data.yaml still exists (should have been cleaned up)" && true)
 	@# Validate generated models directory exists
 	@test -d DotNetWebApp.Models/Generated || (echo "❌ Generated/ directory not found" && exit 1)
 	@# Validate at least one generated model file exists

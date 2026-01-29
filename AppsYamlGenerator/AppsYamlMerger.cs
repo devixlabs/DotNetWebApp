@@ -5,7 +5,7 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace AppsYamlGenerator;
 
 /// <summary>
-/// Merges appsettings.json Applications section with data.yaml DataModel to produce apps.yaml
+/// Merges appsettings.json Applications section with data.yaml DataModel to produce app.yaml (final runtime configuration)
 /// </summary>
 public class AppsYamlMerger
 {

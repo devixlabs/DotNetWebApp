@@ -141,8 +141,9 @@ public class YamlGeneratorTests
 
         // Assert
         Assert.NotEmpty(yaml);
-        // New pipeline: data.yaml has empty applications array (apps are configured separately in AppsYamlGenerator)
-        Assert.Contains("applications: []", yaml, StringComparison.OrdinalIgnoreCase);
+        // New pipeline: data.yaml contains only dataModel (no applications key)
+        // Applications are configured separately in appsettings.json and merged by AppsYamlGenerator
+        Assert.DoesNotContain("applications:", yaml, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("dataModel:", yaml, StringComparison.OrdinalIgnoreCase);
     }
 
