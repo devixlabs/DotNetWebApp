@@ -27,7 +27,7 @@ namespace ModelGenerator
         }
 
         /// <summary>
-        /// Generate entity models from app.yaml (existing behavior)
+        /// Generate entity models from data.yaml (existing behavior)
         /// </summary>
         static void RunEntityGeneration(string[] args)
         {
@@ -36,8 +36,9 @@ namespace ModelGenerator
 
             if (filteredArgs.Length == 0)
             {
-                Console.WriteLine("Usage: ModelGenerator <path_to_yaml_file>");
+                Console.WriteLine("Usage: ModelGenerator <path_to_data_yaml>");
                 Console.WriteLine("       ModelGenerator --mode=views --views-yaml=<path> --output-dir=<path>");
+                Console.WriteLine("Example: ModelGenerator data.yaml");
                 return;
             }
 

@@ -490,9 +490,8 @@ $RECYCLE.BIN/
 
 # Project and App Specific
 .env.local
-app.yaml
-app-generated.yaml
-app-test.yaml
-research/
 tmp/
-research.sh
+# Generated YAML files (regenerated from pipeline)
+data.yaml
+apps.yaml
+#TODO see what gets generated and add back

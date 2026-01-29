@@ -114,10 +114,10 @@ CREATE TABLE Products (
             Assert.Equal("CategoryId", relationship.ForeignKey);
             Assert.Equal("Id", relationship.PrincipalKey);
 
-            // Assert Phase 4: Verify generated YAML would work with ModelGenerator
-            // This verifies the complete pipeline readiness for code generation
-            Assert.NotEmpty(appDefinition.Applications);
-            Assert.NotEmpty(appDefinition.Applications[0].Name);
+            // Assert Phase 4: Verify dataModel is populated and Applications are empty
+            // (Applications are populated separately by AppsYamlGenerator in the new pipeline)
+            Assert.Empty(appDefinition.Applications);
+            Assert.NotEmpty(appDefinition.DataModel.Entities);
         }
         finally
         {
