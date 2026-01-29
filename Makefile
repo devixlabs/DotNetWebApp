@@ -53,6 +53,8 @@ check:
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
 	shellcheck verify.sh
+	$(DOTNET) format whitespace DotNetWebApp.csproj
+	$(DOTNET) format style DotNetWebApp.csproj
 	$(MAKE) restore
 	$(MAKE) build
 
