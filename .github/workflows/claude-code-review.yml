@@ -1,22 +1,53 @@
 name: Claude Code Review
 
+# ========================================
+# COST-OPTIMIZED CONFIGURATION
+# ========================================
+# This workflow runs ONLY when explicitly requested via PR labels.
+# To enable review: add 'claude-review' label to the PR
+# Current review scope: High-level architecture/security only (not style/formatting)
+#
+# To EXPAND:
+#   - Remove 'if:' condition to review all PRs
+#   - Add more file paths below
+#   - Modify the prompt to include more checks
+# ========================================
+
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened]  # COST: Only on initial PR creation, not on every push
+    # ========================================
+    # FILE FILTERING: Which files trigger review
+    # ========================================
+    paths:
+      # INCLUDE: Business logic and critical files
+      - 'Services/**/*.cs'                    # All service layer code
+      - 'Controllers/**/*.cs'                 # All API controllers
+      - 'Data/AppDbContext.cs'                # EF Core context
+      - 'Data/DataSeeder.cs'                  # Data initialization
+      - 'Program.cs'                          # DI configuration
+      - 'appsettings*.json'                   # Configuration changes
+
+      # EXCLUDE: Auto-generated, migrations, and tests (save costs & noise)
+      - '!DotNetWebApp.Models/Generated/**'   # Auto-generated entities
+      - '!**/Migrations/**'                   # EF Core migrations
+      - '!tests/**'                           # Unit tests
+      - '!**/obj/**'                          # Build output
+      - '!**/bin/**'                          # Build output
+      - '!**/*.Designer.cs'                   # Designer files
+      - '!DdlParser/**'                       # Build tool
+      - '!ModelGenerator/**'                  # Build tool
+      - '!Components/**'                      # Blazor UI components
+      - '!wwwroot/**'                         # Static assets
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # ========================================
+    # JOB FILTERING: When to actually run
+    # ========================================
+    # Requires manual label 'claude-review' on PR (opt-in per PR)
+    # This prevents unnecessary Claude calls and controls costs
+    if: contains(github.event.pull_request.labels.*.name, 'claude-review')
 
     runs-on: ubuntu-latest
     permissions:
@@ -38,7 +69,36 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+
+          # ========================================
+          # CUSTOM PROMPT: Scope and focus
+          # ========================================
+          # MODIFY THIS to change review behavior:
+          # - Add/remove checks
+          # - Increase max comment count
+          # - Adjust severity levels
+          prompt: |
+            Perform a HIGH-LEVEL code review on PR ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            FOCUS AREAS (Critical issues only):
+            1. Security vulnerabilities (SQL injection, XSS, auth bypasses, data exposure)
+            2. Multi-tenant data isolation bugs (schema confusion, cross-tenant leaks)
+            3. Performance problems (N+1 queries, memory leaks, inefficient algorithms)
+            4. Breaking API changes (endpoint signature changes, removed endpoints)
+            5. Entity Framework Core anti-patterns (untracked queries, cartesian explosions)
+
+            SKIP (to save time):
+            - Code style, formatting, naming conventions
+            - Minor refactoring suggestions
+            - Documentation improvements
+            - Test coverage suggestions
+
+            CONSTRAINTS:
+            - Maximum 5 critical issues only
+            - Focus on .NET/C# best practices
+            - Consider this project uses EF Core + Dapper hybrid architecture
+            - Check CLAUDE.md and SKILLS.md for project-specific patterns
+
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          # or https://code.claude.com/docs/en/cli-reference for advanced options
 

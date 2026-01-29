@@ -1,5 +1,22 @@
 name: Claude Code
 
+# ========================================
+# ON-DEMAND CLAUDE ASSISTANCE
+# ========================================
+# This workflow runs whenever @claude is mentioned in:
+#   - PR comments: "Hey @claude, can you review this?"
+#   - Issue comments: "Can @claude help debug this?"
+#   - PR reviews: "@claude what do you think?"
+#   - Issue bodies: "@claude analyze this feature"
+#
+# USAGE EXAMPLES:
+#   - PR Comment: "@claude review the changes to Services/EntityOperationService.cs"
+#   - PR Comment: "@claude check for N+1 query problems"
+#   - Issue Comment: "@claude help me understand the multi-tenant architecture"
+#
+# COST: Only runs when explicitly invoked (free tier: ~2-5 API calls/month)
+# ========================================
+
 on:
   issue_comment:
     types: [created]
@@ -12,11 +29,13 @@ on:
 
 jobs:
   claude:
+    # Triggers only when @claude is mentioned
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,6 +43,7 @@ jobs:
       issues: read
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,15 +56,30 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
+          # Allow Claude to read GitHub Actions CI results (test passes/failures, etc.)
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          # ========================================
+          # CUSTOM PROMPT (Optional)
+          # ========================================
+          # If you want to override what the user types in their @claude comment,
+          # uncomment and modify below. Otherwise, Claude uses the comment text.
+          #
+          # Examples:
+          #   prompt: 'Just list the files changed, do not provide a full review'
+          #   prompt: 'Focus on security vulnerabilities only'
+          #   prompt: 'Suggest refactoring opportunities in the changed code'
+          #
+          # prompt: 'Add a summary of this change to the PR description'
 
-          # Optional: Add claude_args to customize behavior and configuration
+          # ========================================
+          # ADVANCED OPTIONS
+          # ========================================
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
+          # Examples:
+          #   claude_args: '--allowed-tools Bash(gh pr:*)'
+          #   claude_args: '--max-tokens 4000'
+          #
+          # claude_args: ''
 
