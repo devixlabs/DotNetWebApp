@@ -1,0 +1,243 @@
+@using DotNetWebApp.Models
+@using DotNetWebApp.Models.AppDictionary
+@inject DialogService DialogService
+@inject ILogger<EntityEditDialog> Logger
+
+<RadzenStack Gap="16px">
+    <RadzenFieldset Text="@($"Edit {EntityMetadata?.Definition.Name}")">
+        <RadzenStack Gap="12px">
+            @foreach (var property in GetEditableProperties())
+            {
+                <div class="rz-form-group">
+                    <RadzenLabel Text="@property.Name" />
+                    @RenderFormInput(property)
+                    @if (validationErrors.ContainsKey(property.Name))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption"
+                                    Style="color: var(--rz-danger);">
+                            @validationErrors[property.Name]
+                        </RadzenText>
+                    }
+                </div>
+            }
+        </RadzenStack>
+    </RadzenFieldset>
+
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 Gap="8px"
+                 JustifyContent="JustifyContent.End">
+        <RadzenButton Text="Cancel"
+                      ButtonStyle="ButtonStyle.Light"
+                      Click="Cancel" />
+        <RadzenButton Text="Save"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="Save"
+                      Disabled="@(!IsValid())" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public EntityMetadata? EntityMetadata { get; set; }
+
+    [Parameter]
+    public object? Entity { get; set; }
+
+    private Dictionary<string, object?> formValues = new();
+    private Dictionary<string, string> validationErrors = new();
+    private Type? entityType;
+
+    protected override void OnParametersSet()
+    {
+        if (EntityMetadata == null || Entity == null) return;
+
+        entityType = EntityMetadata.ClrType;
+
+        // Copy entity properties to dictionary for form binding
+        if (entityType != null)
+        {
+            foreach (var prop in entityType.GetProperties())
+            {
+                formValues[prop.Name] = prop.GetValue(Entity);
+            }
+        }
+    }
+
+    private IEnumerable<Property> GetEditableProperties()
+    {
+        return EntityMetadata?.Definition.Properties
+            ?.Where(p => !p.IsPrimaryKey)  // Skip primary key
+            .OrderBy(p => p.Name)
+            ?? Enumerable.Empty<Property>();
+    }
+
+    private RenderFragment RenderFormInput(Property property)
+    {
+        return builder =>
+        {
+            var sequence = 0;
+
+            // Map property.Type (string) to appropriate Radzen component
+            switch (property.Type.ToLower())
+            {
+                case "string":
+                    builder.OpenComponent<RadzenTextBox>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<string>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<string>(this,
+                            value => SetValue(property.Name, value)));
+                    if (property.MaxLength.HasValue)
+                        builder.AddAttribute(sequence++, "MaxLength", (long)property.MaxLength.Value);
+                    builder.CloseComponent();
+                    break;
+
+                case "int":
+                    builder.OpenComponent<RadzenNumeric<int>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<int>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<int>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.CloseComponent();
+                    break;
+
+                case "long":
+                    builder.OpenComponent<RadzenNumeric<long>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<long>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<long>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.CloseComponent();
+                    break;
+
+                case "decimal":
+                    builder.OpenComponent<RadzenNumeric<decimal>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<decimal>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<decimal>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.AddAttribute(sequence++, "ShowUpDown", false);
+                    builder.AddAttribute(sequence++, "Step", "0.01");
+                    builder.CloseComponent();
+                    break;
+
+                case "double":
+                    builder.OpenComponent<RadzenNumeric<double>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<double>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<double>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.CloseComponent();
+                    break;
+
+                case "datetime":
+                    builder.OpenComponent<RadzenDatePicker<DateTime?>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<DateTime?>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<DateTime?>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.AddAttribute(sequence++, "ShowTime", true);
+                    builder.AddAttribute(sequence++, "DateFormat", "yyyy-MM-dd HH:mm");
+                    builder.CloseComponent();
+                    break;
+
+                case "bool":
+                    builder.OpenComponent<RadzenCheckBox<bool>>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", GetValue<bool>(property.Name));
+                    builder.AddAttribute(sequence++, "ValueChanged",
+                        EventCallback.Factory.Create<bool>(this,
+                            value => SetValue(property.Name, value)));
+                    builder.CloseComponent();
+                    break;
+
+                default:
+                    // Unsupported type - show disabled textbox
+                    builder.OpenComponent<RadzenTextBox>(sequence++);
+                    builder.AddAttribute(sequence++, "Value", formValues.GetValueOrDefault(property.Name)?.ToString() ?? "");
+                    builder.AddAttribute(sequence++, "Disabled", true);
+                    builder.AddAttribute(sequence++, "Placeholder", $"(Unsupported type: {property.Type})");
+                    builder.CloseComponent();
+                    break;
+            }
+        };
+    }
+
+    private T? GetValue<T>(string propertyName)
+    {
+        if (formValues.TryGetValue(propertyName, out var value))
+        {
+            if (value is T typedValue)
+                return typedValue;
+            if (value == null)
+                return default;
+        }
+        return default;
+    }
+
+    private void SetValue<T>(string propertyName, T? value)
+    {
+        formValues[propertyName] = value;
+        Validate();  // Re-validate on change
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(null);  // Return null = user cancelled
+    }
+
+    private Task Save()
+    {
+        if (!Validate())
+            return Task.CompletedTask;
+
+        // Copy dictionary values back to entity properties
+        foreach (var kvp in formValues)
+        {
+            var prop = entityType?.GetProperty(kvp.Key);
+            if (prop != null && prop.CanWrite)
+            {
+                prop.SetValue(Entity, kvp.Value);
+            }
+        }
+
+        DialogService.Close(Entity);  // Return modified entity
+        return Task.CompletedTask;
+    }
+
+    private bool Validate()
+    {
+        validationErrors.Clear();
+
+        foreach (var property in GetEditableProperties())
+        {
+            var value = formValues.GetValueOrDefault(property.Name);
+
+            // Required field validation
+            if (property.IsRequired && value == null)
+            {
+                validationErrors[property.Name] = "This field is required";
+                continue;
+            }
+
+            // String-specific validations
+            if (value is string stringValue)
+            {
+                if (property.IsRequired && string.IsNullOrWhiteSpace(stringValue))
+                {
+                    validationErrors[property.Name] = "This field cannot be empty";
+                    continue;
+                }
+
+                if (property.MaxLength.HasValue && stringValue.Length > property.MaxLength.Value)
+                {
+                    validationErrors[property.Name] = $"Maximum length is {property.MaxLength.Value} characters";
+                    continue;
+                }
+            }
+        }
+
+        return validationErrors.Count == 0;
+    }
+
+    private bool IsValid() => validationErrors.Count == 0;
+}

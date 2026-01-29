@@ -10,30 +10,11 @@ public class YamlGenerator
     {
         var entities = ConvertTablesToEntities(tables);
 
+        // Generate data.yaml with ONLY dataModel and views sections
+        // Applications are configured separately in appsettings.json and merged by AppsYamlGenerator
         var appDefinition = new AppDefinition
         {
-            Applications = new List<ApplicationInfo>
-            {
-                new ApplicationInfo
-                {
-                    Name = "default",
-                    Title = "Default Application",
-                    Description = "Generated from DDL file",
-                    Icon = "apps",
-                    Schema = "dbo",
-                    Entities = entities
-                        .Select(e => string.IsNullOrEmpty(e.Schema) ? e.Name : $"{e.Schema}:{e.Name}")
-                        .ToList(),
-                    Views = new List<string>(),
-                    Theme = new Theme
-                    {
-                        PrimaryColor = "#007bff",
-                        SecondaryColor = "#6c757d",
-                        BackgroundColor = "#ffffff",
-                        TextColor = "#212529"
-                    }
-                }
-            },
+            Applications = new List<ApplicationInfo>(),  // Intentionally empty - populated by AppsYamlGenerator
             DataModel = new DataModel
             {
                 Entities = entities

@@ -188,21 +188,24 @@ namespace DotNetWebApp.Controllers
             }
             catch (FormatException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (OverflowException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (ArgumentNullException)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = "Primary key value cannot be null."
                 });
             }
@@ -254,21 +257,24 @@ namespace DotNetWebApp.Controllers
             }
             catch (FormatException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (OverflowException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (ArgumentNullException)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = "Primary key value cannot be null."
                 });
             }
@@ -342,21 +348,24 @@ namespace DotNetWebApp.Controllers
             }
             catch (FormatException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Invalid format for primary key '{id}'. Expected {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (OverflowException ex)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = $"Primary key value '{id}' is out of range for type {pkProperty.Type}.",
                     details = ex.Message
                 });
             }
             catch (ArgumentNullException)
             {
-                return BadRequest(new {
+                return BadRequest(new
+                {
                     error = "Primary key value cannot be null."
                 });
             }

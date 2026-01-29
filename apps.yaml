@@ -1,46 +1,66 @@
 applications:
-  - name: admin
-    title: Admin Portal
-    description: Administrative functions and user management
-    icon: admin_panel_settings
-    schema: acme
-    entities:
-      - acme:Category
-      - acme:Product
-      - acme:Company
-      - acme:CompanyProduct
-    views: []
-    theme:
-      primaryColor: '#007bff'
-      secondaryColor: '#6c757d'
-
-  - name: reporting
-    title: Reporting
-    description: Analytics and reports
-    icon: assessment
-    schema: acme
-    entities:
-      - acme:Company
-      - acme:Product
-    views: []
-    theme:
-      primaryColor: '#28a745'
-
-  - name: metrics
-    title: Metrics Dashboard
-    description: Initech metrics and KPIs
-    icon: trending_up
-    schema: initech
-    entities:
-      - initech:Company
-      - initech:User
-      - initech:Employer
-      - initech:UserEmployer
-      - initech:CriminalRecord
-    views: []
-    theme:
-      primaryColor: '#fd7e14'
-
+- name: admin
+  title: Admin Portal
+  description: Administrative functions and user management
+  icon: admin_panel_settings
+  schema: acme
+  entities:
+  - acme:Category
+  - acme:Product
+  - acme:Company
+  - acme:CompanyProduct
+  views: []
+  theme:
+    primaryColor: '#007bff'
+    secondaryColor: '#6c757d'
+    backgroundColor: '#ffffff'
+    textColor: '#212529'
+  spaSections:
+    dashboardNav: Admin Dashboard
+    dashboardTitle: Admin Dashboard
+    settingsNav: Admin Settings
+    settingsTitle: Admin Application Settings
+- name: reporting
+  title: Reporting
+  description: Analytics and reports
+  icon: assessment
+  schema: acme
+  entities:
+  - acme:Company
+  - acme:Product
+  views: []
+  theme:
+    primaryColor: '#28a745'
+    secondaryColor: '#6c757d'
+    backgroundColor: '#ffffff'
+    textColor: '#212529'
+  spaSections:
+    dashboardNav: Reports
+    dashboardTitle: Reporting Dashboard
+    settingsNav: Report Settings
+    settingsTitle: Reporting Settings
+- name: metrics
+  title: Metrics Dashboard
+  description: Initech metrics and KPIs
+  icon: trending_up
+  schema: initech
+  entities:
+  - initech:Company
+  - initech:User
+  - initech:Employer
+  - initech:UserEmployer
+  - initech:CriminalRecord
+  views: []
+  theme:
+    primaryColor: '#fd7e14'
+    secondaryColor: '#6c757d'
+    backgroundColor: '#ffffff'
+    textColor: '#212529'
+  spaSections:
+    dashboardNav: Metrics
+    dashboardTitle: Metrics Dashboard
+    settingsNav: Metrics Settings
+    settingsTitle: Metrics Configuration
 dataModel:
   entities:
   - name: Category
@@ -50,20 +70,20 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Name
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     relationships: []
   - name: Product
     schema: acme
@@ -72,55 +92,55 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Name
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Description
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 500
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Price
       type: decimal
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
       precision: 18
       scale: 2
-      defaultValue:
+      defaultValue: 
     - name: CategoryId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships:
     - type: one-to-many
@@ -134,100 +154,100 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Name
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Address
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 500
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: City
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: State
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: PostalCode
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 20
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Country
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Email
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Phone
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 20
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Website
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships: []
   - name: CompanyProduct
@@ -237,37 +257,37 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CompanyId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: ProductId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships:
     - type: one-to-many
@@ -285,109 +305,109 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CompanyName
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Industry
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: HeadquartersCity
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: HeadquartersState
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: HeadquartersCountry
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: EmployeeCount
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: AnnualRevenue
       type: decimal
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
       precision: 15
       scale: 2
-      defaultValue:
+      defaultValue: 
     - name: Website
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: FoundedYear
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: StockTicker
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 10
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships: []
   - name: User
@@ -397,154 +417,154 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: FirstName
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: LastName
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Email
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 150
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: PhoneNumber
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 20
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: DateOfBirth
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Address
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: City
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: State
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: PostalCode
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 20
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Country
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: SSN
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 20
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: EmploymentStatus
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Citizenship
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: BackgroundCheckDate
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     - name: UpdatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships: []
   - name: Employer
@@ -554,73 +574,73 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CompanyId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: JobTitle
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 150
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Department
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 100
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: SalaryRangeMin
       type: decimal
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
       precision: 12
       scale: 2
-      defaultValue:
+      defaultValue: 
     - name: SalaryRangeMax
       type: decimal
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
       precision: 12
       scale: 2
-      defaultValue:
+      defaultValue: 
     - name: Description
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 500
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships:
     - type: one-to-many
@@ -634,64 +654,64 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: UserId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: EmployerId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: StartDate
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: EndDate
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CurrentlyEmployed
       type: bool
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships:
     - type: one-to-many
@@ -709,133 +729,132 @@ dataModel:
       type: int
       isPrimaryKey: true
       isIdentity: true
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: UserId
       type: int
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: ChargeDescription
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 300
       isRequired: true
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: ChargeDate
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: ConvictionDate
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Offense
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 150
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Severity
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Sentence
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Status
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: ArrestingAgency
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CourtName
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 200
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CaseNumber
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 50
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: Notes
       type: string
       isPrimaryKey: false
       isIdentity: false
       maxLength: 500
       isRequired: false
-      precision:
-      scale:
-      defaultValue:
+      precision: 
+      scale: 
+      defaultValue: 
     - name: CreatedAt
       type: datetime
       isPrimaryKey: false
       isIdentity: false
-      maxLength:
+      maxLength: 
       isRequired: false
-      precision:
-      scale:
+      precision: 
+      scale: 
       defaultValue: GETDATE
     relationships:
     - type: one-to-many
       targetEntity: User
       foreignKey: UserId
       principalKey: Id
-
 views:
   views: []

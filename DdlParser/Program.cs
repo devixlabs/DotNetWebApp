@@ -5,7 +5,7 @@ using System.IO;
 if (args.Length < 2)
 {
     Console.WriteLine("Usage: DdlParser <input.sql> <output.yaml>");
-    Console.WriteLine("Example: DdlParser schema.sql app.yaml");
+    Console.WriteLine("Example: DdlParser schema.sql data.yaml");
     Environment.Exit(1);
 }
 

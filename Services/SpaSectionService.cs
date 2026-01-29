@@ -12,6 +12,7 @@ public sealed class SpaSectionService : ISpaSectionService
     private readonly Dictionary<string, SpaSectionInfo> _byRouteSegment;
     private readonly IAppDictionaryService _appDictionary;
     private readonly IEntityMetadataService _entityMetadataService;
+    private readonly IOptions<AppCustomizationOptions> _options;
 
     public SpaSectionService(
         NavigationManager navigationManager,
@@ -22,6 +23,7 @@ public sealed class SpaSectionService : ISpaSectionService
         _navigationManager = navigationManager;
         _appDictionary = appDictionary;
         _entityMetadataService = entityMetadataService;
+        _options = options;
 
         var labels = options.Value.SpaSections;
         var sections = new List<SpaSectionInfo>();
@@ -109,11 +111,24 @@ public sealed class SpaSectionService : ISpaSectionService
     {
         var sections = new List<SpaSectionInfo>();
 
+        // Get application to read per-app SPA section labels
+        var app = _appDictionary.GetApplication(appName);
+        var appSpaSections = app?.SpaSections;
+
+        // Get global fallback labels from options
+        var globalLabels = _options.Value.SpaSections;
+
+        // Use app-specific labels if available, otherwise fall back to global config
+        var dashboardNav = appSpaSections?.DashboardNav ?? globalLabels.DashboardNav;
+        var dashboardTitle = appSpaSections?.DashboardTitle ?? globalLabels.DashboardTitle;
+        var settingsNav = appSpaSections?.SettingsNav ?? globalLabels.SettingsNav;
+        var settingsTitle = appSpaSections?.SettingsTitle ?? globalLabels.SettingsTitle;
+
         // Dashboard section (always present)
         sections.Add(new SpaSectionInfo(
             Section: SpaSection.Dashboard,
-            NavLabel: "Dashboard",
-            Title: "Dashboard",
+            NavLabel: dashboardNav,
+            Title: dashboardTitle,
             RouteSegment: "dashboard"));
 
         // Entity sections filtered by app
@@ -129,13 +144,12 @@ public sealed class SpaSectionService : ISpaSectionService
         }
 
         // Settings section (only if app has entities)
-        var app = _appDictionary.GetApplication(appName);
         if (app?.Entities.Any() == true)
         {
             sections.Add(new SpaSectionInfo(
                 Section: SpaSection.Settings,
-                NavLabel: "Settings",
-                Title: "Settings",
+                NavLabel: settingsNav,
+                Title: settingsTitle,
                 RouteSegment: "settings"));
         }
 
