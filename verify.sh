@@ -326,10 +326,9 @@ FINAL_COUNT=$(curl -k -s https://localhost:7012/api/admin/entities/acme/Product/
 print_status "Final product count: $FINAL_COUNT (should equal initial count)"
 echo ""
 
-echo "================================"
-echo "✅ ALL MULTI-APP TESTS VERIFIED"
-echo "================================"
-echo ""
+echo "==================================================="
+echo "✅✅✅✅   ALL MULTI-APP TESTS VERIFIED   ✅✅✅✅ "
 print_status "All 14 tests passed successfully!"
 print_info "Server logs available at: /tmp/dotnet-dev.log"
+echo "==================================================="
 echo ""

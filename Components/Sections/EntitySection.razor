@@ -1,5 +1,10 @@
+@using DotNetWebApp.Models.UI
 @inject IEntityApiService EntityApiService
 @inject IEntityMetadataService EntityMetadataService
+@inject IEntityOperationService EntityOperationService
+@inject NotificationService NotificationService
+@inject ILogger<EntitySection> Logger
+@inject DialogService DialogService
 
 <RadzenCard>
     <RadzenStack Gap="16px">
@@ -18,7 +23,16 @@
         }
         else if (entities != null && entities.Count > 0)
         {
-            <DynamicDataGrid Entities="@entities" EntityName="@EntityName" />
+            <SmartDataGridObject Data="@entities"
+                                 AllowFiltering="true"
+                                 AllowSorting="true"
+                                 AllowPaging="true"
+                                 AllowEdit="true"
+                                 AllowDelete="true"
+                                 ShowActionColumn="true"
+                                 OnRowUpdate="@(new EventCallback<object>(this, HandleRowUpdate))"
+                                 OnRowDelete="@(new EventCallback<object>(this, HandleRowDelete))"
+                                 OnRowEdit="@(new EventCallback<object>(this, HandleRowEdit))" />
         }
         else
         {
@@ -37,6 +51,7 @@
     private IReadOnlyList<object>? entities;
     private bool isLoading;
     private string? errorMessage;
+    private EntityMetadata? entityMetadata;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -59,13 +74,216 @@
                 return;
             }
 
+            entityMetadata = metadata;
+
             // Use the qualified EntityName (e.g., "initech:Company") to ensure correct schema lookup
             var result = await EntityApiService.GetEntitiesAsync(AppName, EntityName);
             entities = result.ToList().AsReadOnly();
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Error loading entities for {EntityName}", EntityName);
             errorMessage = $"Error loading {EntityName}: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Handles row update from SmartDataGrid
+    /// </summary>
+    private async Task HandleRowUpdate(object row)
+    {
+        if (entityMetadata?.ClrType == null)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Entity metadata not available",
+                Duration = 4000
+            });
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Updating entity {EntityName}", EntityName);
+
+            await EntityOperationService.UpdateAsync(entityMetadata.ClrType, row);
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Record updated successfully",
+                Duration = 3000
+            });
+
+            // Refresh the data
+            await RefreshEntitiesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating entity {EntityName}", EntityName);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update record: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    /// <summary>
+    /// Handles row delete from SmartDataGrid
+    /// Shows confirmation dialog before deleting
+    /// </summary>
+    private async Task HandleRowDelete(object row)
+    {
+        if (entityMetadata?.ClrType == null)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Entity metadata not available",
+                Duration = 4000
+            });
+            return;
+        }
+
+        try
+        {
+            // Show confirmation dialog
+            var confirmed = await DialogService.Confirm(
+                "Are you sure you want to delete this record? This action cannot be undone.",
+                "Confirm Delete",
+                new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+            if (confirmed != true)
+            {
+                Logger.LogInformation("Delete cancelled for entity {EntityName}", EntityName);
+                return;
+            }
+
+            Logger.LogInformation("Deleting entity {EntityName}", EntityName);
+
+            // Get the primary key value
+            var pkProperty = entityMetadata.Definition.Properties?
+                .FirstOrDefault(p => p.IsPrimaryKey);
+
+            if (pkProperty == null)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Primary key not defined",
+                    Duration = 4000
+                });
+                return;
+            }
+
+            var pkValue = row.GetType()
+                .GetProperty(pkProperty.Name)?
+                .GetValue(row);
+
+            if (pkValue == null)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Could not extract primary key value",
+                    Duration = 4000
+                });
+                return;
+            }
+
+            await EntityOperationService.DeleteAsync(entityMetadata.ClrType, pkValue);
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Record deleted successfully",
+                Duration = 3000
+            });
+
+            // Refresh the data
+            await RefreshEntitiesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting entity {EntityName}", EntityName);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to delete record: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    /// <summary>
+    /// Handles row edit from SmartDataGrid
+    /// Currently just logs - extend this to open a modal, navigate to edit page, or implement inline editing
+    /// </summary>
+    private Task HandleRowEdit(object row)
+    {
+        try
+        {
+            Logger.LogInformation("Edit button clicked for entity {EntityName}", EntityName);
+
+            // TODO: Implement edit action - options include:
+            // 1. Open a modal dialog with form
+            // 2. Navigate to an edit detail page
+            // 3. Enable inline editing mode
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Info,
+                Summary = "Edit",
+                Detail = "Edit action not yet implemented for this entity",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling row edit for {EntityName}", EntityName);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to handle edit: {ex.Message}",
+                Duration = 4000
+            });
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Refreshes the entity list after an operation
+    /// </summary>
+    private async Task RefreshEntitiesAsync()
+    {
+        try
+        {
+            isLoading = true;
+            var result = await EntityApiService.GetEntitiesAsync(AppName, EntityName);
+            entities = result.ToList().AsReadOnly();
+            errorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing entities for {EntityName}", EntityName);
+            errorMessage = $"Error refreshing data: {ex.Message}";
         }
         finally
         {
