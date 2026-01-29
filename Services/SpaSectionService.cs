@@ -37,14 +37,8 @@ public sealed class SpaSectionService : ISpaSectionService
                     continue;
                 }
 
-                // RouteSegment uses slash for URL paths (e.g., "acme/Company")
-                // EntityName uses colon for API calls (e.g., "acme:Company")
-                var routeSegment = string.IsNullOrWhiteSpace(entity.Schema)
-                    ? entity.Name
-                    : $"{entity.Schema}/{entity.Name}";
-                var entityName = string.IsNullOrWhiteSpace(entity.Schema)
-                    ? entity.Name
-                    : $"{entity.Schema}:{entity.Name}";
+                var routeSegment = EntityNameFormatter.BuildUrlPath(entity.Schema, entity.Name);
+                var entityName = EntityNameFormatter.BuildQualifiedName(entity.Schema, entity.Name);
 
                 var label = string.IsNullOrWhiteSpace(entity.Schema)
                     ? entity.Name
@@ -126,16 +120,12 @@ public sealed class SpaSectionService : ISpaSectionService
         var entities = _entityMetadataService.GetEntitiesForApplication(appName);
         foreach (var entity in entities)
         {
-            var routeSegment = string.IsNullOrWhiteSpace(entity.Definition.Schema)
-                ? entity.Definition.Name
-                : $"{entity.Definition.Schema}/{entity.Definition.Name}";
-
             sections.Add(new SpaSectionInfo(
                 Section: SpaSection.Entity,
                 NavLabel: entity.Definition.Name,
                 Title: entity.Definition.Name,
-                RouteSegment: routeSegment,
-                EntityName: BuildQualifiedName(entity)));
+                RouteSegment: EntityNameFormatter.BuildUrlPath(entity),
+                EntityName: EntityNameFormatter.BuildQualifiedName(entity)));
         }
 
         // Settings section (only if app has entities)
@@ -152,10 +142,4 @@ public sealed class SpaSectionService : ISpaSectionService
         return sections.AsReadOnly();
     }
 
-    private static string BuildQualifiedName(EntityMetadata entity)
-    {
-        return string.IsNullOrWhiteSpace(entity.Definition.Schema)
-            ? entity.Definition.Name
-            : $"{entity.Definition.Schema}:{entity.Definition.Name}";
-    }
 }

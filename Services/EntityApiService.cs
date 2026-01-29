@@ -15,17 +15,6 @@ public sealed class EntityApiService : IEntityApiService
         _metadataService = metadataService;
     }
 
-    // Convert internal colon format (schema:EntityName) to URL slash format (schema/EntityName)
-    // If no schema is present, default to 'dbo'
-    private static string ToUrlFormat(string entityName)
-    {
-        if (entityName.Contains(':'))
-        {
-            return entityName.Replace(':', '/');
-        }
-        // No schema specified, default to dbo
-        return $"dbo/{entityName}";
-    }
 
     public async Task<IEnumerable<object>> GetEntitiesAsync(string appName, string entityName)
     {
@@ -37,7 +26,7 @@ public sealed class EntityApiService : IEntityApiService
 
         try
         {
-            var urlPath = ToUrlFormat(entityName);
+            var urlPath = EntityNameFormatter.QualifiedNameToUrlPath(entityName);
             var response = await _httpClient.GetAsync($"api/{appName}/entities/{urlPath}");
             if (!response.IsSuccessStatusCode)
             {
@@ -67,7 +56,7 @@ public sealed class EntityApiService : IEntityApiService
 
         try
         {
-            var urlPath = ToUrlFormat(entityName);
+            var urlPath = EntityNameFormatter.QualifiedNameToUrlPath(entityName);
             var response = await _httpClient.GetAsync($"api/{appName}/entities/{urlPath}/count");
             if (!response.IsSuccessStatusCode)
             {
@@ -101,7 +90,7 @@ public sealed class EntityApiService : IEntityApiService
         {
             var json = JsonSerializer.Serialize(entity);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            var urlPath = ToUrlFormat(entityName);
+            var urlPath = EntityNameFormatter.QualifiedNameToUrlPath(entityName);
             var response = await _httpClient.PostAsync($"api/{appName}/entities/{urlPath}", content);
 
             if (!response.IsSuccessStatusCode)

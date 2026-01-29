@@ -36,9 +36,7 @@ public sealed class EntityMetadataService : IEntityMetadataService
 
         // Build dictionaries for efficient lookup
         _byQualifiedName = entities.ToDictionary(
-            item => string.IsNullOrWhiteSpace(item.Definition.Schema)
-                ? item.Definition.Name
-                : $"{item.Definition.Schema}:{item.Definition.Name}",
+            item => EntityNameFormatter.BuildQualifiedName(item),
             StringComparer.OrdinalIgnoreCase);
 
         // Group by plain name for fallback lookup
@@ -96,10 +94,7 @@ public sealed class EntityMetadataService : IEntityMetadataService
 
     private bool IsEntityVisibleInApplication(EntityMetadata entity, ApplicationInfo app)
     {
-        var qualifiedName = string.IsNullOrEmpty(entity.Definition.Schema)
-            ? entity.Definition.Name
-            : $"{entity.Definition.Schema}:{entity.Definition.Name}";
-
+        var qualifiedName = EntityNameFormatter.BuildQualifiedName(entity);
         return app.Entities.Contains(qualifiedName, StringComparer.OrdinalIgnoreCase);
     }
 }

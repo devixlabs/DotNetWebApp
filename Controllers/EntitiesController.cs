@@ -29,9 +29,36 @@ namespace DotNetWebApp.Controllers
 
         private string BuildQualifiedName(string schema, string entityName)
         {
-            // Default to 'dbo' if schema is not provided
             var effectiveSchema = string.IsNullOrWhiteSpace(schema) ? "dbo" : schema;
-            return $"{effectiveSchema}:{entityName}";
+            return EntityNameFormatter.BuildQualifiedName(effectiveSchema, entityName);
+        }
+
+        private ActionResult? ValidateEntity(string appName, string qualifiedName, out EntityMetadata? metadata)
+        {
+            metadata = _metadataService.Find(qualifiedName);
+            if (metadata == null || metadata.ClrType == null)
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
+            }
+
+            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
+            {
+                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
+            }
+
+            return null;
+        }
+
+        private object? ParsePrimaryKey(string id, string pkType)
+        {
+            return pkType.ToLowerInvariant() switch
+            {
+                "int" => int.Parse(id),
+                "long" => long.Parse(id),
+                "guid" => Guid.Parse(id),
+                "string" => id,
+                _ => throw new InvalidOperationException($"Unsupported primary key type: {pkType}")
+            };
         }
 
         private ActionResult? ValidateApp(string appName)
@@ -54,19 +81,11 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
-
-            var list = await _operationService.GetAllAsync(metadata.ClrType);
-
+            var list = await _operationService.GetAllAsync(metadata!.ClrType);
             return Ok(list);
         }
 
@@ -78,19 +97,11 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
-
-            var count = await _operationService.GetCountAsync(metadata.ClrType);
-
+            var count = await _operationService.GetCountAsync(metadata!.ClrType);
             return Ok(count);
         }
 
@@ -102,16 +113,9 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
-
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
             using var reader = new StreamReader(Request.Body);
             var json = await reader.ReadToEndAsync();
@@ -124,7 +128,7 @@ namespace DotNetWebApp.Controllers
             object? entity;
             try
             {
-                entity = JsonSerializer.Deserialize(json, metadata.ClrType, _jsonOptions);
+                entity = JsonSerializer.Deserialize(json, metadata!.ClrType, _jsonOptions);
             }
             catch (JsonException ex)
             {
@@ -151,18 +155,11 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
-
-            var pkProperty = metadata.Definition.Properties?
+            var pkProperty = metadata!.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -172,14 +169,7 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
             catch (Exception ex)
             {
@@ -203,18 +193,11 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
-
-            var pkProperty = metadata.Definition.Properties?
+            var pkProperty = metadata!.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -224,14 +207,7 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
             catch (Exception ex)
             {
@@ -269,7 +245,6 @@ namespace DotNetWebApp.Controllers
             }
 
             var entity = await _operationService.UpdateAsync(metadata.ClrType, updatedEntity);
-
             return Ok(entity);
         }
 
@@ -281,18 +256,11 @@ namespace DotNetWebApp.Controllers
                 return appValidation;
 
             var qualifiedName = BuildQualifiedName(schema, entityName);
-            var metadata = _metadataService.Find(qualifiedName);
-            if (metadata == null || metadata.ClrType == null)
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found" });
-            }
+            var entityValidation = ValidateEntity(appName, qualifiedName, out var metadata);
+            if (entityValidation != null)
+                return entityValidation;
 
-            if (!_metadataService.IsEntityVisibleInApplication(metadata, appName))
-            {
-                return NotFound(new { error = $"Entity '{qualifiedName}' not found in app '{appName}'" });
-            }
-
-            var pkProperty = metadata.Definition.Properties?
+            var pkProperty = metadata!.Definition.Properties?
                 .FirstOrDefault(p => p.IsPrimaryKey);
             if (pkProperty == null)
             {
@@ -302,14 +270,7 @@ namespace DotNetWebApp.Controllers
             object? pkValue;
             try
             {
-                pkValue = pkProperty.Type.ToLowerInvariant() switch
-                {
-                    "int" => int.Parse(id),
-                    "long" => long.Parse(id),
-                    "guid" => Guid.Parse(id),
-                    "string" => id,
-                    _ => throw new InvalidOperationException($"Unsupported primary key type: {pkProperty.Type}")
-                };
+                pkValue = ParsePrimaryKey(id, pkProperty.Type);
             }
             catch (Exception ex)
             {
@@ -317,7 +278,6 @@ namespace DotNetWebApp.Controllers
             }
 
             await _operationService.DeleteAsync(metadata.ClrType, pkValue);
-
             return NoContent();
         }
     }

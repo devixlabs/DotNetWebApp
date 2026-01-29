@@ -30,13 +30,14 @@ public class ApplicationContextAccessor : IApplicationContextAccessor
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null)
             {
-                _cacheInitialized = true;
                 _cachedApplicationName = null;
-                return null;
+            }
+            else
+            {
+                var path = httpContext.Request.Path.Value ?? "";
+                _cachedApplicationName = ExtractApplicationNameFromPath(path);
             }
 
-            var path = httpContext.Request.Path.Value ?? "";
-            _cachedApplicationName = ExtractApplicationNameFromPath(path);
             _cacheInitialized = true;
             return _cachedApplicationName;
         }
