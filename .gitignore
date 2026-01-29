@@ -486,7 +486,7 @@ $RECYCLE.BIN/
 *.swp
 
 # Claude Code
-.claude/
+.claude/settings.local.json
 
 # Project and App Specific
 .env.local
