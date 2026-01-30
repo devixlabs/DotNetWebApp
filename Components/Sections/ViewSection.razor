@@ -1,0 +1,339 @@
+@using DotNetWebApp.Constants
+@using DotNetWebApp.Models.AppDictionary
+@using DotNetWebApp.Services.Views
+@using System.Reflection
+@inject IViewService ViewService
+@inject IViewRegistry ViewRegistry
+@inject ILogger<ViewSection> Logger
+
+<RadzenCard>
+    <RadzenStack Gap="16px">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter">
+                @errorMessage
+            </RadzenAlert>
+        }
+        else if (isLoading)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <RadzenText Text="Loading view data..." />
+            </RadzenStack>
+        }
+        else if (results != null && results.Any())
+        {
+            @if (viewDefinition?.Parameters?.Any() == true)
+            {
+                <RadzenCard class="view-parameters-card">
+                    <RadzenStack Gap="12px">
+                        <RadzenText Text="Parameters" TextStyle="TextStyle.Subtitle2" />
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="FlexWrap.Wrap">
+                            @foreach (var param in viewDefinition.Parameters)
+                            {
+                                <div>
+                                    <RadzenLabel Text="@param.Name" />
+                                    <RadzenTextBox @bind-Value="parameters[param.Name]"
+                                                   Placeholder="@(param.Type ?? param.Name)"
+                                                   Style="width: 200px;" />
+                                </div>
+                            }
+                            <RadzenButton Text="Execute" Click="@(async _ => await ExecuteViewAsync())"
+                                         Icon="play_arrow" ButtonStyle="@ButtonStyle.Primary" Style="align-self: flex-end;" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenCard>
+            }
+
+            <RadzenDataGrid Data="@results"
+                            TItem="object"
+                            AllowFiltering="true"
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize="20"
+                            Style="width: 100%;">
+                <Columns>
+                    @foreach (var column in columns)
+                    {
+                        <RadzenDataGridColumn TItem="object"
+                                             Title="@FormatColumnTitle(column)">
+                            <Template Context="rowData">
+                                @{
+                                    var value = GetPropertyValue(rowData, column);
+                                    <span>@(value?.ToString() ?? "")</span>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                    }
+                </Columns>
+            </RadzenDataGrid>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                Showing @(results?.Count() ?? 0) rows
+            </p>
+        }
+        else
+        {
+            <RadzenText Text="No data available" TextStyle="TextStyle.Body2" />
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public string AppName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ViewName { get; set; } = string.Empty;
+
+    private ViewDefinition? viewDefinition;
+    private IReadOnlyList<object>? results;
+    private List<string> columns = new();
+    private Dictionary<string, string?> parameters = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ViewName))
+        {
+            errorMessage = "View not specified.";
+            isLoading = false;
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        results = null;
+        columns.Clear();
+
+        try
+        {
+            // Get view definition
+            viewDefinition = ViewRegistry.GetViewDefinition(ViewName);
+
+            // Initialize parameters dictionary from view definition
+            parameters.Clear();
+            if (viewDefinition?.Parameters?.Any() == true)
+            {
+                foreach (var param in viewDefinition.Parameters)
+                {
+                    parameters[param.Name] = null;
+                }
+            }
+
+            // Execute view with no parameters initially
+            await ExecuteViewAsync();
+        }
+        catch (FileNotFoundException ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] View SQL file not found", ErrorIds.SqlFileNotFound);
+            errorMessage = "View is not configured correctly. Please contact your administrator.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] Permission denied accessing view files", ErrorIds.SqlFilePermissionDenied);
+            errorMessage = "Cannot access required view files. Please contact your administrator.";
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.ViewNotFound))
+        {
+            Logger.LogError(ex, "[{ErrorId}] View not registered", ErrorIds.ViewNotFound);
+            errorMessage = "View is not available. Please contact your administrator.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] Error loading view", ErrorIds.ViewExecutionFailed);
+            errorMessage = $"Error loading view: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ExecuteViewAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        results = null;
+        columns.Clear();
+
+        try
+        {
+            // Build parameters object including defaults
+            var paramDict = new Dictionary<string, object?>();
+
+            if (viewDefinition?.Parameters?.Any() == true)
+            {
+                foreach (var param in viewDefinition.Parameters)
+                {
+                    // Use user-provided value if available
+                    if (!string.IsNullOrWhiteSpace(parameters.TryGetValue(param.Name, out var userValue) ? userValue : null))
+                    {
+                        paramDict[param.Name] = ConvertParameterValue(userValue, param.Type);
+                    }
+                    // Otherwise use default value if available
+                    else if (!string.IsNullOrWhiteSpace(param.Default))
+                    {
+                        paramDict[param.Name] = ConvertParameterValue(param.Default, param.Type);
+                    }
+                }
+            }
+
+            object? paramObj = paramDict.Any() ? paramDict : null;
+
+            // Execute view - use the ViewModelType if available, otherwise use dynamic
+            var viewModelType = GetViewModelType();
+            if (viewModelType != null)
+            {
+                var method = typeof(IViewService)
+                    .GetMethod(nameof(IViewService.ExecuteViewAsync))
+                    ?.MakeGenericMethod(viewModelType);
+
+                if (method != null)
+                {
+                    var resultTask = (Task)method.Invoke(ViewService, new[] { ViewName, paramObj })!;
+                    await resultTask;
+
+                    var resultProperty = resultTask.GetType().GetProperty("Result");
+                    var enumerableResult = (System.Collections.IEnumerable)resultProperty?.GetValue(resultTask)!;
+                    results = enumerableResult.Cast<object>().ToList().AsReadOnly();
+                }
+            }
+            else
+            {
+                // Fallback: Execute as dynamic and extract columns from first result
+                var method = typeof(IViewService)
+                    .GetMethod(nameof(IViewService.ExecuteViewAsync))
+                    ?.MakeGenericMethod(typeof(object));
+
+                if (method != null)
+                {
+                    var resultTask = (Task)method.Invoke(ViewService, new[] { ViewName, paramObj })!;
+                    await resultTask;
+
+                    var resultProperty = resultTask.GetType().GetProperty("Result");
+                    var enumerableResult = (System.Collections.IEnumerable)resultProperty?.GetValue(resultTask)!;
+                    results = enumerableResult.Cast<object>().ToList().AsReadOnly();
+                }
+            }
+
+            // Extract column names from first result object using reflection
+            if (results?.FirstOrDefault() != null)
+            {
+                var firstRow = results.First();
+                var rowType = firstRow.GetType();
+                var properties = rowType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                columns = properties.Select(p => p.Name).ToList();
+
+                Logger.LogInformation("Column discovery - ResultType: {ResultType}, PropertyCount: {PropertyCount}, ColumnNames: {ColumnNames}",
+                    rowType.FullName, properties.Length, string.Join(", ", columns));
+            }
+
+            Logger.LogInformation("Loaded view {ViewName} with {Count} rows and {ColumnCount} columns",
+                ViewName, results?.Count() ?? 0, columns.Count);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.QueryTimeout))
+        {
+            Logger.LogWarning(ex, "[{ErrorId}] View query timeout", ErrorIds.QueryTimeout);
+            errorMessage = "The view is loading slowly. Please try again in a moment.";
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(ErrorIds.SqlError))
+        {
+            Logger.LogError(ex, "[{ErrorId}] View query failed", ErrorIds.SqlError);
+            if (ex.Message.Contains("1205") || ex.Message.Contains("deadlock", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage = "The database is busy. Please try again.";
+            }
+            else
+            {
+                errorMessage = "Database error executing view. Please try again or contact support.";
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] Invalid parameters for view", ErrorIds.QueryInvalidParameter);
+            errorMessage = "Invalid parameters. Please check your input and try again.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[{ErrorId}] Unexpected error executing view", ErrorIds.ViewExecutionFailed);
+            errorMessage = $"Error executing view: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private Type? GetViewModelType()
+    {
+        try
+        {
+            // Try to find the generated view model class
+            // View models are in DotNetWebApp.Models.ViewModels namespace
+            // Format: {ViewName} (e.g., "ProductSalesView")
+            var viewModelNamespace = "DotNetWebApp.Models.ViewModels";
+            var typeName = $"{viewModelNamespace}.{ViewName}, DotNetWebApp.Models";
+            var viewModelType = Type.GetType(typeName);
+
+            if (viewModelType == null)
+            {
+                Logger.LogWarning("View model type not found: {TypeName}", typeName);
+                return null;
+            }
+
+            Logger.LogInformation("Found view model type: {TypeName}", viewModelType.FullName);
+            return viewModelType;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error discovering view model type for {ViewName}", ViewName);
+            return null;
+        }
+    }
+
+    private object? GetPropertyValue(object obj, string propertyName)
+    {
+        try
+        {
+            var property = obj.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            return property?.GetValue(obj);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string FormatColumnTitle(string columnName)
+    {
+        // Convert PascalCase or snake_case to Title Case
+        var result = System.Text.RegularExpressions.Regex.Replace(
+            columnName,
+            "([A-Z])",
+            " $1",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result.Trim());
+    }
+
+    private object? ConvertParameterValue(string? value, string? paramType)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        // Map YAML type names to C# types and convert
+        return (paramType?.ToLower()) switch
+        {
+            "int" or "integer" => int.TryParse(value, out var intVal) ? intVal : (object?)null,
+            "long" => long.TryParse(value, out var longVal) ? longVal : (object?)null,
+            "decimal" or "money" => decimal.TryParse(value, out var decVal) ? decVal : (object?)null,
+            "float" or "double" => double.TryParse(value, out var dblVal) ? dblVal : (object?)null,
+            "bool" or "boolean" => bool.TryParse(value, out var boolVal) ? boolVal : (object?)null,
+            "datetime" or "date" or "timestamp" => DateTime.TryParse(value, out var dtVal) ? dtVal : (object?)null,
+            "string" or "varchar" or "nvarchar" or "text" => value,
+            _ => value  // Default to string
+        };
+    }
+}

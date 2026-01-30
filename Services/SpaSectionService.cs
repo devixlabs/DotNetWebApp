@@ -1,4 +1,5 @@
 using DotNetWebApp.Models;
+using DotNetWebApp.Services.Views;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Options;
 
@@ -12,17 +13,20 @@ public sealed class SpaSectionService : ISpaSectionService
     private readonly Dictionary<string, SpaSectionInfo> _byRouteSegment;
     private readonly IAppDictionaryService _appDictionary;
     private readonly IEntityMetadataService _entityMetadataService;
+    private readonly IViewRegistry _viewRegistry;
     private readonly IOptions<AppCustomizationOptions> _options;
 
     public SpaSectionService(
         NavigationManager navigationManager,
         IOptions<AppCustomizationOptions> options,
         IAppDictionaryService appDictionary,
-        IEntityMetadataService entityMetadataService)
+        IEntityMetadataService entityMetadataService,
+        IViewRegistry viewRegistry)
     {
         _navigationManager = navigationManager;
         _appDictionary = appDictionary;
         _entityMetadataService = entityMetadataService;
+        _viewRegistry = viewRegistry;
         _options = options;
 
         var labels = options.Value.SpaSections;
@@ -141,6 +145,19 @@ public sealed class SpaSectionService : ISpaSectionService
                 Title: entity.Definition.Name,
                 RouteSegment: EntityNameFormatter.BuildUrlPath(entity),
                 EntityName: EntityNameFormatter.BuildQualifiedName(entity)));
+        }
+
+        // View sections filtered by app
+        var views = _viewRegistry.GetViewsForApplication(appName);
+        foreach (var view in views)
+        {
+            var routeSegment = $"view-{view.Name.ToLower()}";
+            sections.Add(new SpaSectionInfo(
+                Section: SpaSection.View,
+                NavLabel: view.Name,
+                Title: view.Description ?? view.Name,
+                RouteSegment: routeSegment,
+                ViewName: view.Name));
         }
 
         // Settings section (only if app has entities)

@@ -5,4 +5,5 @@ public sealed record SpaSectionInfo(
     string NavLabel,
     string Title,
     string RouteSegment,
-    string? EntityName = null);
+    string? EntityName = null,
+    string? ViewName = null);

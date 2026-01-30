@@ -4,5 +4,6 @@ public enum SpaSection
 {
     Dashboard,
     Settings,
-    Entity
+    Entity,
+    View
 }
