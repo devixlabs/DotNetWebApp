@@ -32,10 +32,12 @@
 
 ┌─────────────────────────────────────────────────────────────┐
 │ VIEWS (complex queries)                                     │
-│ SQL SELECT → views.yaml → ViewModels/*.cs → Dapper reads   │
+│ SQL SELECT → views.yaml → YamlMerger → app.yaml            │
+│ app.yaml → ViewModels/*.cs → Dapper reads                  │
 │                                                             │
-│ Pipeline: make run-view-pipeline                           │
+│ Pipeline: make run-ddl-pipeline (unified with entities)    │
 │ Data Access: IViewService (type-safe queries)              │
+│ App Visibility: PopulateApplicationViews (app-scoped)      │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,11 +60,13 @@
    - Dapper for complex reads (SQL-first views)
    - Shared connection for automatic tenant schema inheritance
 
-2. **SQL-First View Pipeline:**
-   - Legacy SQL queries as source of truth
-   - YAML registry (`views.yaml`)
-   - Generated C# view models
+2. **Unified SQL-First View Pipeline:**
+   - SQL views as source of truth (`views.yaml` + `sql/views/*.sql`)
+   - YamlMerger consolidates views into app.yaml (same pattern as entities)
+   - Generated C# view models (partial class pattern)
    - Type-safe service layer (`IViewService`)
+   - Application-scoped view visibility (PopulateApplicationViews)
+   - Single `make run-ddl-pipeline` for entities + views
 
 3. **Multi-Tenancy:**
    - Finbuckle.MultiTenant for robust tenant isolation

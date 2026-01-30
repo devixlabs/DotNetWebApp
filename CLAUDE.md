@@ -127,9 +127,7 @@ public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
 - Run (dev): `make dev` (with hot reload - use for active development)
 - Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test` (build and run tests sequentially - 10-15 min)
-- Run DDL Pipeline: `make run-ddl-pipeline` (generate entity models from schema.sql)
-- Run View Pipeline: `make run-view-pipeline` (generate view models from views.yaml) **[Phase 2]**
-- Run All Pipelines: `make run-all-pipelines` (both entity and view generation) **[Phase 2]**
+- Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from schema.sql + views.yaml → app.yaml)
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
 - Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)

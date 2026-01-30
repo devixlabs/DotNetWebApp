@@ -60,6 +60,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="YamlMerger\**" />
+    <Content Remove="YamlMerger\**" />
+    <EmbeddedResource Remove="YamlMerger\**" />
+    <None Remove="YamlMerger\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Content Remove="tests/**/*.cs" />

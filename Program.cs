@@ -61,14 +61,13 @@ builder.Services.AddScoped<DataSeeder>();
 // Dapper infrastructure (read-only, shares EF connection)
 builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
 
-// View registry (singleton, loaded once at startup)
+// View registry (singleton, loaded once at startup from app.yaml)
 builder.Services.AddSingleton<IViewRegistry>(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
-    var viewsYamlPath = Path.Combine(env.ContentRootPath, "views.yaml");
     var logger = sp.GetRequiredService<ILogger<ViewRegistry>>();
     var appDictionary = sp.GetRequiredService<IAppDictionaryService>();
-    return new ViewRegistry(viewsYamlPath, logger, appDictionary);
+    return new ViewRegistry(logger, appDictionary, env.ContentRootPath);
 });
 
 // View service (scoped, executes views)

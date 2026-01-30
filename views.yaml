@@ -1,10 +1,24 @@
-# views.yaml - SQL View Definitions for Complex UI Components
+# views.yaml - SQL View Definitions for Complex UI Components (SOURCE FILE)
 #
-# This file defines Dapper-based read-only views for Blazor/Radzen components.
+# This file is the SOURCE of truth for SQL views, similar to schema.sql for entities.
+# It defines Dapper-based read-only views for Blazor/Radzen components.
 # Each view corresponds to a SQL query file and generates a C# DTO class.
 #
-# Generation command: make run-view-pipeline
-# Generated output: DotNetWebApp.Models/ViewModels/*.cs
+# Pipeline Flow:
+#   1. views.yaml (SOURCE - you edit this)
+#   2. YamlMerger merges into data.yaml (INTERMEDIATE)
+#   3. ModelGenerator generates ViewModels from data.yaml
+#   4. AppsYamlGenerator merges into app.yaml (FINAL)
+#   5. data.yaml is deleted (intermediate file only)
+#   6. views.yaml stays (source file, like schema.sql)
+#
+# To regenerate everything: make run-ddl-pipeline
+# Generated output: DotNetWebApp.Models/ViewModels/*.cs and app.yaml views section
+#
+# Application Visibility:
+#   Each view can specify which applications can access it via the "applications" field.
+#   This populates the corresponding application.views arrays in app.yaml at runtime.
+#   Example: applications: ["admin", "reporting"]
 #
 # Partial Class Pattern:
 #   - Generated files: {Name}.generated.cs (overwritten on regeneration)
@@ -21,6 +35,9 @@ views:
     description: "Product sales summary with category and order totals"
     sql_file: "sql/views/ProductSalesView.sql"
     generate_partial: true
+    applications:
+      - admin
+      - reporting
     parameters:
       - name: TopN
         type: int

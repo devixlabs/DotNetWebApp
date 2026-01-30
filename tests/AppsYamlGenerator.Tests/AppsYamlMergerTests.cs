@@ -164,11 +164,11 @@ public class AppsYamlMergerTests
         // Arrange
         var applications = new List<ApplicationInfo>();
         var dataModel = new DataModel { Entities = new List<Entity>() };
-        var views = new ViewsRoot
+        var views = new ViewsDefinition
         {
-            Views = new List<View>
+            Views = new List<ViewDefinition>
             {
-                new View { Name = "ProductSalesView", SqlFile = "ProductSalesView.sql" }
+                new ViewDefinition { Name = "ProductSalesView", SqlFile = "sql/views/ProductSalesView.sql" }
             }
         };
 
