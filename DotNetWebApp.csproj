@@ -79,7 +79,6 @@
 
   <ItemGroup>
     <Content Include="app.yaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="views.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

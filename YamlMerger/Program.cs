@@ -9,19 +9,19 @@ using YamlMerger;
 
 if (args.Length < 2)
 {
-    Console.WriteLine("Usage: YamlMerger <data.yaml> <views.yaml>");
-    Console.WriteLine("Merges views.yaml into data.yaml, converting snake_case to camelCase");
+    Console.WriteLine("Usage: YamlMerger <data.yaml> <appsettings.json>");
+    Console.WriteLine("Merges view definitions from appsettings.json into data.yaml");
     Environment.Exit(1);
 }
 
 var dataYamlPath = args[0];
-var viewsYamlPath = args[1];
+var appSettingsPath = args[1];
 
 try
 {
     // Convert to absolute paths for robustness
     var dataYamlAbsPath = Path.GetFullPath(dataYamlPath);
-    var viewsYamlAbsPath = Path.GetFullPath(viewsYamlPath);
+    var appSettingsAbsPath = Path.GetFullPath(appSettingsPath);
 
     // Validate input files exist
     if (!File.Exists(dataYamlAbsPath))
@@ -30,9 +30,9 @@ try
         Environment.Exit(1);
     }
 
-    if (!File.Exists(viewsYamlAbsPath))
+    if (!File.Exists(appSettingsAbsPath))
     {
-        Console.Error.WriteLine($"Error: views.yaml not found: {viewsYamlAbsPath}");
+        Console.Error.WriteLine($"Error: appsettings.json not found: {appSettingsAbsPath}");
         Environment.Exit(1);
     }
 
@@ -47,38 +47,51 @@ try
     var dataDefinition = dataDeserializer.Deserialize<AppDefinition>(dataYamlContent)
         ?? throw new InvalidOperationException("Failed to deserialize data.yaml");
 
-    Console.WriteLine($"Reading views.yaml from: {viewsYamlAbsPath}");
-    var viewsYamlContent = File.ReadAllText(viewsYamlAbsPath);
+    Console.WriteLine($"Reading appsettings.json from: {appSettingsAbsPath}");
+    var appSettingsContent = File.ReadAllText(appSettingsAbsPath);
 
-    // Deserialize views.yaml with snake_case convention (as defined in views.yaml)
-    var viewsDeserializer = new DeserializerBuilder()
-        .WithNamingConvention(UnderscoredNamingConvention.Instance)
+    // Deserialize appsettings.json using YamlDotNet (JSON is valid YAML)
+    // This preserves type information for complex objects like Range arrays
+    // Use default naming convention (no transformation) since appsettings.json uses PascalCase
+    var appSettingsDeserializer = new DeserializerBuilder()
+        .IgnoreUnmatchedProperties()
         .Build();
 
-    var viewsDefinition = viewsDeserializer.Deserialize<ViewsDefinition>(viewsYamlContent);
+    var appSettingsObj = appSettingsDeserializer.Deserialize<AppSettingsRoot>(appSettingsContent)
+        ?? throw new InvalidOperationException("Failed to deserialize appsettings.json");
 
-    if (viewsDefinition?.Views == null || viewsDefinition.Views.Count == 0)
+    if (appSettingsObj?.ViewDefinitions == null || appSettingsObj.ViewDefinitions.Count == 0)
     {
-        Console.Error.WriteLine("Error: No views found in views.yaml");
-        Environment.Exit(1);
+        Console.WriteLine("Warning: No view definitions found in appsettings.json");
+        var emptyMerger = new YamlMergeService();
+        emptyMerger.PopulateApplicationViews(dataDefinition);
+        var emptyMergedYaml = emptyMerger.SerializeAppDefinition(dataDefinition);
+        File.WriteAllText(dataYamlAbsPath, emptyMergedYaml);
+        Console.WriteLine("Merged 0 view(s) into data.yaml");
+        Environment.Exit(0);
     }
 
-    Console.WriteLine($"Found {viewsDefinition.Views.Count} view(s) in views.yaml");
+    Console.WriteLine($"Found {appSettingsObj.ViewDefinitions.Count} view definition(s) in appsettings.json");
+
+    // Convert appSettings ViewDefinitions to ViewsDefinition format
+    var viewsDefinition = new ViewsDefinition
+    {
+        Views = appSettingsObj.ViewDefinitions
+    };
 
     // Merge views into data.yaml
-    // Views are already in ViewsDefinition format from views.yaml
     dataDefinition.Views = viewsDefinition;
 
     // Populate application-level view visibility based on view definitions
-    var merger = new YamlMergeService();
-    merger.PopulateApplicationViews(dataDefinition);
+    var mergeService = new YamlMergeService();
+    mergeService.PopulateApplicationViews(dataDefinition);
 
     // Serialize merged data back to data.yaml using camelCase convention
-    var mergedYaml = merger.SerializeAppDefinition(dataDefinition);
+    var mergedYaml = mergeService.SerializeAppDefinition(dataDefinition);
 
     File.WriteAllText(dataYamlAbsPath, mergedYaml);
     Console.WriteLine($"Successfully merged views into data.yaml");
-    Console.WriteLine($"Merged {viewsDefinition.Views.Count} view(s) into data.yaml");
+    Console.WriteLine($"Merged {appSettingsObj.ViewDefinitions.Count} view(s) into data.yaml");
 }
 catch (Exception ex)
 {
@@ -88,4 +101,13 @@ catch (Exception ex)
         Console.Error.WriteLine($"Details: {ex.InnerException.Message}");
     }
     Environment.Exit(1);
+}
+
+/// <summary>
+/// Represents the root structure of appsettings.json for deserialization purposes.
+/// Only includes ViewDefinitions; other sections are ignored via IgnoreUnmatchedProperties().
+/// </summary>
+public class AppSettingsRoot
+{
+    public List<ViewDefinition> ViewDefinitions { get; set; } = new();
 }

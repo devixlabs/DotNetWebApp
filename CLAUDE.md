@@ -127,7 +127,7 @@ public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
 - Run (dev): `make dev` (with hot reload - use for active development)
 - Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test` (build and run tests sequentially - 10-15 min)
-- Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from schema.sql + views.yaml → app.yaml)
+- Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from schema.sql + appsettings.json → app.yaml)
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
 - Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)
@@ -168,7 +168,7 @@ DotNetWebApp/
 │       └── DapperQueryService.cs
 ├── DotNetWebApp.Models/          # 🔄 Separate models assembly (extracted from main project)
 │   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
-│   ├── ViewModels/               # 🆕 Auto-generated view models from views.yaml (Phase 2)
+│   ├── ViewModels/               # 🆕 Auto-generated view models from appsettings.json ViewDefinitions (Phase 2)
 │   ├── AppDictionary/            # YAML model classes (AppDefinition.cs, Entity.cs, Property.cs, etc.)
 │   ├── AppCustomizationOptions.cs  # App customization settings
 │   ├── DashboardSummary.cs       # Dashboard data model
@@ -198,14 +198,14 @@ DotNetWebApp/
 │   └── YamlGenerator.cs
 ├── ModelGenerator/               # YAML → C# generator (separate console project)
 │   ├── EntityGenerator.cs        # Entities from app.yaml (existing)
-│   └── ViewModelGenerator.cs     # 🆕 Views from views.yaml (Phase 2)
+│   └── ViewModelGenerator.cs     # 🆕 Views from appsettings.json ViewDefinitions (Phase 2)
 ├── tests/
 │   ├── DotNetWebApp.Tests/       # Unit/integration tests
 │   └── ModelGenerator.Tests/     # Model generator path resolution tests
 ├── wwwroot/                      # Static files (CSS, JS, images)
 ├── _Imports.razor                # Global Blazor using statements
-├── app.yaml                      # 📋 Entity definitions (from SQL DDL)
-├── views.yaml                    # 🆕 View definitions (from SQL SELECT queries) (Phase 2)
+├── appsettings.json              # Configuration: includes ViewDefinitions for view generation
+├── app.yaml                      # 📋 Final runtime config (generated: entities + views)
 ├── schema.sql                    # Sample SQL DDL for testing DDL parser
 ├── seed.sql                      # Sample seed data (Categories, Products)
 ├── Makefile                      # Build automation
@@ -350,11 +350,14 @@ var result = await EntityApiService.GetEntitiesAsync(metadata.Definition.Name);
 
 | File | Purpose |
 |------|---------|
-| `app.yaml` | 📋 Generated data model and theme configuration (from SQL DDL) |
+| `appsettings.json` | Configuration file with ViewDefinitions section; defines SQL views for code generation and app visibility |
+| `app.yaml` | 📋 Generated runtime configuration with entities + views (generated from schema.sql + appsettings.json) |
 | `DotNetWebApp.Models/` | 🔄 Separate models assembly containing all data models and configuration classes |
 | `DotNetWebApp.Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
+| `DotNetWebApp.Models/ViewModels/` | 🔄 Auto-generated C# view models from appsettings.json ViewDefinitions (don't edit manually) |
 | `DotNetWebApp.Models/AppDictionary/` | YAML model classes for app.yaml structure |
-| `schema.sql` | Sample SQL DDL demonstrating Categories/Products schema; used by `make run-ddl-pipeline` |
+| `schema.sql` | SQL DDL source for entities; parsed by `make run-ddl-pipeline` |
+| `sql/views/` | SQL SELECT queries for views; referenced by appsettings.json ViewDefinitions |
 | `seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
 | `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
@@ -362,9 +365,12 @@ var result = await EntityApiService.GetEntitiesAsync(metadata.Definition.Name);
 | `Controllers/EntitiesController.cs` | Dynamic controller providing CRUD endpoints for all entities |
 | `Components/Shared/GenericEntityPage.razor` | Reusable page component for rendering any entity's CRUD UI |
 | `Components/Shared/DynamicDataGrid.razor` | Dynamic data grid component that renders columns from YAML definitions |
-| `DdlParser/` | Console project: SQL DDL → `app.yaml` (standalone, not compiled into main app) |
-| `ModelGenerator/` | Console project: YAML → C# entities (run separately when updating models) |
-| `Makefile` | Build automation with targets for check, build, dev, test, migrate, seed, docker, cleanup-nested-dirs |
+| `Services/Views/` | View services for Dapper-based read operations (IViewRegistry, IViewService, IDapperQueryService) |
+| `DdlParser/` | Console project: SQL DDL → YAML (standalone, not compiled into main app) |
+| `ModelGenerator/` | Console project: YAML → C# entities & view models (run separately when updating models) |
+| `YamlMerger/` | Console project: Merges appsettings.json ViewDefinitions into data.yaml during pipeline |
+| `AppsYamlGenerator/` | Console project: Merges Applications from appsettings.json with data.yaml to generate app.yaml |
+| `Makefile` | Build automation with unified `make run-ddl-pipeline` target that handles entities + views |
 | `dotnet-build.sh` | Wrapper script managing .NET SDK version conflicts across environments |
 
 ## Recent Development History (git log)
