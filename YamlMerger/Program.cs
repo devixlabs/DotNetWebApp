@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using DotNetWebApp.Models.AppDictionary;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -50,14 +52,15 @@ try
     Console.WriteLine($"Reading appsettings.json from: {appSettingsAbsPath}");
     var appSettingsContent = File.ReadAllText(appSettingsAbsPath);
 
-    // Deserialize appsettings.json using YamlDotNet (JSON is valid YAML)
-    // This preserves type information for complex objects like Range arrays
-    // Use default naming convention (no transformation) since appsettings.json uses PascalCase
-    var appSettingsDeserializer = new DeserializerBuilder()
-        .IgnoreUnmatchedProperties()
-        .Build();
+    // Deserialize appsettings.json using System.Text.Json (native JSON support)
+    // This properly handles camelCase property names in JSON (sqlFile, name, etc.)
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 
-    var appSettingsObj = appSettingsDeserializer.Deserialize<AppSettingsRoot>(appSettingsContent)
+    var appSettingsObj = JsonSerializer.Deserialize<AppSettingsRoot>(appSettingsContent, jsonOptions)
         ?? throw new InvalidOperationException("Failed to deserialize appsettings.json");
 
     if (appSettingsObj?.ViewDefinitions == null || appSettingsObj.ViewDefinitions.Count == 0)

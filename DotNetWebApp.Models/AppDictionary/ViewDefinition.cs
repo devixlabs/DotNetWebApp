@@ -156,7 +156,7 @@ namespace DotNetWebApp.Models.AppDictionary
         /// Generates [Range(min, max)] attribute.
         /// Example: [1, 1000]
         /// </summary>
-        public List<object> Range { get; set; }
+        public List<int> Range { get; set; }
 
         /// <summary>
         /// Maximum string length.
