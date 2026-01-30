@@ -1,0 +1,98 @@
+@using DotNetWebApp.Models.AppDictionary
+@inject IAppDictionaryService AppDictionary
+@inject NavigationManager NavigationManager
+
+<div class="app-switcher">
+    <RadzenDropDown
+        @bind-Value="selectedAppName"
+        Change="@OnApplicationChanged"
+        Data="@availableApps"
+        TextProperty="Title"
+        ValueProperty="Name"
+        Style="width: 100%; margin-bottom: 16px;"
+        Placeholder="Select Application" />
+
+    @if (!string.IsNullOrEmpty(selectedAppName))
+    {
+        var currentApp = AppDictionary.GetAllApplications().FirstOrDefault(a => a.Name == selectedAppName);
+        @if (currentApp != null)
+        {
+            <div class="app-info" style="padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
+                <div style="margin-bottom: 8px;">
+                    <strong>@currentApp.Title</strong>
+                </div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 8px;">
+                    @currentApp.Description
+                </div>
+                @if (!string.IsNullOrEmpty(currentApp.Url))
+                {
+                    <RadzenLink Path="@currentApp.Url" Target="_blank" Text="Open Application" Icon="open_in_new" />
+                }
+            </div>
+        }
+    }
+
+    <div class="app-list">
+        <h4>Available Applications</h4>
+        <RadzenStack Orientation="Orientation.Vertical" Gap="8px">
+            @foreach (var app in AppDictionary.GetAllApplications())
+            {
+                <div class="app-card" style="padding: 12px; border: 1px solid #eee; border-radius: 4px; cursor: pointer;" @onclick="@((MouseEventArgs e) => OnApplicationChanged(app.Name))">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <RadzenIcon Icon="@(app.Icon ?? "apps")" />
+                        <div>
+                            <div style="font-weight: bold;">@app.Title</div>
+                            @if (!string.IsNullOrEmpty(app.Url))
+                            {
+                                <div style="font-size: 0.85rem; color: #999;">
+                                    <RadzenLink Path="@app.Url" Target="_blank" Text="@app.Url" Icon="link" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </RadzenStack>
+    </div>
+</div>
+
+@code {
+    private string? selectedAppName;
+    private List<ApplicationInfo> availableApps = new();
+
+    protected override void OnInitialized()
+    {
+        availableApps = AppDictionary.GetAllApplications().ToList();
+
+        // Get current app from URL
+        var uri = new Uri(NavigationManager.Uri);
+        var path = uri.AbsolutePath;
+        var segments = path.Split('/', System.StringSplitOptions.RemoveEmptyEntries);
+
+        if (segments.Length > 0)
+        {
+            selectedAppName = segments[0];
+        }
+        else
+        {
+            selectedAppName = availableApps.FirstOrDefault()?.Name ?? string.Empty;
+        }
+    }
+
+    private Task OnApplicationChanged(object? value)
+    {
+        var appName = value?.ToString();
+        if (appName != null)
+        {
+            selectedAppName = appName;
+            var app = AppDictionary.GetAllApplications().FirstOrDefault(a => a.Name == appName);
+
+            if (app != null)
+            {
+                // Navigate to the application's dashboard
+                NavigationManager.NavigateTo($"/{app.Name}/dashboard");
+            }
+        }
+        return Task.CompletedTask;
+    }
+}

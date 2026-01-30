@@ -17,6 +17,7 @@ namespace DotNetWebApp.Models.AppDictionary
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; }
         public string Icon { get; set; }
+        public string Url { get; set; }
         public string Schema { get; set; } = string.Empty;
         public List<string> Entities { get; set; } = new();
         public List<string> Views { get; set; } = new();
