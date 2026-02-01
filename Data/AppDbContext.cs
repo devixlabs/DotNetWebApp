@@ -51,6 +51,25 @@ namespace DotNetWebApp.Data
                 {
                     entity.ToTable(tableName);
                 }
+
+                // Configure keyless entities (tables with no primary key defined)
+                var hasKeyProperties = type.GetProperties()
+                    .Any(p => p.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() != null);
+
+                if (!hasKeyProperties && type.GetCustomAttribute<Microsoft.EntityFrameworkCore.PrimaryKeyAttribute>() == null)
+                {
+                    entity.HasNoKey();
+                }
+            }
+
+            // Handle DDL parser limitations with composite foreign keys
+            // The acuity_form_values table has a composite FK (form_id, appointment_id) that references
+            // acuity_forms (id, appointment_id), but the generated code only recognizes form_id.
+            // Remove the navigation property so EF Core doesn't try to enforce the incomplete FK relationship.
+            var acuityFormValuType = entityTypes.FirstOrDefault(t => t.Name == "Acuity_form_valu");
+            if (acuityFormValuType != null)
+            {
+                modelBuilder.Entity(acuityFormValuType).Ignore("Acuity_form");
             }
         }
 

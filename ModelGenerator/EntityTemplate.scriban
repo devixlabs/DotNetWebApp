@@ -4,6 +4,19 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+{{~ # Count primary key properties for composite key detection ~}}
+{{~ pk_count = 0 ~}}
+{{~ pk_list = "" ~}}
+{{~ for property in entity.properties ~}}
+{{~ if property.is_primary_key ~}}
+{{~ pk_count = pk_count + 1 ~}}
+{{~ if pk_count > 1 ~}}{{~ pk_list = pk_list + ", " ~}}{{~ end ~}}
+{{~ pk_list = pk_list + "nameof(" + property.name + ")" ~}}
+{{~ end ~}}
+{{~ end ~}}
+{{~ if pk_count > 1 ~}}
+using Microsoft.EntityFrameworkCore;
+{{~ end ~}}
 
 {{~ namespace = "DotNetWebApp.Models.Generated" ~}}
 {{~ if entity.schema ~}}
@@ -15,6 +28,9 @@ namespace {{ namespace }}
     [Table("{{ entity.name | string.capitalize }}", Schema = "{{ entity.schema }}")]
     {{~ else ~}}
     [Table("{{ entity.name | string.capitalize }}")]
+    {{~ end ~}}
+    {{~ if pk_count > 1 ~}}
+    [PrimaryKey({{ pk_list }})]
     {{~ end ~}}
     public class {{ entity.name | string.capitalize }}
     {
@@ -28,7 +44,7 @@ namespace {{ namespace }}
         }
 
         {{~ for property in entity.properties ~}}
-        {{~ if property.is_primary_key ~}}
+        {{~ if property.is_primary_key && pk_count == 1 ~}}
         [Key]
         {{~ if property.is_identity ~}}
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -71,7 +87,11 @@ namespace {{ namespace }}
         {{~ is_reference_type = clr_type == "string" || clr_type == "byte[]" ~}}
         {{~ is_nullable = (!property.is_required) && !property.is_primary_key && !property.is_identity ~}}
         {{~ nullable_suffix = is_nullable ? "?" : "" ~}}
-        public {{ clr_type }}{{ nullable_suffix }} {{ property.name }} { get; set; }
+        {{~ # Handle property name conflicts with class name (e.g., AcidCorrection table with AcidCorrection column) ~}}
+        {{~ class_name = entity.name | string.capitalize ~}}
+        {{~ prop_name_capitalized = property.name | string.capitalize ~}}
+        {{~ final_prop_name = prop_name_capitalized == class_name ? (property.name + "Value") : property.name ~}}
+        public {{ clr_type }}{{ nullable_suffix }} {{ final_prop_name }} { get; set; }
         {{~ "\n" ~}}
         {{~ end ~}}
 
