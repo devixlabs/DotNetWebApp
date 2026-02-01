@@ -143,7 +143,8 @@ public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
 - Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from sql/schema.sql + appsettings.json → app.yaml)
 - End-to-End Verification: `./verify.sh` (complete pipeline + seed + dev server + integration tests; use instead of manual command sequences)
 - Seed Database: `make seed` - Executes sql/seed.sql; ensure all column names match schema.sql exactly
-- Apply Migration: `make migrate`
+- Apply Migration: `make migrate` - Idempotent; safe for existing tables (requires `sqlcmd` + `SA_PASSWORD`)
+- Apply Migration (Direct EF): `make migrate-ef-direct` - Non-idempotent fallback for fresh databases without sqlcmd
 - Docker Build: `make docker-build`
 - Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)
 - Stop Dev: `make stop-dev` (kills orphaned `dotnet watch` processes)
@@ -291,11 +292,21 @@ DotNetWebApp/
 - **Verify.sh stages:** (1) make check, (2) make test, (3) db-drop, (4) run-ddl-pipeline, (5) migrate, (6) seed, (7) start dev server, (8) run integration tests.
 
 ### 🔧 Development Status
-- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-destroy`, `db-create`, `db-drop`, `stop-dev`, `shutdown-build-servers`)
+- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `migrate-ef-direct`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-destroy`, `db-create`, `db-drop`, `stop-dev`, `shutdown-build-servers`)
 - `dotnet-build.sh` wrapper manages .NET SDK version conflicts across Windows/WSL/Linux
 - `make migrate` requires SQL Server running and valid connection string
 - Session tracking via `SESSION_SUMMARY.md` for LLM continuity between sessions
 - **Database schema changes:** When `schema.sql` structure changes significantly, run `make db-drop` before `make migrate` to clear stale EF migrations that cause "already exists" errors. The `db-drop` target now clears migrations AND drops the database for a clean slate.
+
+### USE-CASE Migration Patterns
+
+**`make migrate` is idempotent by default** - safe to run against existing databases with tables.
+
+**Prerequisites:**
+- `sqlcmd` installed: `sudo apt-get install mssql-tools` (Ubuntu) or `brew install mssql-tools` (macOS)
+- `SA_PASSWORD` environment variable set
+
+**Fallback:** If you don't have sqlcmd and are working with a fresh database, use `make migrate-ef-direct` (non-idempotent, will fail on existing tables).
 
 ### ⚠️ Known Process Management Pitfalls
 - **MSBuild node reuse:** `dotnet build` spawns MSBuild node processes (`/nodeReuse:true`) that persist after builds. Use `make shutdown-build-servers` to force-kill them.

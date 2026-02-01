@@ -25,9 +25,9 @@ using Microsoft.EntityFrameworkCore;
 namespace {{ namespace }}
 {
     {{~ if entity.schema ~}}
-    [Table("{{ entity.name | string.capitalize }}", Schema = "{{ entity.schema }}")]
+    [Table("{{ entity.name }}", Schema = "{{ entity.schema }}")]
     {{~ else ~}}
-    [Table("{{ entity.name | string.capitalize }}")]
+    [Table("{{ entity.name }}")]
     {{~ end ~}}
     {{~ if pk_count > 1 ~}}
     [PrimaryKey({{ pk_list }})]

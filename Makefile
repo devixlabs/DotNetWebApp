@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034,SC1089,SC2288,SC2046,SC1072,SC1073
+# shellcheck disable=SC2034,SC1089,SC2288,SC2046,SC1072,SC1073,SC1090,SC1091,SC2171
 
 DOTNET=./dotnet-build.sh
 # shellcheck disable=SC2034
@@ -20,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
+.PHONY: clean check restore build build-release https migrate migrate-ef-direct test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -72,7 +72,40 @@ build-release:
 	$(DOTNET) build DotNetWebApp.sln --configuration Release --no-restore -maxcpucount:2 --nologo
 	@$(MAKE) cleanup-nested-dirs
 
+# Idempotent migration - safe to run multiple times against existing databases
+# For databases with existing tables (USE-CASE-1), marks migration as applied without re-creating tables
+# Uses container's sqlcmd (same pattern as db-drop)
 migrate: build
+	@echo "Generating idempotent migration script..."
+	$(DOTNET) ef migrations script --idempotent --output sql/idempotent-migration.sql --context AppDbContext
+	@# Remove UTF-8 BOM if present - sqlcmd does not handle it
+	@sed -i '1s/^\xEF\xBB\xBF//' sql/idempotent-migration.sql 2>/dev/null || true
+	@echo "Applying idempotent migration to database..."
+	# shellcheck disable=SC2016
+	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
+		PASSWORD="$$SA_PASSWORD"; \
+		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
+			PASSWORD="$$MSSQL_SA_PASSWORD"; \
+		fi; \
+		if [ -z "$$PASSWORD" ]; then \
+			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
+			exit 1; \
+		fi; \
+		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
+			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
+		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
+			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
+		else \
+			echo "sqlcmd not found in container." >&2; \
+			exit 1; \
+		fi; \
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d master -C -Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NULL CREATE DATABASE [DotNetWebAppDb]" && \
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d DotNetWebAppDb -C -i /dev/stdin' < sql/idempotent-migration.sql
+	@echo "✅ Migration applied successfully"
+
+# Direct EF Core migration (non-idempotent) - only for fresh databases with no existing tables
+# Use this only if you don't have sqlcmd installed and are working with a clean database
+migrate-ef-direct: build
 	ASPNETCORE_ENVIRONMENT=$(ASPNETCORE_ENVIRONMENT) DOTNET_ENVIRONMENT=$(DOTNET_ENVIRONMENT) $(DOTNET) ef database update
 
 seed:
@@ -170,11 +203,7 @@ db-destroy:
 
 # Create a fresh SQL Server Docker container (requires SA_PASSWORD env var)
 db-create:
-	@if [ -z "$$SA_PASSWORD" ]; then \
-		echo "Error: SA_PASSWORD environment variable required" >&2; \
-		echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; \
-		exit 1; \
-	fi
+	@[ -n "$$SA_PASSWORD" ] || { echo "Error: SA_PASSWORD environment variable required" >&2; echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; exit 1; }
 	@echo "Creating sqlserver-dev container..."
 	@docker run -e "ACCEPT_EULA=Y" \
 		-e "MSSQL_SA_PASSWORD=$$SA_PASSWORD" \

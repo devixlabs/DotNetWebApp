@@ -154,8 +154,9 @@ DotNetWebApp/
 | `make build-release` | Release build for main projects |
 | `make clean` | Clean build outputs and binlog |
 | `make run-ddl-pipeline` | Parse `sql/schema.sql` → app.yaml → models → migration → build |
-| `make migrate` | Apply generated migration |
-| `make seed` | Apply migration and seed data |
+| `make migrate` | Apply migration (idempotent; safe for existing tables; requires `sqlcmd` + `SA_PASSWORD`) |
+| `make migrate-ef-direct` | Apply migration via EF directly (non-idempotent; fresh databases only) |
+| `make seed` | Seed sample data from `sql/seed.sql` |
 | `make dev` | Start dev server with hot reload (https://localhost:7012 / http://localhost:5210) |
 | `make run` | Start server without hot reload |
 | `make test` | Run DotNetWebApp.Tests and ModelGenerator.Tests |
@@ -173,16 +174,19 @@ DotNetWebApp/
 
 ## Database Migrations
 
-After modifying `sql/schema.sql` or running the DDL parser:
+`make migrate` is **idempotent by default** - safe to run against databases with existing tables.
 
 ```bash
-# Start SQL Server
-make db-start
-
-# Generate migration from DDL, then apply it
-make run-ddl-pipeline
-make migrate
+make db-start           # Start SQL Server (Docker)
+make run-ddl-pipeline   # Generate migration from DDL
+make migrate            # Apply migration (idempotent - won't fail on existing tables)
 ```
+
+**Prerequisites:**
+- Install `sqlcmd`: `sudo apt-get install mssql-tools` (Ubuntu) or `brew install mssql-tools` (macOS)
+- Set environment variable: `export SA_PASSWORD='your-password'`
+
+**Fallback:** If you don't have `sqlcmd` installed and are working with a fresh database (no existing tables), you can use `make migrate-ef-direct` which runs `dotnet ef database update` directly. This will fail if tables already exist.
 
 ---
 
