@@ -64,12 +64,11 @@ Consult the `radzen-blazor` skill (`.claude/skills/radzen-blazor/SKILL.md`) when
 
 1. **ARCHITECTURE_SUMMARY.md** - Quick overview of architecture decisions and current state
 2. **HYBRID_ARCHITECTURE.md** - EF Core + Dapper architecture reference and data access patterns
-3. **PHASE4_VIEW_EDIT.md** - Next phase implementation guide for Radzen-first UI components (Phase 4)
-4. **SKILLS.md** - Comprehensive developer guides including Phase 2B patterns (IViewService, views.yaml, SQL views)
+3. **SKILLS.md** - Comprehensive developer guides including data layer, views, API, services patterns
 
 **Key Architectural Decisions (2026-01-27):**
-- ✅ **Phase 1 COMPLETED (2026-01-27):** Extracted reflection logic to `IEntityOperationService` with compiled delegates for 250x performance optimization
-- ✅ **Phase 2B COMPLETED (2026-01-27):** SQL-First View Pipeline - `IViewRegistry`, `IViewService`, `IDapperQueryService` services with 18 unit tests; Dapper ORM integration; ProductDashboard example component
+- ✅ **Phase 1: Reflection Logic Extraction (2026-01-27)** - `IEntityOperationService` with compiled delegates for 250x performance optimization
+- ✅ **Phase 2: SQL-First View Pipeline (2026-01-27)** - `IViewRegistry`, `IViewService`, `IDapperQueryService` services with 18 unit tests; Dapper ORM integration; ProductDashboard example component
 - ✅ **Hybrid data access:** EF Core for writes (200+ entities), Dapper for complex reads (SQL-first views)
 - ✅ **SQL-first everything:** Both entities (DDL) and views (SELECT queries) start as SQL
 - ✅ **Single-project organization:** Namespace-based separation (NOT 4 separate projects)
@@ -77,7 +76,7 @@ Consult the `radzen-blazor` skill (`.claude/skills/radzen-blazor/SKILL.md`) when
 - ✅ **No Repository Pattern:** `IEntityOperationService` + `IViewService` provide sufficient abstraction
 - ✅ **Scale target:** 200+ entities, multiple schemas, small team
 
-**Current Phase:** Phase 2B complete (192 tests passing); ready for Phase 4 (Radzen-First UI Components - see PHASE4_VIEW_EDIT.md)
+**Current Status:** Architecture complete (Phase 1, 2, 3+4) - 192 tests passing; SQL-first view pipeline fully implemented
 
 ## 🧪 CRITICAL: Unit Testing Requirements
 
@@ -167,7 +166,7 @@ The project uses `dotnet-build.sh` wrapper script to handle SDK version conflict
 DotNetWebApp/
 ├── sql/
 │   ├── schema.sql                # 📋 SQL DDL source (entities)
-│   └── views/                    # 🆕 SQL SELECT queries for complex views (Phase 2)
+│   └── views/                    # 🆕 SQL SELECT queries for complex views
 │       ├── ProductSalesView.sql
 │       └── ...
 ├── Controllers/                  # API endpoints (EntitiesController, etc.)
@@ -177,12 +176,12 @@ DotNetWebApp/
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
 │   ├── DataSeeder.cs             # Executes sql/seed.sql via EF
-│   └── Dapper/                   # 🆕 Dapper infrastructure (Phase 2)
+│   └── Dapper/                   # 🆕 Dapper infrastructure (SQL view execution)
 │       ├── IDapperQueryService.cs
 │       └── DapperQueryService.cs
 ├── DotNetWebApp.Models/          # 🔄 Separate models assembly (extracted from main project)
 │   ├── Generated/                # 🔄 Auto-generated entities from app.yaml (Product.cs, Category.cs, etc.)
-│   ├── ViewModels/               # 🆕 Auto-generated view models from appsettings.json ViewDefinitions (Phase 2)
+│   ├── ViewModels/               # 🆕 Auto-generated view models from appsettings.json ViewDefinitions
 │   ├── AppDictionary/            # YAML model classes (AppDefinition.cs, Entity.cs, Property.cs, etc.)
 │   ├── AppCustomizationOptions.cs  # App customization settings
 │   ├── DashboardSummary.cs       # Dashboard data model
@@ -212,7 +211,7 @@ DotNetWebApp/
 │   └── YamlGenerator.cs
 ├── ModelGenerator/               # YAML → C# generator (separate console project)
 │   ├── EntityGenerator.cs        # Entities from app.yaml (existing)
-│   └── ViewModelGenerator.cs     # 🆕 Views from appsettings.json ViewDefinitions (Phase 2)
+│   └── ViewModelGenerator.cs     # 🆕 Views from appsettings.json ViewDefinitions
 ├── tests/
 │   ├── DotNetWebApp.Tests/       # Unit/integration tests
 │   └── ModelGenerator.Tests/     # Model generator path resolution tests
@@ -226,9 +225,6 @@ DotNetWebApp/
 │   └── views/                    # SQL SELECT queries for views
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
-├── PHASE2_VIEW_PIPELINE.md       # Detailed Phase 2 implementation guide
-├── PHASE3_VIEW_UI.md             # ⚠️ ABANDONED - YAML-driven UI approach (historical)
-├── PHASE4_VIEW_EDIT.md           # Phase 4 Radzen-first UI components (CURRENT PLAN)
 ├── HYBRID_ARCHITECTURE.md        # EF+Dapper architecture reference
 ├── ARCHITECTURE_SUMMARY.md       # Quick architecture overview
 ├── DotNetWebApp.sln              # Solution file (includes all projects)
