@@ -1,23 +1,25 @@
 -- ProductSalesView.sql
--- Product summary with category and company associations
+-- Product summary with unit of measure and vendor associations
 -- Parameters: @TopN (default: 10)
 --
 -- Usage from IViewService:
 --   await ViewService.ExecuteViewAsync<ProductSalesView>("ProductSalesView", new { TopN = 50 });
 --
 -- NOTE: This is a demonstration view for the Phase 2B view pipeline.
--- Since Orders/OrderDetails tables don't exist in the schema, we show product information
--- with associated companies (via CompanyProducts junction table).
+-- Uses dmprod (products), dmunit (units of measure), and dmvend (vendors)
+-- from the schema to show product summary with unit factors and vendor counts.
 
 SELECT TOP (@TopN)
-    p.Id,
-    p.Name,
-    p.Price,
-    c.Name AS CategoryName,
-    COALESCE(COUNT(DISTINCT cp.CompanyId), 0) AS TotalSold,
-    COALESCE(COUNT(DISTINCT cp.CompanyId) * p.Price, 0) AS TotalRevenue
-FROM acme.Products p
-LEFT JOIN acme.Categories c ON p.CategoryId = c.Id
-LEFT JOIN acme.CompanyProducts cp ON p.Id = cp.ProductId
-GROUP BY p.Id, p.Name, p.Price, c.Name
-ORDER BY TotalRevenue DESC;
+    p.pr_id AS ProductId,
+    p.pr_descrip AS ProductName,
+    p.pr_lispric AS Price,
+    u.un_name AS UnitName,
+    COALESCE(u.un_factor, 0) AS UnitFactor,
+    COALESCE(COUNT(DISTINCT v.ve_id), 0) AS VendorCount,
+    COALESCE(COUNT(DISTINCT v.ve_id) * p.pr_lispric, 0) AS TotalValue
+FROM dbo.dmprod p
+LEFT JOIN dbo.dmunit u ON p.pr_prunid = u.un_id
+LEFT JOIN dbo.dmvend v ON v.ve_id > 0
+WHERE p.pr_active = 1
+GROUP BY p.pr_id, p.pr_descrip, p.pr_lispric, u.un_name, u.un_factor
+ORDER BY TotalValue DESC;
