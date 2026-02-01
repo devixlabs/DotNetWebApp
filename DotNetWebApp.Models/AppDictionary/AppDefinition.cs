@@ -8,7 +8,7 @@ namespace DotNetWebApp.Models.AppDictionary
     {
         public List<ApplicationInfo> Applications { get; set; }
         public DataModel DataModel { get; set; }
-        public ViewsRoot Views { get; set; }
+        public ViewsDefinition Views { get; set; }
     }
 
     public class ApplicationInfo
@@ -17,6 +17,7 @@ namespace DotNetWebApp.Models.AppDictionary
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; }
         public string Icon { get; set; }
+        public string Url { get; set; }
         public string Schema { get; set; } = string.Empty;
         public List<string> Entities { get; set; } = new();
         public List<string> Views { get; set; } = new();
@@ -72,16 +73,5 @@ namespace DotNetWebApp.Models.AppDictionary
         public string TargetEntity { get; set; }
         public string ForeignKey { get; set; }
         public string PrincipalKey { get; set; }
-    }
-
-    public class ViewsRoot
-    {
-        public List<View> Views { get; set; }
-    }
-
-    public class View
-    {
-        public string Name { get; set; }
-        public string SqlFile { get; set; }
     }
 }

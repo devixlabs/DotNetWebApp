@@ -492,5 +492,7 @@ $RECYCLE.BIN/
 .env.local
 tmp/
 specs/
-# Generated YAML file (regenerated from pipeline)
+# Generated YAML files (regenerated from pipeline)
 app.yaml
+data.yaml
+views.yaml

@@ -32,10 +32,12 @@
 
 ┌─────────────────────────────────────────────────────────────┐
 │ VIEWS (complex queries)                                     │
-│ SQL SELECT → views.yaml → ViewModels/*.cs → Dapper reads   │
+│ SQL SELECT → views.yaml → YamlMerger → app.yaml            │
+│ app.yaml → ViewModels/*.cs → Dapper reads                  │
 │                                                             │
-│ Pipeline: make run-view-pipeline                           │
+│ Pipeline: make run-ddl-pipeline (unified with entities)    │
 │ Data Access: IViewService (type-safe queries)              │
+│ App Visibility: PopulateApplicationViews (app-scoped)      │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,11 +60,13 @@
    - Dapper for complex reads (SQL-first views)
    - Shared connection for automatic tenant schema inheritance
 
-2. **SQL-First View Pipeline:**
-   - Legacy SQL queries as source of truth
-   - YAML registry (`views.yaml`)
-   - Generated C# view models
+2. **Unified SQL-First View Pipeline:**
+   - SQL views as source of truth (`views.yaml` + `sql/views/*.sql`)
+   - YamlMerger consolidates views into app.yaml (same pattern as entities)
+   - Generated C# view models (partial class pattern)
    - Type-safe service layer (`IViewService`)
+   - Application-scoped view visibility (PopulateApplicationViews)
+   - Single `make run-ddl-pipeline` for entities + views
 
 3. **Multi-Tenancy:**
    - Finbuckle.MultiTenant for robust tenant isolation
@@ -153,13 +157,15 @@
 
 **Goal:** Build reusable Blazor components with read and write capabilities
 
-**Status:** PLANNED - See `PHASE3_VIEW_UI.md` for patterns, `PHASE4_VIEW_EDIT.md` for editable components
+**Status:** Phase 3 (read-only) PARTIALLY COMPLETE - See `PHASE3_VIEW_UI.md` for patterns, `PHASE4_VIEW_EDIT.md` for editable components
 
 **Deliverables (Phase 3 - Read Patterns):**
 - ✅ `ProductDashboard.razor` reference component (DONE)
+- ✅ `ViewSection.razor` generic view display component (DONE) - Displays any SQL view with parameters, filtering, sorting, and dynamic column discovery
+- ✅ `ApplicationSwitcher.razor` multi-tenant selector component (DONE) - Allows users to switch between applications/schemas
 - `ProductForm.razor` form pattern example
 - `ExecutiveDashboard.razor` dashboard pattern example
-- Radzen component patterns documented in SKILLS.md
+- Radzen component patterns documented in SKILLS.md (updated with ViewSection usage examples)
 
 **Deliverables (Phase 4 - Write Capabilities):**
 - `SmartDataGrid<T>` component (replaces/extends DynamicDataGrid)

@@ -10,8 +10,9 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace DotNetWebApp.Services.Views;
 
 /// <summary>
-/// Singleton service that loads and caches SQL view definitions from views.yaml.
-/// Resolves SQL file paths relative to views.yaml location.
+/// Singleton service that loads and caches SQL view definitions from app.yaml.
+/// Views are merged from views.yaml into app.yaml during the build pipeline.
+/// Resolves SQL file paths relative to project root.
 /// Automatically caches SQL content to avoid repeated disk I/O.
 /// </summary>
 public class ViewRegistry : IViewRegistry
@@ -24,75 +25,49 @@ public class ViewRegistry : IViewRegistry
 
     /// <summary>
     /// Initializes a new instance of ViewRegistry.
-    /// Loads and caches all view definitions from views.yaml.
+    /// Loads and caches all view definitions from app.yaml (via AppDictionaryService).
     /// </summary>
-    /// <param name="viewsYamlPath">Absolute path to views.yaml</param>
     /// <param name="logger">Logger instance</param>
-    /// <param name="appDictionary">Application dictionary for app-scoped view filtering</param>
-    /// <exception cref="FileNotFoundException">Thrown if views.yaml does not exist (fail fast)</exception>
-    /// <exception cref="InvalidOperationException">Thrown if views.yaml is invalid or empty</exception>
-    public ViewRegistry(string viewsYamlPath, ILogger<ViewRegistry> logger, IAppDictionaryService appDictionary)
+    /// <param name="appDictionary">Application dictionary (loads from app.yaml)</param>
+    /// <param name="basePath">Base path for resolving SQL file paths (typically project root)</param>
+    /// <exception cref="InvalidOperationException">Thrown if app.yaml is invalid or has no views</exception>
+    public ViewRegistry(ILogger<ViewRegistry> logger, IAppDictionaryService appDictionary, string? basePath = null)
     {
         _logger = logger;
         _appDictionary = appDictionary;
         _views = new Dictionary<string, ViewDefinition>(StringComparer.OrdinalIgnoreCase);
         _sqlCache = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        _sqlBasePath = Path.GetDirectoryName(viewsYamlPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+        _sqlBasePath = basePath ?? AppDomain.CurrentDomain.BaseDirectory;
 
-        LoadViews(viewsYamlPath);
+        LoadViews();
     }
 
     /// <summary>
-    /// Loads all views from views.yaml file.
-    /// Fails fast if file doesn't exist - this is a critical configuration file.
+    /// Loads all views from app.yaml (via AppDictionaryService).
+    /// Views are loaded from the ViewsDefinition section that was merged from views.yaml during build.
     /// </summary>
-    /// <exception cref="FileNotFoundException">Thrown if views.yaml does not exist</exception>
-    /// <exception cref="InvalidOperationException">Thrown if views.yaml is invalid or empty</exception>
-    private void LoadViews(string yamlPath)
+    /// <exception cref="InvalidOperationException">Thrown if app.yaml is invalid or has no views</exception>
+    private void LoadViews()
     {
-        // Fail fast if views.yaml is missing - this is a critical configuration file
-        if (!File.Exists(yamlPath))
-        {
-            var errorMessage =
-                $"[{ErrorIds.ViewsYamlMissing}] views.yaml not found at {yamlPath}. " +
-                "The view registry requires views.yaml to be present at application startup. " +
-                "This is a critical configuration file. Check that:\n" +
-                $"  1. views.yaml exists in the application root ({yamlPath})\n" +
-                "  2. The file was included in the deployment\n" +
-                "  3. File permissions allow reading the file";
-
-            _logger.LogCritical("[{ErrorId}] {Message}", ErrorIds.ViewsYamlMissing, errorMessage);
-            throw new FileNotFoundException(errorMessage, yamlPath);
-        }
-
-        _logger.LogInformation("Loading views registry from {Path}", yamlPath);
+        _logger.LogInformation("Loading views registry from app.yaml");
 
         try
         {
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                .Build();
+            var appDefinition = _appDictionary.AppDefinition;
 
-            var yamlContent = File.ReadAllText(yamlPath);
-            var viewDef = deserializer.Deserialize<ViewsDefinition>(yamlContent);
-
-            if (viewDef?.Views == null || viewDef.Views.Count == 0)
+            if (appDefinition.Views?.Views == null || appDefinition.Views.Views.Count == 0)
             {
-                var errorMessage =
-                    $"[{ErrorIds.ViewsYamlEmpty}] No views found in {yamlPath}. " +
-                    "The views.yaml file is empty or has no 'views' section. " +
-                    "At least one view must be defined.";
-
-                _logger.LogError("[{ErrorId}] {Message}", ErrorIds.ViewsYamlEmpty, errorMessage);
-                throw new InvalidOperationException(errorMessage);
+                // This is not an error - views are optional
+                _logger.LogInformation("No views found in app.yaml (views are optional)");
+                return;
             }
 
-            foreach (var view in viewDef.Views)
+            foreach (var view in appDefinition.Views.Views)
             {
                 // Validate view name
                 if (string.IsNullOrWhiteSpace(view.Name))
                 {
-                    var errorMessage = $"[{ErrorIds.ViewNameInvalid}] View name cannot be empty in views.yaml";
+                    var errorMessage = $"[{ErrorIds.ViewNameInvalid}] View name cannot be empty in app.yaml";
                     _logger.LogError("[{ErrorId}] {Message}", ErrorIds.ViewNameInvalid, errorMessage);
                     throw new InvalidOperationException(errorMessage);
                 }
@@ -100,7 +75,7 @@ public class ViewRegistry : IViewRegistry
                 // Validate sql_file
                 if (string.IsNullOrWhiteSpace(view.SqlFile))
                 {
-                    var errorMessage = $"[{ErrorIds.ViewSqlFileInvalid}] View '{view.Name}' has empty sql_file in views.yaml";
+                    var errorMessage = $"[{ErrorIds.ViewSqlFileInvalid}] View '{view.Name}' has empty sql_file in app.yaml";
                     _logger.LogError("[{ErrorId}] {Message}", ErrorIds.ViewSqlFileInvalid, errorMessage);
                     throw new InvalidOperationException(errorMessage);
                 }
@@ -111,29 +86,14 @@ public class ViewRegistry : IViewRegistry
 
             _logger.LogInformation("Loaded {Count} views into registry", _views.Count);
         }
-        catch (YamlException ex)
+        catch (InvalidOperationException)
         {
-            var errorMessage =
-                $"[{ErrorIds.ViewsYamlParseError}] Failed to parse views.yaml at {yamlPath}: {ex.Message}";
-
+            throw; // Re-throw our validation exceptions
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"[{ErrorIds.ViewsYamlParseError}] Error loading views from app.yaml: {ex.Message}";
             _logger.LogError(ex, "[{ErrorId}] {Message}", ErrorIds.ViewsYamlParseError, errorMessage);
-            throw new InvalidOperationException(errorMessage, ex);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            var errorMessage =
-                $"[{ErrorIds.SqlFilePermissionDenied}] Permission denied reading views.yaml at {yamlPath}. " +
-                "Check file permissions.";
-
-            _logger.LogError(ex, "[{ErrorId}] {Message}", ErrorIds.SqlFilePermissionDenied, errorMessage);
-            throw new UnauthorizedAccessException(errorMessage, ex);
-        }
-        catch (IOException ex)
-        {
-            var errorMessage =
-                $"[{ErrorIds.SqlFileReadError}] I/O error reading views.yaml at {yamlPath}: {ex.Message}";
-
-            _logger.LogError(ex, "[{ErrorId}] {Message}", ErrorIds.SqlFileReadError, errorMessage);
             throw new InvalidOperationException(errorMessage, ex);
         }
     }

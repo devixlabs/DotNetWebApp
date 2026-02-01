@@ -8,7 +8,7 @@ namespace DdlParser;
 public class DataDefinition
 {
     public DataModel DataModel { get; set; } = new();
-    public ViewsRoot Views { get; set; } = new();
+    public ViewsDefinition Views { get; set; } = new();
 }
 
 public class YamlGenerator
@@ -25,9 +25,9 @@ public class YamlGenerator
             {
                 Entities = entities
             },
-            Views = new ViewsRoot
+            Views = new ViewsDefinition
             {
-                Views = new List<View>()
+                Views = new List<ViewDefinition>()
             }
         };
 

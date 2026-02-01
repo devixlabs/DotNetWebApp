@@ -75,10 +75,10 @@ try
     Console.WriteLine($"Found {dataDefinition.DataModel.Entities.Count} entity(ies) in data.yaml");
 
     var dataModel = dataDefinition.DataModel;
-    var views = dataDefinition.Views ?? new ViewsRoot { Views = new List<View>() };
+    var views = dataDefinition.Views ?? new ViewsDefinition { Views = new List<ViewDefinition>() };
 
-    // Merge applications with data model
-    Console.WriteLine("Merging Applications with DataModel...");
+    // Merge applications with data model and views
+    Console.WriteLine("Merging Applications with DataModel and Views...");
     var merger = new AppsYamlMerger();
     var mergedYaml = merger.MergeApplicationsWithDataModel(applications, dataModel, views);
 

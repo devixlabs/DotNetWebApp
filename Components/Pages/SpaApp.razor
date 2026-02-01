@@ -5,6 +5,7 @@
 @inject IAppDictionaryService AppDictionary
 @inject ISpaSectionService SpaSections
 @inject IEntityMetadataService EntityMetadataService
+@inject IViewRegistry ViewRegistry
 
 <PageTitle>DotNet Multi-App SPA</PageTitle>
 
@@ -24,6 +25,11 @@
             {
                 <SectionHeader Title="@activeSection.Title" IsLoading="@false" />
                 <EntitySection AppName="@AppName" EntityName="@activeEntityName" />
+            }
+            else if (isViewSection && activeViewName != null)
+            {
+                <SectionHeader Title="@activeSection.Title" IsLoading="@false" />
+                <ViewSection AppName="@AppName" ViewName="@activeViewName" />
             }
             else
             {
@@ -50,7 +56,9 @@
 
     private SpaSectionInfo? activeSection;
     private string? activeEntityName;
+    private string? activeViewName;
     private bool isEntitySection => activeSection?.Section == SpaSection.Entity && activeEntityName != null;
+    private bool isViewSection => activeSection?.Section == SpaSection.View && activeViewName != null;
     private AsyncUiState? loadingState;
 
     private bool IsLoading => loadingState?.IsBusy == true;
@@ -108,6 +116,18 @@
         {
             activeSection = section;
             activeEntityName = section.Section == SpaSection.Entity ? section.EntityName : null;
+            activeViewName = section.Section == SpaSection.View ? section.ViewName : null;
+            return;
+        }
+
+        // Try to find in app-specific sections (includes views, entities)
+        var appSections = SpaSections.GetSectionsForApplication(AppName);
+        var appSection = appSections.FirstOrDefault(s => string.Equals(s.RouteSegment, segment, StringComparison.OrdinalIgnoreCase));
+        if (appSection != null)
+        {
+            activeSection = appSection;
+            activeEntityName = appSection.Section == SpaSection.Entity ? appSection.EntityName : null;
+            activeViewName = appSection.Section == SpaSection.View ? appSection.ViewName : null;
             return;
         }
 
@@ -118,5 +138,6 @@
             : segment;
         activeSection = new SpaSectionInfo(SpaSection.Entity, segment, segment, segment, entityName);
         activeEntityName = entityName;
+        activeViewName = null;
     }
 }

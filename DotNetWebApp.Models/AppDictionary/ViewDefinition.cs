@@ -50,6 +50,13 @@ namespace DotNetWebApp.Models.AppDictionary
         public bool GeneratePartial { get; set; } = true;
 
         /// <summary>
+        /// Which applications can access this view.
+        /// Used to populate application-level view visibility.
+        /// Example: ["admin", "reporting"]
+        /// </summary>
+        public List<string> Applications { get; set; } = new();
+
+        /// <summary>
         /// SQL query parameters (e.g., @TopN, @CategoryId).
         /// </summary>
         public List<ViewParameter> Parameters { get; set; }
@@ -149,7 +156,7 @@ namespace DotNetWebApp.Models.AppDictionary
         /// Generates [Range(min, max)] attribute.
         /// Example: [1, 1000]
         /// </summary>
-        public List<object> Range { get; set; }
+        public List<int> Range { get; set; }
 
         /// <summary>
         /// Maximum string length.

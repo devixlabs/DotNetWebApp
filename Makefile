@@ -20,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline run-view-pipeline run-all-pipelines verify-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
+.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -39,11 +39,7 @@ shutdown-build-servers:
 	@echo "Shutting down .NET build servers..."
 	@$(DOTNET) build-server shutdown 2>/dev/null || true
 	@sleep 1
-	@PIDS=$$(ps -ef | grep -e "MSBuild\.dll" -e "VBCSCompiler\.dll" -e "RazorServer\.dll" | grep -v grep | awk '{print $$2}'); \
-	if [ -n "$$PIDS" ]; then \
-		echo "Force-killing stuck build server processes: $$PIDS"; \
-		kill -9 $$PIDS 2>/dev/null || true; \
-	fi
+	@ps -ef | grep -e "MSBuild\.dll" -e "VBCSCompiler\.dll" -e "RazorServer\.dll" | grep -v grep | awk '{print $$2}' | xargs -r kill -9 2>/dev/null || true
 	@echo "Build servers stopped."
 
 https:
@@ -53,6 +49,7 @@ check:
 	shellcheck setup.sh
 	shellcheck dotnet-build.sh
 	shellcheck verify.sh
+	shellcheck Makefile
 	$(DOTNET) format whitespace DotNetWebApp.csproj
 	$(DOTNET) format style DotNetWebApp.csproj
 	$(MAKE) restore
@@ -89,6 +86,8 @@ test:
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
+	$(DOTNET) build tests/YamlMerger.Tests/YamlMerger.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
+	$(DOTNET) test tests/YamlMerger.Tests/YamlMerger.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/AppsYamlGenerator.Tests/AppsYamlGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/AppsYamlGenerator.Tests/AppsYamlGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/DdlParser.Tests/DdlParser.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
@@ -102,70 +101,32 @@ run-ddl-pipeline: clean
 	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
 	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../data.yaml
 	@echo ""
-	@echo " -- Step 2: Generating C# models from data.yaml..."
+	@echo " -- Step 2: Merging ViewDefinitions from appsettings.json into data.yaml (modifies in place; intermediate now contains dataModel + views)..."
+	cd YamlMerger && "../$(DOTNET)" run ../data.yaml ../appsettings.json
+	@echo ""
+	@echo " -- Step 3: Generating C# models from data.yaml..."
 	cd ModelGenerator && "../$(DOTNET)" run ../data.yaml
 	@echo ""
-	@echo " -- Step 3: Merging appsettings.json + data.yaml → app.yaml (final)..."
+	@echo " -- Step 4: Generating view models from data.yaml..."
+	cd ModelGenerator && "../$(DOTNET)" run -- --mode=views --views-yaml=../data.yaml --output-dir=../DotNetWebApp.Models/ViewModels
+	@echo ""
+	@echo " -- Step 5: Merging appsettings.json + data.yaml → app.yaml (final)..."
 	cd AppsYamlGenerator && "../$(DOTNET)" run -- ../appsettings.json ../data.yaml ../app.yaml
 	@echo ""
-	@echo " -- Step 4: Cleaning up intermediate data.yaml..."
+	@echo " -- Step 6: Cleaning up intermediate data.yaml..."
 	rm -f data.yaml
 	@echo ""
-	@echo " -- Step 5: Regenerating EF Core migration..."
+	@echo " -- Step 7: Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
 	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
-	@echo " -- Step 6: Building project..."
+	@echo " -- Step 8: Building project..."
 	$(MAKE) build
 	@echo ""
 	@echo "✅ DDL pipeline completed!"
 	@echo ""
 	@echo "🚀 Next: Run 'make dev' to start the application"
-
-# Verify pipeline outputs are valid
-# Validates that app.yaml, generated models, and migrations were created correctly
-verify-pipeline: run-ddl-pipeline
-	@echo ""
-	@echo "Verifying pipeline outputs..."
-	@# Validate app.yaml exists and is not empty
-	@test -f app.yaml || (echo "❌ app.yaml not found" && exit 1)
-	@test -s app.yaml || (echo "❌ app.yaml is empty" && exit 1)
-	@echo "✅ app.yaml exists and is not empty"
-	@# Validate app.yaml has both applications and dataModel sections
-	@grep -q "applications:" app.yaml || (echo "❌ app.yaml missing applications section" && exit 1)
-	@grep -q "dataModel:" app.yaml || (echo "❌ app.yaml missing dataModel section" && exit 1)
-	@echo "✅ app.yaml structure valid (applications + dataModel merged)"
-	@# Validate data.yaml does NOT exist (cleaned up after pipeline)
-	@test ! -f data.yaml || (echo "⚠️  data.yaml still exists (should have been cleaned up)" && true)
-	@# Validate generated models directory exists
-	@test -d DotNetWebApp.Models/Generated || (echo "❌ Generated/ directory not found" && exit 1)
-	@# Validate at least one generated model file exists
-	@test -n "$$(find DotNetWebApp.Models/Generated -name '*.cs' 2>/dev/null)" || (echo "❌ No generated C# files found" && exit 1)
-	@echo "✅ Generated models exist"
-	@# Validate migrations were created
-	@test -d Migrations || (echo "❌ Migrations/ directory not found" && exit 1)
-	@test -n "$$(find Migrations -name '*.cs' 2>/dev/null)" || (echo "❌ No migration files found" && exit 1)
-	@echo "✅ Migrations created"
-	@echo ""
-	@echo "✅ All pipeline verifications passed!"
-	@echo "Pipeline is ready for use."
-
-# Run the view model generation pipeline (views.yaml → ViewModels/*.cs)
-# Generates partial class view models with DataAnnotations for Dapper queries
-run-view-pipeline: build
-	@echo "Running view model generation pipeline..."
-	cd ModelGenerator && "../$(DOTNET)" run -- --mode=views --views-yaml=../views.yaml --output-dir=../DotNetWebApp.Models/ViewModels
-	@echo ""
-	@echo "✅ View pipeline complete!"
-	@echo "Generated view models in DotNetWebApp.Models/ViewModels/"
-
-# Run both entity and view generation pipelines
-run-all-pipelines: run-ddl-pipeline run-view-pipeline
-	@echo ""
-	@echo "✅ All generation pipelines complete!"
-	@echo "  - Entities: DotNetWebApp.Models/Generated/"
-	@echo "  - Views: DotNetWebApp.Models/ViewModels/"
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
@@ -184,13 +145,7 @@ dev:
 # Uses kill -9 because dotnet watch ignores SIGTERM for graceful shutdown handling
 stop-dev:
 	@echo "Looking for orphaned 'dotnet watch' processes..."
-	@PIDS=$$(ps -ef | grep -e "dotnet-build\.sh watch" -e "dotnet watch --project DotNetWebApp.csproj" -e "dotnet-watch.dll --project DotNetWebApp.csproj" -e "bin/Debug/net8.0/DotNetWebApp" | grep -v grep | awk '{print $$2}'); \
-	if [ -n "$$PIDS" ]; then \
-		echo "Found PIDs: $$PIDS"; \
-		kill -9 $$PIDS 2>/dev/null && echo "Force-stopped orphaned dev processes." || echo "Failed to stop some processes (may need sudo)."; \
-	else \
-		echo "No orphaned dev processes found."; \
-	fi
+	@ps -ef | grep -e "dotnet-build\.sh watch" -e "dotnet watch --project DotNetWebApp.csproj" -e "dotnet-watch.dll --project DotNetWebApp.csproj" -e "bin/Debug/net8.0/DotNetWebApp" | grep -v grep | awk '{print $$2}' | xargs -r kill -9 2>/dev/null && echo "Force-stopped orphaned dev processes." || echo "No orphaned dev processes found or failed to stop them."
 	@$(MAKE) shutdown-build-servers
 
 # Start the SQL Server Docker container used for local dev

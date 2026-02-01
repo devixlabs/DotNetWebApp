@@ -8,6 +8,10 @@
     @foreach (var app in AppDictionary.GetAllApplications())
     {
         <RadzenPanelMenuItem Text="@app.Title" Icon="@(app.Icon ?? "apps")" Expanded="@IsActiveApp(app.Name)">
+            @if (!string.IsNullOrEmpty(app.Url))
+            {
+                <RadzenPanelMenuItem Text="Open Application" Icon="open_in_new" Path="@app.Url" Target="_blank" />
+            }
             @foreach (var sectionItem in SpaSections.GetSectionsForApplication(app.Name))
             {
                 var sectionPath = GetSectionPath(app.Name, sectionItem);
@@ -46,6 +50,7 @@
             SpaSection.Dashboard => "dashboard",
             SpaSection.Settings => "settings",
             SpaSection.Entity => "table_chart",
+            SpaSection.View => "assessment",
             _ => "apps"
         };
     }

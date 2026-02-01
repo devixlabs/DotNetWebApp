@@ -921,6 +921,43 @@ Add filter controls that pass parameters to the view:
 </div>
 ```
 
+### Using the ViewSection Generic Component
+
+For most view display scenarios, use the **reusable `ViewSection.razor` component** instead of building custom components. ViewSection handles:
+- Automatic parameter binding
+- Dynamic column discovery from view results
+- Filtering, sorting, and paging
+- Error handling and loading states
+- Type-safe view model handling
+
+**File:** `Components/Sections/ViewSection.razor` (built-in component)
+
+```razor
+<!-- Parent page that uses ViewSection -->
+@page "/dashboard"
+
+<ViewSection AppName="MyApp" ViewName="ProductSalesView" />
+```
+
+**What ViewSection provides automatically:**
+- ✅ Parameter input fields for all view parameters
+- ✅ Execute button to run the query
+- ✅ Responsive data grid with filtering & sorting
+- ✅ Paging support (20 rows per page)
+- ✅ Dynamic column discovery (no need to define columns)
+- ✅ Error alerts and loading indicators
+- ✅ Row count display
+
+**When to use ViewSection:**
+- Displaying any SQL view with standard grid/parameter UI
+- Dashboards and reports
+- Data exploration tools
+
+**When to use custom components:**
+- Complex layouts (multi-section dashboards)
+- Custom visualizations (charts, maps)
+- Special interactions (tree views, nested data)
+
 ### Loading Single Record
 
 Use `ExecuteViewSingleAsync` when expecting exactly one result:

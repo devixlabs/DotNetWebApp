@@ -24,7 +24,8 @@ namespace ModelGenerator
         }
 
         /// <summary>
-        /// Generates view models from views.yaml.
+        /// Generates view models from views.yaml or data.yaml (after merge).
+        /// Handles both ViewsDefinition (from views.yaml) and AppDefinition (from data.yaml) structures.
         /// </summary>
         /// <returns>Number of view models generated</returns>
         public int Generate()
@@ -37,14 +38,47 @@ namespace ModelGenerator
                 return 0;
             }
 
-            // Deserialize views.yaml
-            // Use underscore naming convention to match snake_case YAML keys (sql_file, generate_partial, etc.)
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                .Build();
-
+            // Deserialize YAML - try AppDefinition first (data.yaml after merge), then ViewsDefinition (views.yaml)
+            // Use CamelCase naming convention for app.yaml/data.yaml files, underscore for views.yaml
             var yamlContent = File.ReadAllText(_viewsYamlPath);
-            var viewDefinitions = deserializer.Deserialize<ViewsDefinition>(yamlContent);
+            ViewsDefinition? viewDefinitions = null;
+
+            // Try AppDefinition structure first (for data.yaml with both entities and views)
+            try
+            {
+                var appDeserializer = new DeserializerBuilder()
+                    .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                    .Build();
+
+                var appDefinition = appDeserializer.Deserialize<AppDefinition>(yamlContent);
+                if (appDefinition?.Views != null)
+                {
+                    viewDefinitions = appDefinition.Views;
+                }
+            }
+            catch
+            {
+                // AppDefinition deserialization failed, try ViewsDefinition
+            }
+
+            // If AppDefinition didn't work, try ViewsDefinition structure (for views.yaml)
+            if (viewDefinitions == null)
+            {
+                try
+                {
+                    var viewsDeserializer = new DeserializerBuilder()
+                        .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                        .Build();
+
+                    viewDefinitions = viewsDeserializer.Deserialize<ViewsDefinition>(yamlContent);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: Could not deserialize {_viewsYamlPath} as AppDefinition or ViewsDefinition");
+                    Console.WriteLine($"Details: {ex.Message}");
+                    return 0;
+                }
+            }
 
             if (viewDefinitions?.Views == null || !viewDefinitions.Views.Any())
             {
