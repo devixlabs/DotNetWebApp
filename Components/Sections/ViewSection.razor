@@ -203,6 +203,7 @@
             else
             {
                 // Fallback: Execute as dynamic and extract columns from first result
+                Logger.LogWarning("View model type not found for {ViewName}, falling back to dynamic result set", ViewName);
                 var method = typeof(IViewService)
                     .GetMethod(nameof(IViewService.ExecuteViewAsync))
                     ?.MakeGenericMethod(typeof(object));

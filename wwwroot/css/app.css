@@ -113,3 +113,63 @@ html, body {
         transform: translateY(0);
     }
 }
+
+/* ApplicationSwitcher Component Styles */
+.app-switcher {
+    width: 100%;
+}
+
+.app-info {
+    padding: 12px;
+    border: 1px solid var(--rz-border-color, #ddd);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.app-info > div:first-child {
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.app-info > div:nth-child(2) {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.app-list {
+    margin-top: 16px;
+}
+
+.app-list h4 {
+    margin: 0 0 12px 0;
+    font-weight: 600;
+}
+
+.app-card {
+    padding: 12px;
+    border: 1px solid var(--rz-border-color, #eee);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.app-card:hover {
+    background-color: rgba(20, 184, 166, 0.05);
+    border-color: var(--rz-base-800, #ddd);
+}
+
+.app-card > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-card-title {
+    font-weight: bold;
+}
+
+.app-card-url {
+    font-size: 0.85rem;
+    color: #999;
+}

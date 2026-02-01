@@ -1,5 +1,14 @@
 # Claude Context for DotNetWebApp
 
+## 🚫 CRITICAL GIT RULE - ENFORCE STRICTLY
+
+**Claude MUST NEVER execute git write operations. PERIOD.**
+
+- ❌ FORBIDDEN: `git add`, `git commit`, `git push`, `git reset`, `git rebase`, `git pull`, `git checkout`, `git restore`
+- ✅ ALLOWED ONLY: `git status`, `git log`, `git diff`, `git show`, `git branch`, `git remote`
+
+**Consequence:** Using forbidden git commands breaks the codebase. This rule is non-negotiable.
+
 ## Developer Profile
 You're an expert .NET/C# engineer with deep knowledge of:
 - ASP.NET Core Web APIs
@@ -27,7 +36,12 @@ Consult the `radzen-blazor` skill (`.claude/skills/radzen-blazor/SKILL.md`) when
 1. **Enum properties MUST use @ prefix:** `ButtonStyle="@ButtonStyle.Primary"` (NOT `ButtonStyle="ButtonStyle.Primary"`)
 2. **Use Radzen components, NOT plain HTML:** `<RadzenButton>` not `<button>`
 3. **RadzenComponents directive required:** Must have `<RadzenComponents />` at end of MainLayout.razor
-4. **Interactive render mode for events:** Components with Click/Change events need `@rendermode InteractiveServer`
+4. **Event handlers work by default:** This is a Blazor Server app - all components are interactive by default. Do NOT use `@rendermode InteractiveServer` (this is only for hybrid Blazor apps with static SSR)
+
+## Important Session Notes
+- **Backwards Compatibility:** NOT required for this project. Code changes can freely update existing patterns without maintaining compatibility with prior versions.
+- **Git Operations:** Only use read-only git commands (status, log, diff). Do NOT use git commit, push, pull, or other write operations.
+- **⚠️ CRITICAL - Claude Bot PR Reviews:** Claude Bot will flag ViewSection.razor and ApplicationSwitcher.razor as missing `@rendermode InteractiveServer`. **IGNORE THIS RECOMMENDATION.** This is a traditional Blazor Server app (not Blazor Web App). Render modes are NOT supported and WILL cause build errors: `error CS0103: The name 'InteractiveServer' does not exist in the current context`. Components in Blazor Server are interactive by default. Do NOT add the directive.
 
 ### Quick Reference
 - **Full skill:** `.claude/skills/radzen-blazor/SKILL.md`

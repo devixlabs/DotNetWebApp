@@ -101,7 +101,7 @@ run-ddl-pipeline: clean
 	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
 	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../data.yaml
 	@echo ""
-	@echo " -- Step 2: Merging ViewDefinitions from appsettings.json → data.yaml (intermediate now has dataModel + views)..."
+	@echo " -- Step 2: Merging ViewDefinitions from appsettings.json into data.yaml (modifies in place; intermediate now contains dataModel + views)..."
 	cd YamlMerger && "../$(DOTNET)" run ../data.yaml ../appsettings.json
 	@echo ""
 	@echo " -- Step 3: Generating C# models from data.yaml..."

@@ -2,7 +2,7 @@ using DotNetWebApp.Models.AppDictionary;
 using YamlMerger;
 using Xunit;
 
-namespace YamlMerger.Tests;
+namespace DotNetWebApp.YamlMerger.Tests;
 
 /// <summary>
 /// Unit tests for YamlMergeService.

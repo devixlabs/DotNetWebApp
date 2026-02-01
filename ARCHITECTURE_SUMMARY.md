@@ -157,13 +157,15 @@
 
 **Goal:** Build reusable Blazor components with read and write capabilities
 
-**Status:** PLANNED - See `PHASE3_VIEW_UI.md` for patterns, `PHASE4_VIEW_EDIT.md` for editable components
+**Status:** Phase 3 (read-only) PARTIALLY COMPLETE - See `PHASE3_VIEW_UI.md` for patterns, `PHASE4_VIEW_EDIT.md` for editable components
 
 **Deliverables (Phase 3 - Read Patterns):**
 - ✅ `ProductDashboard.razor` reference component (DONE)
+- ✅ `ViewSection.razor` generic view display component (DONE) - Displays any SQL view with parameters, filtering, sorting, and dynamic column discovery
+- ✅ `ApplicationSwitcher.razor` multi-tenant selector component (DONE) - Allows users to switch between applications/schemas
 - `ProductForm.razor` form pattern example
 - `ExecutiveDashboard.razor` dashboard pattern example
-- Radzen component patterns documented in SKILLS.md
+- Radzen component patterns documented in SKILLS.md (updated with ViewSection usage examples)
 
 **Deliverables (Phase 4 - Write Capabilities):**
 - `SmartDataGrid<T>` component (replaces/extends DynamicDataGrid)

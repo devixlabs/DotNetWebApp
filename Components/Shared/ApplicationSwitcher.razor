@@ -17,13 +17,9 @@
         var currentApp = AppDictionary.GetAllApplications().FirstOrDefault(a => a.Name == selectedAppName);
         @if (currentApp != null)
         {
-            <div class="app-info" style="padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
-                <div style="margin-bottom: 8px;">
-                    <strong>@currentApp.Title</strong>
-                </div>
-                <div style="font-size: 0.9rem; color: #666; margin-bottom: 8px;">
-                    @currentApp.Description
-                </div>
+            <div class="app-info">
+                <div>@currentApp.Title</div>
+                <div>@currentApp.Description</div>
                 @if (!string.IsNullOrEmpty(currentApp.Url))
                 {
                     <RadzenLink Path="@currentApp.Url" Target="_blank" Text="Open Application" Icon="open_in_new" />
@@ -37,14 +33,14 @@
         <RadzenStack Orientation="Orientation.Vertical" Gap="8px">
             @foreach (var app in AppDictionary.GetAllApplications())
             {
-                <div class="app-card" style="padding: 12px; border: 1px solid #eee; border-radius: 4px; cursor: pointer;" @onclick="@((MouseEventArgs e) => OnApplicationChanged(app.Name))">
-                    <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="app-card" @onclick="@((MouseEventArgs e) => OnApplicationChanged(app.Name))">
+                    <div>
                         <RadzenIcon Icon="@(app.Icon ?? "apps")" />
                         <div>
-                            <div style="font-weight: bold;">@app.Title</div>
+                            <div class="app-card-title">@app.Title</div>
                             @if (!string.IsNullOrEmpty(app.Url))
                             {
-                                <div style="font-size: 0.85rem; color: #999;">
+                                <div class="app-card-url">
                                     <RadzenLink Path="@app.Url" Target="_blank" Text="@app.Url" Icon="link" />
                                 </div>
                             }
