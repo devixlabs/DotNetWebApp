@@ -44,7 +44,7 @@ your-schema.sql → DdlParser → app.yaml → ModelGenerator → DotNetWebApp.M
 
 ### Example: Parse Your Own Schema
 
-Create or replace `schema.sql`:
+Create or replace `sql/schema.sql`:
 ```sql
 CREATE TABLE Companies (
     Id INT PRIMARY KEY IDENTITY(1,1),
@@ -111,8 +111,10 @@ DotNetWebApp/
 │   └── ModelGenerator.Tests/
 ├── wwwroot/                 # Static files (CSS, JS, images)
 ├── app.yaml                 # 📋 Generated data model definition (from SQL DDL)
-├── schema.sql               # Source SQL DDL
-├── seed.sql                 # Seed data
+├── sql/
+│   ├── schema.sql           # Source SQL DDL
+│   ├── seed.sql             # Seed data
+│   └── views/               # SQL SELECT queries for views
 ├── Makefile                 # Build automation
 └── dotnet-build.sh          # SDK version wrapper script
 ```
@@ -151,7 +153,7 @@ DotNetWebApp/
 | `make build-all` | Build full solution including tests |
 | `make build-release` | Release build for main projects |
 | `make clean` | Clean build outputs and binlog |
-| `make run-ddl-pipeline` | Parse `schema.sql` → app.yaml → models → migration → build |
+| `make run-ddl-pipeline` | Parse `sql/schema.sql` → app.yaml → models → migration → build |
 | `make migrate` | Apply generated migration |
 | `make seed` | Apply migration and seed data |
 | `make dev` | Start dev server with hot reload (https://localhost:7012 / http://localhost:5210) |
@@ -171,7 +173,7 @@ DotNetWebApp/
 
 ## Database Migrations
 
-After modifying `schema.sql` or running the DDL parser:
+After modifying `sql/schema.sql` or running the DDL parser:
 
 ```bash
 # Start SQL Server
@@ -186,7 +188,7 @@ make migrate
 
 ## Sample Seed Data
 
-`seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
+`sql/seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
 
 ```bash
 make seed
@@ -194,7 +196,7 @@ make seed
 
 Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
 
-The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `seed.sql` via the `DataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
+The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `sql/seed.sql` via the `DataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `sql/seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
 
 ---
 
@@ -228,7 +230,7 @@ docker exec -it sqlserver-dev \
   -d DotNetWebAppDb -Q "SELECT Name, Price, CategoryId FROM dbo.Products;"
 ```
 
-These commands let you run `seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
+These commands let you run `sql/seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
 
 ---
 
@@ -269,7 +271,7 @@ Visit **https://localhost:7012** (or **http://localhost:5210**) in your browser.
 ## Adding a New Data Entity from DDL
 
 ### Step 1: Update your SQL schema file
-File: `schema.sql`
+File: `sql/schema.sql`
 ```sql
 CREATE TABLE Authors (
     Id INT PRIMARY KEY IDENTITY(1,1),
@@ -366,12 +368,12 @@ make dev  # Uses ports from launchSettings.json
 | File | Purpose |
 |------|---------|
 | `app.yaml` | 📋 Generated data model (from SQL DDL) plus app metadata |
-| `schema.sql` | 📄 Source SQL DDL for the generation pipeline |
+| `sql/schema.sql` | 📄 Source SQL DDL for the generation pipeline |
 | `DotNetWebApp.Models/` | 🔄 Separate models assembly containing all data models |
 | `DotNetWebApp.Models/Generated/` | 🔄 Auto-generated C# entities (don't edit directly) |
 | `DotNetWebApp.Models/AppDictionary/` | YAML model classes for app.yaml structure |
 | `Migrations/` | 📚 Generated schema history (current baseline checked in; pipeline regenerates) |
-| `seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
+| `sql/seed.sql` | 🧪 Seed data for the default schema (run after schema apply) |
 | `DdlParser/` | 🆕 Converts SQL DDL → YAML |
 | `ModelGenerator/` | 🔄 Converts YAML → C# entities |
 | `SECRETS.md` | 🔐 Connection string setup guide |

@@ -18,7 +18,7 @@ namespace DotNetWebApp.Tests;
 
 public class DataSeederTests
 {
-    private const string SeedFileName = "seed.sql";
+    private const string SeedFileName = "sql/seed.sql";
 
     [Fact]
     public async Task SeedAsync_AddsRows_WhenScriptExists()
@@ -27,6 +27,7 @@ public class DataSeederTests
         try
         {
             var sqlPath = Path.Combine(tempDir, SeedFileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(sqlPath)!);
             await File.WriteAllTextAsync(sqlPath, "INSERT INTO Categories (Name) VALUES ('Seeded');");
 
             await using var connection = new SqliteConnection("DataSource=:memory:");

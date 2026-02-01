@@ -23,7 +23,7 @@ The application uses a **DDL-first approach**: you define your database schema i
 ### The Pipeline
 
 ```
-schema.sql (YOUR DDL)
+sql/schema.sql (YOUR DDL)
     ↓ (run: make run-ddl-pipeline)
 app.yaml (generated YAML config)
     ↓ (automatic on startup)
@@ -36,12 +36,12 @@ Database Migration & Tables
 
 | File | Purpose |
 |------|---------|
-| `schema.sql` | 📝 Your SQL DDL file - this is what you edit to define tables |
-| `app.yaml` | 🔄 Auto-generated from `schema.sql` - never edit manually |
+| `sql/schema.sql` | 📝 Your SQL DDL file - this is what you edit to define tables |
+| `app.yaml` | 🔄 Auto-generated from `sql/schema.sql` - never edit manually |
 | `Models/Generated/` | 🔄 Auto-generated C# entity classes - never edit manually |
 | `Migrations/` | 🔄 Auto-generated EF Core migrations - ignored in repo |
 
-## Writing Schema (schema.sql)
+## Writing Schema (sql/schema.sql)
 
 ### Basic Table Structure
 
@@ -124,14 +124,14 @@ CREATE TABLE Products (
 
 ## Running the DDL Pipeline
 
-After editing `schema.sql`, regenerate everything:
+After editing `sql/schema.sql`, regenerate everything:
 
 ```bash
 make run-ddl-pipeline
 ```
 
 This:
-1. Parses your `schema.sql` file
+1. Parses your `sql/schema.sql` file
 2. Generates `app.yaml` with entity definitions
 3. Creates C# entity classes in `Models/Generated/`
 4. Rebuilds the project
@@ -146,7 +146,7 @@ make migrate
 ## Troubleshooting
 
 **Q: My schema changes aren't showing up in the API**
-- Run `make run-ddl-pipeline` - the pipeline must be re-run after editing schema.sql
+- Run `make run-ddl-pipeline` - the pipeline must be re-run after editing sql/schema.sql
 
 **Q: I get a migration error**
 - Ensure `make db-start` is running (SQL Server container must be up)
@@ -157,7 +157,7 @@ make migrate
 
 ## Important Notes
 
-- Always edit `schema.sql`, never edit `app.yaml` or `Models/Generated/`
+- Always edit `sql/schema.sql`, never edit `app.yaml` or `Models/Generated/`
 - The DDL parser handles: tables, columns, types, nullability, primary keys, foreign keys, IDENTITY, DEFAULT
 - Currently does NOT handle: composite primary keys, UNIQUE constraints, CHECK constraints, computed columns
 - After major schema changes, you may need to drop and recreate the database: `make db-drop` then `make db-start`
@@ -172,13 +172,13 @@ This guide covers writing and debugging SQL queries in this project.
 
 | File | Purpose |
 |------|---------|
-| `schema.sql` | DDL (table definitions) |
-| `seed.sql` | DML (sample data to insert) |
+| `sql/schema.sql` | DDL (table definitions) |
+| `sql/seed.sql` | DML (sample data to insert) |
 | SQL Server (in Docker) | The actual running database |
 
-## Sample Data (seed.sql)
+## Sample Data (sql/seed.sql)
 
-The `seed.sql` file contains INSERT statements that populate the database with example data:
+The `sql/seed.sql` file contains INSERT statements that populate the database with example data:
 
 ```sql
 INSERT INTO Categories (Name) VALUES ('Electronics');

@@ -141,7 +141,7 @@ public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
 - Run (dev): `make dev` (with hot reload - use for active development)
 - Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test` (build and run tests sequentially - 10-15 min)
-- Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from schema.sql + appsettings.json → app.yaml)
+- Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from sql/schema.sql + appsettings.json → app.yaml)
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
 - Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)
@@ -176,7 +176,7 @@ DotNetWebApp/
 │   └── Sections/                 # SPA components (Dashboard, Settings, Entity, etc.)
 ├── Data/
 │   ├── AppDbContext.cs           # EF Core DbContext with dynamic entity discovery
-│   ├── DataSeeder.cs             # Executes seed.sql via EF
+│   ├── DataSeeder.cs             # Executes sql/seed.sql via EF
 │   └── Dapper/                   # 🆕 Dapper infrastructure (Phase 2)
 │       ├── IDapperQueryService.cs
 │       └── DapperQueryService.cs
@@ -220,8 +220,10 @@ DotNetWebApp/
 ├── _Imports.razor                # Global Blazor using statements
 ├── appsettings.json              # Configuration: includes ViewDefinitions for view generation
 ├── app.yaml                      # 📋 Final runtime config (generated: entities + views)
-├── schema.sql                    # Sample SQL DDL for testing DDL parser
-├── seed.sql                      # Sample seed data (Categories, Products)
+├── sql/
+│   ├── schema.sql                # Source SQL DDL for testing DDL parser
+│   ├── seed.sql                  # Seed data (Categories, Products)
+│   └── views/                    # SQL SELECT queries for views
 ├── Makefile                      # Build automation
 ├── dotnet-build.sh               # .NET SDK version wrapper
 ├── PHASE2_VIEW_PIPELINE.md       # Detailed Phase 2 implementation guide
@@ -249,7 +251,7 @@ DotNetWebApp/
   - Handles table definitions, constraints, foreign keys, IDENTITY columns, DEFAULT values
   - Pipeline target: `make run-ddl-pipeline` executes the full workflow
 - **Entity Metadata Service:** `IEntityMetadataService` maps app.yaml entities to CLR types for API/UI reuse
-- **Seed Data System:** `DataSeeder` executes `seed.sql` once schema exists
+- **Seed Data System:** `DataSeeder` executes `sql/seed.sql` once schema exists
   - Run with: `make seed`
   - Guards against duplicate inserts
 - **Tenant Schema Support:** Multi-schema via `X-Customer-Schema` header (defaults to `dbo`)
@@ -290,7 +292,7 @@ DotNetWebApp/
 
 ## 🚨 Multi-Schema Support: Critical Pitfalls
 
-**This project is DDL-driven.** Everything flows from `schema.sql` → `app.yaml` → generated C# models. Multiple schemas with identical table names (e.g., `acme.Companies` and `initech.Companies`) are perfectly valid SQL but require careful handling throughout the codebase.
+**This project is DDL-driven.** Everything flows from `sql/schema.sql` → `app.yaml` → generated C# models. Multiple schemas with identical table names (e.g., `acme.Companies` and `initech.Companies`) are perfectly valid SQL but require careful handling throughout the codebase.
 
 ### The Problem
 When the same table name exists in multiple schemas, components must use **schema-qualified names** (`schema:TableName`) everywhere—not just plain table names. Failing to do so causes:
@@ -365,14 +367,14 @@ var result = await EntityApiService.GetEntitiesAsync(metadata.Definition.Name);
 | File | Purpose |
 |------|---------|
 | `appsettings.json` | Configuration file with ViewDefinitions section; defines SQL views for code generation and app visibility |
-| `app.yaml` | 📋 Generated runtime configuration with entities + views (generated from schema.sql + appsettings.json) |
+| `app.yaml` | 📋 Generated runtime configuration with entities + views (generated from sql/schema.sql + appsettings.json) |
 | `DotNetWebApp.Models/` | 🔄 Separate models assembly containing all data models and configuration classes |
 | `DotNetWebApp.Models/Generated/` | 🔄 Auto-generated C# entities (don't edit manually) |
 | `DotNetWebApp.Models/ViewModels/` | 🔄 Auto-generated C# view models from appsettings.json ViewDefinitions (don't edit manually) |
 | `DotNetWebApp.Models/AppDictionary/` | YAML model classes for app.yaml structure |
-| `schema.sql` | SQL DDL source for entities; parsed by `make run-ddl-pipeline` |
+| `sql/schema.sql` | SQL DDL source for entities; parsed by `make run-ddl-pipeline` |
 | `sql/views/` | SQL SELECT queries for views; referenced by appsettings.json ViewDefinitions |
-| `seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
+| `sql/seed.sql` | Sample seed data INSERT statements for default schema; executed by `make seed` |
 | `Data/AppDbContext.cs` | EF Core DbContext that discovers generated entities via reflection |
 | `Services/AppDictionaryService.cs` | Loads and caches `app.yaml` for runtime access to entity definitions |
 | `Services/IEntityMetadataService.cs` | Maps YAML entity names to CLR types for API/UI |

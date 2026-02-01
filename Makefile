@@ -99,7 +99,7 @@ test:
 run-ddl-pipeline: clean
 	@echo "Starting pipeline run..."
 	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
-	cd DdlParser && "../$(DOTNET)" run -- ../schema.sql ../data.yaml
+	cd DdlParser && "../$(DOTNET)" run -- ../sql/schema.sql ../data.yaml
 	@echo ""
 	@echo " -- Step 2: Merging ViewDefinitions from appsettings.json into data.yaml (modifies in place; intermediate now contains dataModel + views)..."
 	cd YamlMerger && "../$(DOTNET)" run ../data.yaml ../appsettings.json

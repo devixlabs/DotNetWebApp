@@ -340,7 +340,7 @@ builder.Services.AddScoped<IDapperQueryService>(sp =>
 
 ### Adding a New Entity
 
-1. Update `schema.sql` with DDL
+1. Update `sql/schema.sql` with DDL
 2. Run `make run-ddl-pipeline`
 3. Run `dotnet ef migrations add AddNewEntity`
 4. Run `make migrate`

@@ -332,7 +332,7 @@ public class YamlGeneratorTests
     [Fact]
     public void Generate_ComplexSchema_ProducesCompleteYaml()
     {
-        // Arrange - Full schema from the project's schema.sql
+        // Arrange - Full schema from the project's sql/schema.sql
         var tables = new List<TableMetadata>
         {
             new TableMetadata

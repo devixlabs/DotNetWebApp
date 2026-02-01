@@ -23,7 +23,7 @@ This document defines the **simplified hybrid architecture** for DotNetWebApp, c
 
 ```
 ┌─────────────────────────────────────────────┐
-│ SQL DDL (schema.sql)                        │
+│ SQL DDL (sql/schema.sql)                    │
 │ → app.yaml                                  │
 │ → Models/Generated/*.cs (EF entities)       │
 │ → IEntityOperationService (dynamic CRUD)    │
@@ -333,7 +333,7 @@ public async Task ProcessOrderWithAuditAsync(int orderId)
 make run-ddl-pipeline
 
 # Steps:
-# 1. DdlParser reads schema.sql
+# 1. DdlParser reads sql/schema.sql
 # 2. Generates app.yaml
 # 3. ModelGenerator reads app.yaml
 # 4. Generates Models/Generated/*.cs
