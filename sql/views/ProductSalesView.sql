@@ -17,9 +17,9 @@ SELECT TOP (@TopN)
     COALESCE(u.un_factor, 0) AS UnitFactor,
     COALESCE(COUNT(DISTINCT v.ve_id), 0) AS VendorCount,
     COALESCE(COUNT(DISTINCT v.ve_id) * p.pr_lispric, 0) AS TotalValue
-FROM dbo.dmprod p
-LEFT JOIN dbo.dmunit u ON p.pr_prunid = u.un_id
-LEFT JOIN dbo.dmvend v ON v.ve_id > 0
+FROM GAI.dmprod p
+LEFT JOIN GAI.dmunit u ON p.pr_prunid = u.un_id
+LEFT JOIN GAI.dmvend v ON v.ve_id > 0
 WHERE p.pr_active = 1
 GROUP BY p.pr_id, p.pr_descrip, p.pr_lispric, u.un_name, u.un_factor
 ORDER BY TotalValue DESC;
