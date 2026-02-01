@@ -39,7 +39,11 @@ namespace DotNetWebApp.Data
 
                 // Extract schema from [Table] attribute if present
                 var tableAttr = type.GetCustomAttribute<TableAttribute>();
-                var tableName = ToPlural(type.Name);
+
+                // Use table name from [Table] attribute if available, otherwise derive from class name
+                // NOTE: The ModelGenerator generates [Table] names with PascalCase (e.g., "Dmbill"),
+                // but schema.sql uses lowercase (e.g., "dmbill"). Convert to lowercase for consistency.
+                var tableName = (tableAttr?.Name ?? type.Name).ToLower();
                 var tableSchema = tableAttr?.Schema;
 
                 // Apply table name and schema (schema takes precedence from attribute)
@@ -73,23 +77,5 @@ namespace DotNetWebApp.Data
             }
         }
 
-        private static string ToPlural(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return name;
-            }
-
-            if (name.EndsWith("y", StringComparison.OrdinalIgnoreCase) && name.Length > 1)
-            {
-                var beforeY = name[name.Length - 2];
-                if (!"aeiou".Contains(char.ToLowerInvariant(beforeY)))
-                {
-                    return name[..^1] + "ies";
-                }
-            }
-
-            return name.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? name : $"{name}s";
-        }
     }
 }

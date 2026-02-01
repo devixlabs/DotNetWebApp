@@ -376,14 +376,14 @@ public class YamlGeneratorTests
 
         Assert.Equal(2, appDefinition.DataModel.Entities.Count);
 
-        // YamlGenerator singularizes table names (Products -> Product)
-        var productsEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Product");
+        // YamlGenerator preserves table names as-is (no singularization)
+        var productsEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Products");
         Assert.NotNull(productsEntity);
         Assert.Equal(6, productsEntity.Properties.Count);
         Assert.Single(productsEntity.Relationships);
 
         var relationship = productsEntity.Relationships[0];
-        Assert.Equal("Category", relationship.TargetEntity); // Singularized
+        Assert.Equal("Categories", relationship.TargetEntity); // Preserved as-is
         Assert.Equal("CategoryId", relationship.ForeignKey);
     }
 

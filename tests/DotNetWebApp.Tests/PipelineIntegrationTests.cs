@@ -57,8 +57,8 @@ CREATE TABLE Products (
 
             // Assert Phase 2: Verify YAML is valid and complete
             Assert.NotEmpty(yaml);
-            Assert.Contains("name: Product", yaml, StringComparison.OrdinalIgnoreCase); // Singularized
-            Assert.Contains("name: Category", yaml, StringComparison.OrdinalIgnoreCase); // Singularized
+            Assert.Contains("name: Products", yaml, StringComparison.OrdinalIgnoreCase); // Preserved as-is
+            Assert.Contains("name: Categories", yaml, StringComparison.OrdinalIgnoreCase); // Preserved as-is
 
             // Act Phase 3: Verify YAML can be deserialized
             var deserializer = new DeserializerBuilder()
@@ -75,7 +75,7 @@ CREATE TABLE Products (
             Assert.Equal(2, appDefinition.DataModel.Entities.Count);
 
             // Verify Category entity
-            var categoryEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Category");
+            var categoryEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Categories");
             Assert.NotNull(categoryEntity);
             Assert.Equal(2, categoryEntity.Properties.Count);
 
@@ -87,7 +87,7 @@ CREATE TABLE Products (
             Assert.True(categoryIdProp.IsRequired);
 
             // Verify Product entity
-            var productEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Product");
+            var productEntity = appDefinition.DataModel.Entities.FirstOrDefault(e => e.Name == "Products");
             Assert.NotNull(productEntity);
             Assert.Equal(6, productEntity.Properties.Count);
 
@@ -111,7 +111,7 @@ CREATE TABLE Products (
             // Verify relationship
             Assert.Single(productEntity.Relationships);
             var relationship = productEntity.Relationships[0];
-            Assert.Equal("Category", relationship.TargetEntity);
+            Assert.Equal("Categories", relationship.TargetEntity);
             Assert.Equal("CategoryId", relationship.ForeignKey);
             Assert.Equal("Id", relationship.PrincipalKey);
 
@@ -191,13 +191,13 @@ CREATE TABLE Products (
                 .Build();
 
             var initialAppDef = deserializer.Deserialize<AppDefinition>(initialYaml);
-            var initialProduct = initialAppDef.DataModel.Entities.FirstOrDefault(e => e.Name == "Product");
+            var initialProduct = initialAppDef.DataModel.Entities.FirstOrDefault(e => e.Name == "Products");
             Assert.NotNull(initialProduct);
             Assert.Equal(2, initialProduct.Properties.Count);
 
             // Assert: Verify updated has 3 properties
             var updatedAppDef = deserializer.Deserialize<AppDefinition>(updatedYaml);
-            var updatedProduct = updatedAppDef.DataModel.Entities.FirstOrDefault(e => e.Name == "Product");
+            var updatedProduct = updatedAppDef.DataModel.Entities.FirstOrDefault(e => e.Name == "Products");
             Assert.NotNull(updatedProduct);
             Assert.Equal(3, updatedProduct.Properties.Count);
 
@@ -249,15 +249,15 @@ CREATE TABLE CompanyProducts (
 
         // Assert
         var companyProductEntity = appDefinition.DataModel.Entities
-            .FirstOrDefault(e => e.Name == "CompanyProduct"); // Singularized
+            .FirstOrDefault(e => e.Name == "CompanyProducts"); // Preserved as-is
 
         Assert.NotNull(companyProductEntity);
         Assert.Equal(2, companyProductEntity.Relationships.Count);
 
         Assert.Contains(companyProductEntity.Relationships, r =>
-            r.ForeignKey == "CompanyId" && r.TargetEntity == "Company");
+            r.ForeignKey == "CompanyId" && r.TargetEntity == "Companies");
         Assert.Contains(companyProductEntity.Relationships, r =>
-            r.ForeignKey == "ProductId" && r.TargetEntity == "Product");
+            r.ForeignKey == "ProductId" && r.TargetEntity == "Products");
     }
 
     [Fact]

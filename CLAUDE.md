@@ -141,6 +141,8 @@ public async Task ServiceMethod_ValidInput_ReturnsExpectedResult()
 - Run (prod): `make run` (without hot reload - use for production-like testing)
 - Test: `make test` (build and run tests sequentially - 10-15 min)
 - Run DDL Pipeline: `make run-ddl-pipeline` (unified pipeline: entities + views from sql/schema.sql + appsettings.json → app.yaml)
+- End-to-End Verification: `./verify.sh` (complete pipeline + seed + dev server + integration tests; use instead of manual command sequences)
+- Seed Database: `make seed` - Executes sql/seed.sql; ensure all column names match schema.sql exactly
 - Apply Migration: `make migrate`
 - Docker Build: `make docker-build`
 - Clean: `make clean` (cleans build outputs + stops build servers + stops dev sessions)
@@ -268,15 +270,32 @@ DotNetWebApp/
 ### ⚠️ Current Limitations / WIP
 - Generated models folder (`DotNetWebApp.Models/Generated/`) is empty initially; populated by `make run-ddl-pipeline` or manual `ModelGenerator` run
 - Branding currently mixed between `appsettings.json` and `app.yaml` (could be fully moved to YAML)
-- Composite primary keys not supported in DDL parser (single column PKs only)
+- **Composite primary/foreign keys not supported in DDL parser** (single column PKs/FKs only). Tables using composite keys are commented out in `sql/*.sql` files:
+  - `acuity_forms` - composite PK (`id`, `appointment_id`)
+  - `acuity_form_values` - composite FK referencing `acuity_forms`
+- **`__EFMigrationsHistory` must NOT be in schema.sql** - EF Core creates this table automatically. Including it causes "table already exists" errors during migration. This table is commented out in all `sql/*.sql` files.
 - CHECK and UNIQUE constraints ignored by DDL parser
 - Computed columns ignored by DDL parser
 
+### ⚠️ Seed Data Constraints
+
+- **seed.sql MUST match schema.sql exactly** - Column names, NOT NULL constraints, and foreign key dependencies must align. When fixing seed.sql, examine the CREATE TABLE statements in schema.sql directly rather than relying on documentation.
+- **NOT NULL columns require values** - Complex legacy tables often have many NOT NULL columns. Full seed data requires satisfying complete FK dependency chains; alternatively, exclude these tables and seed only via application logic.
+- **Minimal seed strategy for testing** - Seed only simple, dependency-free tables when building test datasets. Complex tables with FK requirements should be excluded or populated by application logic.
+- **Commented-out tables in schema.sql should not be seeded** - Keep seed.sql in sync with which tables are disabled. Update seed comments when schema.sql table definitions change.
+
+### Database Reset & Seed Pipeline
+
+- **Standard reset flow:** `make db-drop && make run-ddl-pipeline && make migrate && make seed` - Use this for clean slate after schema.sql changes.
+- **End-to-end testing:** Use `./verify.sh` instead of running commands individually - it handles the full pipeline, starts the dev server, and runs comprehensive CRUD tests with automatic cleanup.
+- **Verify.sh stages:** (1) make check, (2) make test, (3) db-drop, (4) run-ddl-pipeline, (5) migrate, (6) seed, (7) start dev server, (8) run integration tests.
+
 ### 🔧 Development Status
-- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-drop`, `stop-dev`, `shutdown-build-servers`)
+- All Makefile targets working (`check`, `build`, `dev`, `run`, `test`, `migrate`, `seed`, `docker-build`, `db-start`, `db-stop`, `db-destroy`, `db-create`, `db-drop`, `stop-dev`, `shutdown-build-servers`)
 - `dotnet-build.sh` wrapper manages .NET SDK version conflicts across Windows/WSL/Linux
 - `make migrate` requires SQL Server running and valid connection string
 - Session tracking via `SESSION_SUMMARY.md` for LLM continuity between sessions
+- **Database schema changes:** When `schema.sql` structure changes significantly, run `make db-drop` before `make migrate` to clear stale EF migrations that cause "already exists" errors. The `db-drop` target now clears migrations AND drops the database for a clean slate.
 
 ### ⚠️ Known Process Management Pitfalls
 - **MSBuild node reuse:** `dotnet build` spawns MSBuild node processes (`/nodeReuse:true`) that persist after builds. Use `make shutdown-build-servers` to force-kill them.
@@ -411,3 +430,5 @@ Latest work focuses on modular architecture and comprehensive developer document
 - Makefile uses the wrapper script for consistency across all dotnet operations; do not modify the system .NET runtime
 - Package versions use wildcards (`8.*`) to support flexibility across different developer environments while maintaining .NET 8 compatibility
 - Models are in separate `DotNetWebApp.Models` project; YamlDotNet dependency lives there (removed from main project)
+- **SQL table case sensitivity:** `schema.sql` and `seed.sql` must use identical table name casing (lowercase recommended); the codebase cannot apply automatic case transformations without breaking SQL queries
+- **verify.sh end-to-end test:** `./verify.sh` runs the complete pipeline (db-drop → run-ddl-pipeline → migrate → seed → CRUD tests) and is the canonical way to verify clean slate database setup from schema.sql changes. Update test entity names in verify.sh when changing schema.sql entities (currently hardcoded to acme:Product, initech:Company)

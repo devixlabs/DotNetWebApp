@@ -102,22 +102,8 @@ public class YamlGenerator
 
     private string SingularizeName(string pluralName)
     {
-        // Simple pluralization rules (can be expanded as needed)
-        if (pluralName.EndsWith("ies", StringComparison.OrdinalIgnoreCase))
-        {
-            return pluralName.Substring(0, pluralName.Length - 3) + "y";
-        }
-
-        if (pluralName.EndsWith("es", StringComparison.OrdinalIgnoreCase))
-        {
-            return pluralName.Substring(0, pluralName.Length - 2);
-        }
-
-        if (pluralName.EndsWith("s", StringComparison.OrdinalIgnoreCase))
-        {
-            return pluralName.Substring(0, pluralName.Length - 1);
-        }
-
+        // Keep table names as-is from SQL DDL (no singularization)
+        // Previous implementation incorrectly stripped "es" from words like "sources" and "values"
         return pluralName;
     }
 }

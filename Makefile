@@ -20,7 +20,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
+.PHONY: clean check restore build build-release https migrate test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -160,13 +160,42 @@ db-stop:
 db-logs:
 	@docker logs -f sqlserver-dev
 
+# Completely destroy the SQL Server Docker container (for clean slate)
+db-destroy:
+	@echo "Stopping and removing sqlserver-dev container..."
+	@docker stop sqlserver-dev 2>/dev/null || true
+	@docker rm sqlserver-dev 2>/dev/null || true
+	@rm -f Migrations/*.cs && echo "Cleared old EF Core migrations."
+	@echo "Container destroyed. Run 'make db-create' to recreate."
+
+# Create a fresh SQL Server Docker container (requires SA_PASSWORD env var)
+db-create:
+	@if [ -z "$$SA_PASSWORD" ]; then \
+		echo "Error: SA_PASSWORD environment variable required" >&2; \
+		echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; \
+		exit 1; \
+	fi
+	@echo "Creating sqlserver-dev container..."
+	@docker run -e "ACCEPT_EULA=Y" \
+		-e "MSSQL_SA_PASSWORD=$$SA_PASSWORD" \
+		-p 1433:1433 \
+		--name sqlserver-dev \
+		--hostname sqlserver \
+		-d mcr.microsoft.com/mssql/server:2022-latest
+	@echo "Waiting for SQL Server to start (30s)..."
+	@sleep 30
+	@echo "Container created. Run 'make migrate' to initialize database."
+
 # Tail native SQL Server logs (systemd + errorlog)
 ms-logs:
 	@echo "Tailing systemd and errorlog (Ctrl+C to stop)..."
 	@sudo sh -c 'journalctl -u mssql-server -f --no-pager & tail -f /var/opt/mssql/log/errorlog; wait'
 
 # Drop the local dev database (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
+# Also removes EF Core migrations to ensure clean slate when schema.sql changes
 db-drop:
+	# Clear old migrations to avoid conflicts when schema.sql changes
+	@rm -f Migrations/*.cs && echo "Cleared old EF Core migrations."
 	# shellcheck disable=SC2016
 	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
 		PASSWORD="$$SA_PASSWORD"; \
@@ -186,8 +215,8 @@ db-drop:
 			exit 1; \
 		fi; \
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C \
-			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
-		echo "Dropped database DotNetWebAppDb (if it existed)."'
+			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END" && \
+		echo "Dropped database DotNetWebAppDb (if it existed)." || echo "Failed to drop database."'
 
 # Local install of MSSQL (no Docker)
 ms-status:
@@ -198,7 +227,10 @@ ms-start:
 	sudo systemctl start mssql-server
 
 # Drop the database from native MSSQL instance on Linux
+# Also removes EF Core migrations to ensure clean slate when schema.sql changes
 ms-drop:
+	# Clear old migrations to avoid conflicts when schema.sql changes
+	@rm -f Migrations/*.cs && echo "Cleared old EF Core migrations."
 	# shellcheck disable=SC2016
 	@/bin/sh -c '\
 		PASSWORD="$$SA_PASSWORD"; \
@@ -210,5 +242,5 @@ ms-drop:
 			exit 1; \
 		fi; \
 		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C \
-			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END"; \
-		echo "Dropped database DotNetWebAppDb (if it existed)."'
+			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END" && \
+		echo "Dropped database DotNetWebAppDb (if it existed)." || echo "Failed to drop database."'
