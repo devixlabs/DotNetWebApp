@@ -1,0 +1,293 @@
+@page "/ict-orders/{OrderNumber}"
+@using DotNetWebApp.Services.ICT
+@using DotNetWebApp.Services.ICT.Models
+@inject IICTService ICTService
+@inject NavigationManager Navigation
+@inject NotificationService NotificationService
+
+<PageTitle>ICT Order @OrderNumber</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center">
+        <RadzenButton Icon="arrow_back" Text="Back to Orders" Click="@(() => Navigation.NavigateTo("/ict-orders"))" />
+        <RadzenText TextStyle="TextStyle.H4">ICT Order @OrderNumber</RadzenText>
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="@ProgressBarMode.Indeterminate" />
+        <RadzenText>Loading order details...</RadzenText>
+    }
+    else if (order != null)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H6">Order Information</RadzenText>
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+                <RadzenText><strong>Order Number:</strong> @order.OrderNumber</RadzenText>
+                <RadzenText><strong>Source Warehouse:</strong> @GetWarehouseName(order.SourceWarehouseId)</RadzenText>
+                <RadzenText><strong>Destination Warehouse:</strong> @GetWarehouseName(order.DestinationWarehouseId)</RadzenText>
+                <RadzenText><strong>Created Date:</strong> @order.CreatedDate.ToString("M/d/yyyy h:mm tt")</RadzenText>
+                <RadzenText><strong>Job Number:</strong> @(string.IsNullOrEmpty(order.JobNumber) ? "N/A" : order.JobNumber)</RadzenText>
+                <RadzenText><strong>Notes:</strong> @(string.IsNullOrEmpty(order.Notes) ? "N/A" : order.Notes)</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenText TextStyle="TextStyle.H6">Line Items (@order.LineItems.Count)</RadzenText>
+                <RadzenButton Text="Add Product" Icon="add" Click="@OnAddProduct" ButtonStyle="@ButtonStyle.Primary" Size="@ButtonSize.Small" />
+            </RadzenStack>
+
+            @if (order.LineItems.Any())
+            {
+                <RadzenDataGrid Data="@order.LineItems"
+                                TItem="LineItem"
+                                AllowSorting="true"
+                                AllowPaging="false">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="LineItem" Property="ProductCode" Title="Product Code" Width="150px" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="Description" Title="Description" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="Quantity" Title="Quantity" Width="100px" FormatString="{0:N0}" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="UnitOfMeasure" Title="UOM" Width="80px" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="Pallets" Title="Pallets" Width="80px" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="NetWeight" Title="Net Wt" Width="100px" FormatString="{0:N2}" />
+                        <RadzenDataGridColumn TItem="LineItem" Property="GrossWeight" Title="Gross Wt" Width="100px" FormatString="{0:N2}" />
+                        <RadzenDataGridColumn TItem="LineItem" Title="Actions" Width="100px" Sortable="false">
+                            <Template Context="item">
+                                <RadzenButton Text="Remove" Size="@ButtonSize.ExtraSmall" ButtonStyle="@ButtonStyle.Danger"
+                                              Click="@(() => RemoveLineItem(item.Id))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+
+                <RadzenCard Variant="@Variant.Outlined" Style="margin-top: 1rem;">
+                    <RadzenText TextStyle="TextStyle.Subtitle1"><strong>Totals</strong></RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="2rem">
+                        <RadzenText><strong>Products:</strong> @order.TotalProducts</RadzenText>
+                        <RadzenText><strong>Pallets:</strong> @order.TotalPallets</RadzenText>
+                        <RadzenText><strong>Net Weight:</strong> @order.TotalNetWeight.ToString("N2") lbs</RadzenText>
+                        <RadzenText><strong>Gross Weight:</strong> @order.TotalGrossWeight.ToString("N2") lbs</RadzenText>
+                    </RadzenStack>
+                </RadzenCard>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Style="margin-top: 1rem;">
+                    <RadzenButton Text="Submit Order" Icon="check" Click="@SubmitOrder" ButtonStyle="@ButtonStyle.Success" />
+                    <RadzenButton Text="Delete Order" Icon="delete" Click="@DeleteOrder" ButtonStyle="@ButtonStyle.Danger" />
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenAlert AlertStyle="@AlertStyle.Info" AllowClose="false" Style="margin-top: 1rem;">
+                    No line items added yet. Click "Add Product" to start adding items to this order.
+                </RadzenAlert>
+            }
+        </RadzenCard>
+    }
+    else if (!isLoading)
+    {
+        <RadzenAlert AlertStyle="@AlertStyle.Warning" AllowClose="false">
+            Order @OrderNumber not found or has been deleted.
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    private ICTOrder? order;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrder();
+    }
+
+    private async Task LoadOrder()
+    {
+        isLoading = true;
+        try
+        {
+            order = await ICTService.GetOrderAsync(OrderNumber);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error Loading Order",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnAddProduct()
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary = "Not Implemented",
+            Detail = "Product selection dialog coming soon",
+            Duration = 3000
+        });
+    }
+
+    private async Task RemoveLineItem(int lineItemId)
+    {
+        var confirmed = await DialogService.Confirm(
+            "Are you sure you want to remove this line item?",
+            "Confirm Remove",
+            new ConfirmOptions { OkButtonText = "Remove", CancelButtonText = "Cancel" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await ICTService.RemoveLineItemAsync(lineItemId);
+
+                if (success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Line Item Removed",
+                        Detail = "Line item removed successfully",
+                        Duration = 3000
+                    });
+
+                    await LoadOrder();
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error Removing Item",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+            }
+        }
+    }
+
+    private async Task SubmitOrder()
+    {
+        if (order == null || !order.LineItems.Any())
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Cannot Submit",
+                Detail = "Order must have at least one line item",
+                Duration = 3000
+            });
+            return;
+        }
+
+        try
+        {
+            var result = await ICTService.SubmitOrderAsync(OrderNumber);
+
+            if (result.Success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Order Submitted",
+                    Detail = $"Order {OrderNumber} submitted successfully",
+                    Duration = 3000
+                });
+
+                await LoadOrder();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Submit Failed",
+                    Detail = result.ErrorMessage,
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error Submitting Order",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task DeleteOrder()
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Are you sure you want to delete order {OrderNumber}? This will remove the order and all line items.",
+            "Confirm Delete",
+            new ConfirmOptions { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await ICTService.DeleteOrderAsync(OrderNumber, order?.DestinationWarehouseId ?? 0);
+
+                if (result.Success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Order Deleted",
+                        Detail = $"Order {OrderNumber} deleted successfully",
+                        Duration = 3000
+                    });
+
+                    Navigation.NavigateTo("/ict-orders");
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Delete Failed",
+                        Detail = result.ErrorMessage,
+                        Duration = 5000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error Deleting Order",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+            }
+        }
+    }
+
+    private string GetWarehouseName(int warehouseId)
+    {
+        return warehouseId switch
+        {
+            3 => "CPFG (Niles)",
+            92 => "Northlake",
+            _ => $"Warehouse {warehouseId}"
+        };
+    }
+
+    [Inject] private DialogService DialogService { get; set; } = default!;
+}

@@ -657,6 +657,78 @@ PRINT 'Inserted 1 sample ICT order into gai_scheduler';
 PRINT '========================================================';
 
 -- ============================================================================
+-- ICT (INTER-COMPANY TRANSFER) - SEED DATA
+-- ============================================================================
+PRINT '';
+PRINT '========== ICT SEED DATA ==========';
+PRINT 'Creating sample ICT orders for testing...';
+
+-- Clear existing test ICT orders (different from Acuity test order above)
+DELETE FROM gai_scheduler WHERE gs_ordnum IN (20250000199, 20250000299);
+DELETE FROM gai_allocate WHERE all_ordernum IN (20250000199, 20250000299);
+
+-- Sample ICT Order 1: CPFG to Northlake (empty order, ready for products)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_auditor, gs_assembler,
+    gs_log1, gs_dec3, gs_chr5, gs_chr6
+) VALUES (
+    92, 20250000199, '', GETDATE(), GETDATE(), '00:00:00',
+    'Greenwood Associates, Inc.', 'TBD', 'TBD', 'TBD', 'Test ICT Order - CPFG to Northlake',
+    'N/A', GETDATE(), '20250000199', '', '',
+    3, '', GETDATE(), '',
+    '', '', '',
+    0, 99, 'Ready for dispatch', 'TBD'
+);
+
+-- Sample ICT Order 2: Northlake to CPFG (with line items and totals)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_auditor, gs_assembler,
+    gs_log1, gs_dec3, gs_chr5, gs_chr6,
+    gs_num4, gs_num5, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 20250000299, '', GETDATE(), GETDATE(), '00:00:00',
+    'Greenwood Associates, Inc.', 'TBD', 'TBD', 'TBD', 'Test ICT Order - Northlake to CPFG',
+    'N/A', GETDATE(), '20250000299', '', '',
+    4, 'JOB-2025-001', GETDATE(), '',
+    '', '', '',
+    0, 99, 'Ready for dispatch', 'TBD',
+    2, 5, 2, 5, 500.00, 550.00
+);
+
+-- Line items for Order 2 (202500002​99)
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chx1, all_chx2, all_chr1, all_chr2, all_dec1,
+    all_date1, all_chx3, all_int1, all_chr3, all_description,
+    all_um, all_int2, all_dec3, all_nwt, all_gwt
+) VALUES
+    -- Line 1: Product TEST-001, 100 cases, 3 pallets (100/40 = 2.5 → 3)
+    (3, 20250000299, 'TEST-001', '', 100, 0,
+     GETDATE(), '', '', 'CS', '', 0,
+     GETDATE(), '', 0, 'JOB-2025-001', 'Test Product 001 - Widget Assembly',
+     'CS', 3, 99, 250.00, 275.00),
+
+    -- Line 2: Product TEST-002, 50 cases, 2 pallets (50/40 = 1.25 → 2)
+    (3, 20250000299, 'TEST-002', '', 50, 0,
+     GETDATE(), '', '', 'CS', '', 0,
+     GETDATE(), '', 0, 'JOB-2025-001', 'Test Product 002 - Component Pack',
+     'CS', 2, 99, 250.00, 275.00);
+
+PRINT 'ICT Seed Data Complete:';
+PRINT '  - 2 test ICT orders created';
+PRINT '  - 2 line items added to order 202500002​99';
+PRINT '  - Ready for testing at /ict-orders';
+PRINT '========================================================';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAIMisc DATABASE
 -- ============================================================================
 

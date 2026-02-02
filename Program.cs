@@ -6,6 +6,7 @@ using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
+using DotNetWebApp.Services.ICT;
 using DotNetWebApp.Services.Views;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,10 @@ builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 builder.Services.AddScoped<IDeacomService, DeacomService>();
 builder.Services.AddScoped<IAcuityImportService, AcuityImportService>();
 
+// ICT services (Phase 2 - Second application)
+builder.Services.AddScoped<IICTOrderNumberService, ICTOrderNumberService>();
+builder.Services.AddScoped<IICTService, ICTService>();
+
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
 // If they're empty or missing, fall back to DefaultConnection
@@ -92,6 +97,15 @@ builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>(
 builder.Services.AddScoped<DataSeeder>();
 
 // Dapper infrastructure (read-only, shares EF connection)
+// Primary database (GAI) - for queries to dmprod, dtfifo, dtjob, etc.
+builder.Services.AddKeyedScoped<IDapperQueryService, DapperQueryService>("Primary");
+builder.Services.AddKeyedScoped<IDapperQueryService>(
+    "Secondary",
+    (sp, key) => new SecondaryDapperQueryService(
+        sp.GetRequiredService<SecondaryDbContext>(),
+        sp.GetRequiredService<ILogger<SecondaryDapperQueryService>>()));
+
+// Default (non-keyed) registration uses Primary for backwards compatibility
 builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
 
 // View registry (singleton, loaded once at startup from app.yaml)
