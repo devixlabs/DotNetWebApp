@@ -33,6 +33,8 @@ builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
 builder.Services.Configure<DatabaseMappingOptions>(
     builder.Configuration.GetSection(DatabaseMappingOptions.SectionName));
+builder.Services.Configure<DotNetWebApp.Services.Models.AcuityImportOptions>(
+    builder.Configuration.GetSection(DotNetWebApp.Services.Models.AcuityImportOptions.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
@@ -58,6 +60,10 @@ builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
+
+// Acuity Import services (Phase 2 - First application)
+builder.Services.AddScoped<IDeacomService, DeacomService>();
+builder.Services.AddScoped<IAcuityImportService, AcuityImportService>();
 
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)

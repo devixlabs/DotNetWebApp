@@ -613,6 +613,50 @@ IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[gai_allocate] WHERE all_id = 2 AND
      'Professional Gadget Series', 'EA', 'ALLOCATED', 'FedEx');
 
 -- ============================================================================
+-- ACUITY IMPORT - SEED DATA FOR PHASE 2
+-- ============================================================================
+PRINT '';
+PRINT '========== LOADING ACUITY IMPORT SEED DATA ==========';
+
+-- User Configuration (gai_dmstech)
+PRINT 'Seeding gai_dmstech (User Warehouse Assignments)...';
+
+DELETE FROM [GAIMisc].[dbo].[gai_dmstech] WHERE gs_chr1 IN ('testuser', 'admin', 'cpfg_user', 'northlake_user', 'jrade');
+
+-- gs_index is IDENTITY column, so we don't specify it
+INSERT INTO [GAIMisc].[dbo].[gai_dmstech] (gs_id, gs_type, gs_chr1, gs_chr2, gs_chr3, gs_int1)
+VALUES
+    (1, 1, 'admin', 'Administrator', 'CPFG', 0),
+    (1, 1, 'testuser', 'Test User', 'CPFG', 1),
+    (1, 1, 'cpfg_user', 'CPFG User', 'CPFG', 1),
+    (2, 1, 'northlake_user', 'Northlake User', 'Northlake', 1),
+    (1, 1, 'jrade', 'John Rade', 'CPFG', 0);
+
+PRINT 'Inserted 5 test users into gai_dmstech';
+
+-- Sample Scheduler Data (for testing updates)
+PRINT 'Seeding sample gai_scheduler records...';
+
+DELETE FROM [GAIMisc].[dbo].[gai_scheduler] WHERE gs_ordnum IN (20250123499, 20250123400, 20250123401);
+
+-- gs_index is IDENTITY column, so we don't specify it
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[gai_scheduler] WHERE gs_ordnum = 20250123499)
+    INSERT INTO [GAIMisc].[dbo].[gai_scheduler] (
+        gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend,
+        gs_dockm, gs_company, gs_carrier, gs_driver, gs_chr2,
+        gs_notes, gs_status, gs_datechkin, gs_appid, gs_forkop,
+        gs_num1, gs_chr3, gs_date1
+    )
+    VALUES
+        (3, 20250123499, '0', '2025-10-17 07:00:00', '2025-10-17 07:30:00',
+         '00:00:00', 'Greenwood Associates Inc.', 'TBD', '', '()',
+         'Notes', 'N/A', '2025-10-17 07:00:00', '', '',
+         3, NULL, '2025-10-17 07:00:00');
+
+PRINT 'Inserted 1 sample ICT order into gai_scheduler';
+PRINT '========================================================';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAIMisc DATABASE
 -- ============================================================================
 
@@ -621,6 +665,8 @@ PRINT '========== GAIMisc DATABASE SEED DATA SUMMARY ==========';
 SELECT 'ACID CORRECTIONS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[AcidCorrection];
 SELECT 'BRIX CHART' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[BrixChart];
 SELECT 'ALLOCATIONS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_allocate];
+SELECT 'USER ASSIGNMENTS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_dmstech];
+SELECT 'SCHEDULER ORDERS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_scheduler];
 PRINT '========================================================';
 
 PRINT '';
