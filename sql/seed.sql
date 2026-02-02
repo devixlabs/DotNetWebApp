@@ -5,33 +5,39 @@
 -- ============================================================================
 
 -- ============================================================================
+-- GAI DATABASE
+-- ============================================================================
+USE [GAI];
+GO
+
+-- ============================================================================
 -- 1. UNITS OF MEASURE (dmunit)
 -- ============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmunit] WHERE un_name = 'Each')
-    INSERT INTO [GAI].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmunit] WHERE un_name = 'Each')
+    INSERT INTO [dbo].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
     VALUES ('Each', 1, 1, 'P', 1, 1.0, 0.0, 0.0, 0, 1.0, '', 'EA');
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmunit] WHERE un_name = 'Case')
-    INSERT INTO [GAI].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmunit] WHERE un_name = 'Case')
+    INSERT INTO [dbo].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
     VALUES ('Case', 1, 0, 'P', 0, 12.0, 0.0, 0.0, 0, 1.0, '', 'CS');
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmunit] WHERE un_name = 'Box')
-    INSERT INTO [GAI].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmunit] WHERE un_name = 'Box')
+    INSERT INTO [dbo].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
     VALUES ('Box', 1, 0, 'P', 0, 24.0, 0.0, 0.0, 0, 1.0, '', 'BX');
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmunit] WHERE un_name = 'Pallet')
-    INSERT INTO [GAI].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmunit] WHERE un_name = 'Pallet')
+    INSERT INTO [dbo].[dmunit] (un_name, un_active, un_default, un_type, un_base, un_factor, un_shipmins, un_recmins, un_restcontunid, un_fedexfactor, un_fedexunit, un_edicode)
     VALUES ('Pallet', 1, 0, 'P', 0, 48.0, 5.0, 5.0, 0, 1.0, '', 'PL');
 
 -- ============================================================================
 -- 2. VENDORS (dmvend)
 -- ============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmvend] WHERE ve_name = 'Acme Supplies Inc')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmvend] WHERE ve_name = 'Acme Supplies Inc')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmvend] ON;
-    INSERT INTO [GAI].[dmvend]
+    SET IDENTITY_INSERT [dbo].[dmvend] ON;
+    INSERT INTO [dbo].[dmvend]
     (ve_id, ve_name, ve_street, ve_street2, ve_city, ve_state, ve_zip, ve_contact, ve_phone, ve_fax, ve_active,
      ve_teid, ve_trid, ve_taxid, ve_socsec, ve_1099, ve_edi, ve_notes, ve_rname, ve_rstreet, ve_rstreet2,
      ve_rcity, ve_rstate, ve_rzip, ve_takedis, ve_highcrd, ve_potype, ve_p1id, ve_p2id, ve_county, ve_vendid,
@@ -55,13 +61,13 @@ BEGIN
      0.0, 0.0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, NULL, '', 0, 0, 0,
      0, '', 0, 0);
-    SET IDENTITY_INSERT [GAI].[dmvend] OFF;
+    SET IDENTITY_INSERT [dbo].[dmvend] OFF;
 END;
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmvend] WHERE ve_name = 'Global Parts Co')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmvend] WHERE ve_name = 'Global Parts Co')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmvend] ON;
-    INSERT INTO [GAI].[dmvend]
+    SET IDENTITY_INSERT [dbo].[dmvend] ON;
+    INSERT INTO [dbo].[dmvend]
     (ve_id, ve_name, ve_street, ve_street2, ve_city, ve_state, ve_zip, ve_contact, ve_phone, ve_fax, ve_active,
      ve_teid, ve_trid, ve_taxid, ve_socsec, ve_1099, ve_edi, ve_notes, ve_rname, ve_rstreet, ve_rstreet2,
      ve_rcity, ve_rstate, ve_rzip, ve_takedis, ve_highcrd, ve_potype, ve_p1id, ve_p2id, ve_county, ve_vendid,
@@ -85,13 +91,13 @@ BEGIN
      0.0, 0.0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, NULL, '', 0, 0, 0,
      0, '', 0, 0);
-    SET IDENTITY_INSERT [GAI].[dmvend] OFF;
+    SET IDENTITY_INSERT [dbo].[dmvend] OFF;
 END;
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmvend] WHERE ve_name = 'Premier Materials LLC')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmvend] WHERE ve_name = 'Premier Materials LLC')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmvend] ON;
-    INSERT INTO [GAI].[dmvend]
+    SET IDENTITY_INSERT [dbo].[dmvend] ON;
+    INSERT INTO [dbo].[dmvend]
     (ve_id, ve_name, ve_street, ve_street2, ve_city, ve_state, ve_zip, ve_contact, ve_phone, ve_fax, ve_active,
      ve_teid, ve_trid, ve_taxid, ve_socsec, ve_1099, ve_edi, ve_notes, ve_rname, ve_rstreet, ve_rstreet2,
      ve_rcity, ve_rstate, ve_rzip, ve_takedis, ve_highcrd, ve_potype, ve_p1id, ve_p2id, ve_county, ve_vendid,
@@ -115,15 +121,15 @@ BEGIN
      0.0, 0.0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, NULL, '', 0, 0, 0,
      0, '', 0, 0);
-    SET IDENTITY_INSERT [GAI].[dmvend] OFF;
+    SET IDENTITY_INSERT [dbo].[dmvend] OFF;
 END;
 
 -- ============================================================================
 -- 3. PRODUCTS (dmprod) - ALL 264 columns (excluding pr_id IDENTITY)
 -- ============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmprod] WHERE pr_codenum = 'WIDGET-A')
-INSERT INTO [GAI].[dmprod] (
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmprod] WHERE pr_codenum = 'WIDGET-A')
+INSERT INTO [dbo].[dmprod] (
     pr_codenum, pr_descrip, pr_level, pr_buid, pr_caid, pr_lispric, pr_stanlab, pr_stanmat, pr_stantot, pr_active,
     pr_taxable, pr_unitwgt, pr_ware1, pr_control, pr_drwcode, pr_reorder, pr_salable, pr_purable, pr_stocked, pr_abc,
     pr_user1, pr_user2, pr_user3, pr_user4, pr_notes, pr_make, pr_ordtype, pr_frtclas, pr_retail, pr_burden,
@@ -187,8 +193,8 @@ INSERT INTO [GAI].[dmprod] (
     0, '', 0, 0, 0, 0, 0
 );
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmprod] WHERE pr_codenum = 'GADGET-PRO')
-INSERT INTO [GAI].[dmprod] (
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmprod] WHERE pr_codenum = 'GADGET-PRO')
+INSERT INTO [dbo].[dmprod] (
     pr_codenum, pr_descrip, pr_level, pr_buid, pr_caid, pr_lispric, pr_stanlab, pr_stanmat, pr_stantot, pr_active,
     pr_taxable, pr_unitwgt, pr_ware1, pr_control, pr_drwcode, pr_reorder, pr_salable, pr_purable, pr_stocked, pr_abc,
     pr_user1, pr_user2, pr_user3, pr_user4, pr_notes, pr_make, pr_ordtype, pr_frtclas, pr_retail, pr_burden,
@@ -252,8 +258,8 @@ INSERT INTO [GAI].[dmprod] (
     0, '', 0, 0, 0, 0, 0
 );
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmprod] WHERE pr_codenum = 'COMP-X100')
-INSERT INTO [GAI].[dmprod] (
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmprod] WHERE pr_codenum = 'COMP-X100')
+INSERT INTO [dbo].[dmprod] (
     pr_codenum, pr_descrip, pr_level, pr_buid, pr_caid, pr_lispric, pr_stanlab, pr_stanmat, pr_stantot, pr_active,
     pr_taxable, pr_unitwgt, pr_ware1, pr_control, pr_drwcode, pr_reorder, pr_salable, pr_purable, pr_stocked, pr_abc,
     pr_user1, pr_user2, pr_user3, pr_user4, pr_notes, pr_make, pr_ordtype, pr_frtclas, pr_retail, pr_burden,
@@ -321,10 +327,10 @@ INSERT INTO [GAI].[dmprod] (
 -- 4. SHIP-TO ADDRESSES (dmship)
 -- ============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmship] WHERE sh_name = 'Main Warehouse')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmship] WHERE sh_name = 'Main Warehouse')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmship] ON;
-    INSERT INTO [GAI].[dmship]
+    SET IDENTITY_INSERT [dbo].[dmship] ON;
+    INSERT INTO [dbo].[dmship]
     (sh_id, sh_name, sh_biid, sh_brid, sh_s1id, sh_s2id, sh_smid, sh_street, sh_street2, sh_city, sh_state, sh_zip,
      sh_phone, sh_fax, sh_contact, sh_trid, sh_waid, sh_active, sh_statax, sh_loctax, sh_notes, sh_country, sh_ccode,
      sh_default, sh_county, sh_custid, sh_email, sh_frid, sh_s3id, sh_webname, sh_webpass, sh_s4id, sh_s5id,
@@ -352,13 +358,13 @@ BEGIN
      0, 0, 0, NULL, 0, 0, NULL,
      '', 0, 0, 0, NULL, '',
      '', 0, 0, '');
-    SET IDENTITY_INSERT [GAI].[dmship] OFF;
+    SET IDENTITY_INSERT [dbo].[dmship] OFF;
 END;
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmship] WHERE sh_name = 'East Coast Distribution')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmship] WHERE sh_name = 'East Coast Distribution')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmship] ON;
-    INSERT INTO [GAI].[dmship]
+    SET IDENTITY_INSERT [dbo].[dmship] ON;
+    INSERT INTO [dbo].[dmship]
     (sh_id, sh_name, sh_biid, sh_brid, sh_s1id, sh_s2id, sh_smid, sh_street, sh_street2, sh_city, sh_state, sh_zip,
      sh_phone, sh_fax, sh_contact, sh_trid, sh_waid, sh_active, sh_statax, sh_loctax, sh_notes, sh_country, sh_ccode,
      sh_default, sh_county, sh_custid, sh_email, sh_frid, sh_s3id, sh_webname, sh_webpass, sh_s4id, sh_s5id,
@@ -386,13 +392,13 @@ BEGIN
      0, 0, 0, NULL, 0, 0, NULL,
      '', 0, 0, 0, NULL, '',
      '', 0, 0, '');
-    SET IDENTITY_INSERT [GAI].[dmship] OFF;
+    SET IDENTITY_INSERT [dbo].[dmship] OFF;
 END;
 
-IF NOT EXISTS (SELECT 1 FROM [GAI].[dmship] WHERE sh_name = 'West Coast Fulfillment')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmship] WHERE sh_name = 'West Coast Fulfillment')
 BEGIN
-    SET IDENTITY_INSERT [GAI].[dmship] ON;
-    INSERT INTO [GAI].[dmship]
+    SET IDENTITY_INSERT [dbo].[dmship] ON;
+    INSERT INTO [dbo].[dmship]
     (sh_id, sh_name, sh_biid, sh_brid, sh_s1id, sh_s2id, sh_smid, sh_street, sh_street2, sh_city, sh_state, sh_zip,
      sh_phone, sh_fax, sh_contact, sh_trid, sh_waid, sh_active, sh_statax, sh_loctax, sh_notes, sh_country, sh_ccode,
      sh_default, sh_county, sh_custid, sh_email, sh_frid, sh_s3id, sh_webname, sh_webpass, sh_s4id, sh_s5id,
@@ -420,18 +426,202 @@ BEGIN
      0, 0, 0, NULL, 0, 0, NULL,
      '', 0, 0, 0, NULL, '',
      '', 0, 0, '');
-    SET IDENTITY_INSERT [GAI].[dmship] OFF;
+    SET IDENTITY_INSERT [dbo].[dmship] OFF;
 END;
 
 -- ============================================================================
--- DATA VERIFICATION
+-- 5. WAREHOUSES (dmware)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmware] WHERE wa_name = 'Main Warehouse')
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dmware] ON;
+    INSERT INTO [dbo].[dmware]
+    (wa_id, wa_name, wa_active, wa_default, wa_exid, wa_taid1, wa_taid2, wa_neginv, wa_reid, wa_icxfer,
+     wa_street, wa_street2, wa_city, wa_state, wa_zip, wa_phone, wa_fax, wa_reqid, wa_psid, wa_markup,
+     wa_marktype, wa_biid, wa_ccode, wa_haltposting, wa_lottrackdsd, wa_prodrel, wa_shiponsave, wa_comport,
+     wa_baudrate, wa_stopbits, wa_parity, wa_handshake, wa_databits, wa_custfirst, wa_retainicloc,
+     wa_finlinkjob, wa_addthandle, wa_emergency, wa_ictautoreceive, wa_cyid, wa_country, wa_gln, wa_fcid,
+     wa_tranholdlotcont, wa_overissueprompt, wa_overreserveprompt, wa_wmsincreserve, wa_wmsincissue,
+     wa_underissueprompt, wa_restrictop, wa_taxjaroverride, wa_issuinggroupby, wa_ictrecqty,
+     wa_linkedsoallocate, wa_splitmrojobs, wa_fedacc, wa_fedpass, wa_fedauth, wa_fedmeternum, wa_fedshipacc,
+     wa_fedtest, wa_fedusefacility, wa_upsacc, wa_upspass, wa_upsauthkey, wa_upsshipnum, wa_upstest,
+     wa_upsusefacility, wa_ecomminv, wa_ccprocid, wa_taxtype, wa_tjkey, wa_taxuser, wa_taxpass, wa_tjname,
+     wa_taxsandboxmode, wa_taxexemptapis, wa_easypostapikey, wa_taxcompcode, wa_shipquan, wa_defissquan,
+     wa_fedacclegacy, wa_fedpasslegacy, wa_fedauthlegacy, wa_fedshipacclegacy, wa_fedmeternumlegacy,
+     wa_retainlotcost, wa_xfercostexp, wa_recmarkupover)
+    VALUES
+    (1, 'Main Warehouse', 1, 1, 0, 0, 0, '', 0, 0,
+     '100 Industrial Pkwy', '', 'Springfield', 'IL', '62701', '555-100-1000', '555-100-1001', 0, 0, 0.00,
+     '', 0, '', 0, 0, '', 0, '',
+     '', '', '', '', '', 0, 0,
+     0, '', '', 0, 0, 'USA', '', 0,
+     0, 0, 0, '', '',
+     0, 0, 0, 0, '',
+     0, 0, '', '', '', '', '',
+     0, 0, '', '', '', '', 0,
+     0, 0, 0, '', '', '', '', '',
+     0, 0, '', '', '', '',
+     '', '', '', '', '',
+     0, '', 0);
+    SET IDENTITY_INSERT [dbo].[dmware] OFF;
+END;
+
+-- ============================================================================
+-- 6. BILL-TO CUSTOMERS (dmbill)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmbill] WHERE bi_name = 'Acme Corporation')
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dmbill] ON;
+    INSERT INTO [dbo].[dmbill]
+    (bi_id, bi_name, bi_grid, bi_street, bi_street2, bi_city, bi_state, bi_zip, bi_phone, bi_fax, bi_contact,
+     bi_credlim, bi_teid, bi_credhld, bi_active, bi_notes, bi_collect, bi_country, bi_ccode, bi_user1, bi_brid, bi_smid,
+     bi_s1id, bi_s2id, bi_trid, bi_waid, bi_statax, bi_loctax, bi_highcrd, bi_county, bi_custid, bi_email,
+     bi_poreqd, bi_frid, bi_pastday, bi_service, bi_s3id, bi_webname, bi_webpass, bi_backord, bi_dba, bi_s4id,
+     bi_s5id, bi_credmast, bi_phext, bi_lastcred, bi_nextact, bi_nextdate, bi_exid, bi_dear, bi_said, bi_fcid, bi_popup, bi_invdest,
+     bi_statedest, bi_psid, bi_quota, bi_exempt, bi_exceed, bi_exday, bi_credflag, bi_dgid, bi_pomask,
+     bi_shelfpct, bi_archid, bi_mobileid, bi_popupship, bi_trakid, bi_trak2id, bi_shelfdays, bi_pfuser,
+     bi_sotrakid, bi_posprice, bi_exreserve, bi_routeacct, bi_shortship, bi_pfid, bi_nopospay, bi_reqcpart,
+     bi_availall, bi_street3, bi_ccid, bi_caid, bi_pdid, bi_restrictshipfrom, bi_noinvdflt, bi_rebill,
+     bi_rebillworkflow, bi_shortpayprid, bi_noreserve, bi_cardvaultid, bi_retattrib1, bi_retattrib2,
+     bi_retattrib3, bi_retdates, bi_laststateprint, bi_creddueshipdays, bi_ttid, bi_addressvalid, bi_edibilltopo, bi_edibilltopodays, bi_c3id,
+     bi_emailtype, bi_linkedjobfinish, bi_vatid, bi_cyid, bi_serializeonreserve, bi_invoiceemail, bi_statementemail, bi_baid, bi_ccproccontactid)
+    VALUES
+    (1, 'Acme Corporation', 0, '500 Business Park Dr', '', 'Chicago', 'IL', '60601', '555-500-5000', '555-500-5001', 'Jane Buyer',
+     50000, 0, NULL, 1, '', '', 'USA', '', '', 0, 0,
+     0, 0, 0, 0, 0, 0, 0.00, '', 'ACME-BILL', 'billing@acme.com',
+     0, 0, 0, 0, 0, '', '', 0, '', 0,
+     0, 0, '', NULL, '', NULL, 0, '', 0, 0, '', '',
+     '', 0, 0.00, 0, 0.00, 0, 0, 0, '',
+     0.00, 0, 0, '', 0, 0, 0, '',
+     0, 0, 0, 0, '', 0, 0, 0,
+     0, '', 0, 0, 0, 0, 0, 0,
+     0, 0, 0, '', 0, 0,
+     0, 0, NULL, 0, 0, NULL, 0, 0, 0,
+     '', '', '', 0, 0, '', '', 0, '');
+    SET IDENTITY_INSERT [dbo].[dmbill] OFF;
+END;
+
+-- ============================================================================
+-- 7. SALES ORDERS (dtord)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dtord] WHERE or_ordnum = 1001)
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dtord] ON;
+    INSERT INTO [dbo].[dtord]
+    (or_id, or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+     or_notes, or_taxable, or_stocked, or_control, or_wanted, or_promise, or_dueship, or_confirm, or_expires,
+     or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+     or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+     or_prictyp, or_phid, or_salunid, or_salfact, or_release, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+     or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+     or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+     or_ordquant, or_shipquant, or_duedock, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+     or_overridedate, or_overrideuser, or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+     or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+     or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+     or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+    VALUES
+    (1, 1001, 1, 0, 0, 1, 10.0, 0.0, 29.99, 299.90,
+     'Sample order line', 1, 1, 0, NULL, NULL, NULL, NULL, NULL,
+     0, '', 1, 1.0, 0.5,
+     0, 0.0, 0, 0, '', 29.99, 0.0, 0, 0.0,
+     'Standard', 0, 0, 1.0, NULL, 0, 0, 0.0, '', 0,
+     29.99, 29.99, 0.0, 0, 0.0, 0, 0, 0.0,
+     0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+     10.0, 0.0, NULL, 0, 0.0, 0.0, '', 0.0, 0.0,
+     NULL, '', 0, 0.0, 0.0, 0, 0, 0, 0.0,
+     0, 0, 0, 0, 0.0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+     0, 0, 0, 0.0);
+    SET IDENTITY_INSERT [dbo].[dtord] OFF;
+END;
+
+-- ============================================================================
+-- DATA VERIFICATION - GAI DATABASE
 -- ============================================================================
 
 PRINT '';
-PRINT '========== SEED DATA SUMMARY ==========';
-SELECT 'UNITS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dmunit];
-SELECT 'VENDORS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dmvend];
-SELECT 'PRODUCTS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dmprod];
-SELECT 'SHIP-TO' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dmship];
-PRINT 'Seed data loaded successfully!';
-PRINT '=======================================';
+PRINT '========== GAI DATABASE SEED DATA SUMMARY ==========';
+SELECT 'UNITS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmunit];
+SELECT 'VENDORS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmvend];
+SELECT 'PRODUCTS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmprod];
+SELECT 'SHIP-TO' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmship];
+SELECT 'WAREHOUSES' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmware];
+SELECT 'BILL-TO' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmbill];
+SELECT 'ORDERS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dtord];
+PRINT '====================================================';
+
+-- ============================================================================
+-- GAIMisc DATABASE
+-- ============================================================================
+USE [GAIMisc];
+GO
+
+-- ============================================================================
+-- 1. ACID CORRECTION TABLE (AcidCorrection)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[AcidCorrection] WHERE PercentAcid = 0.5)
+    INSERT INTO [GAIMisc].[dbo].[AcidCorrection] (PercentAcid, AcidCorrection)
+    VALUES (0.5, 1.02);
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[AcidCorrection] WHERE PercentAcid = 1.0)
+    INSERT INTO [GAIMisc].[dbo].[AcidCorrection] (PercentAcid, AcidCorrection)
+    VALUES (1.0, 1.05);
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[AcidCorrection] WHERE PercentAcid = 1.5)
+    INSERT INTO [GAIMisc].[dbo].[AcidCorrection] (PercentAcid, AcidCorrection)
+    VALUES (1.5, 1.08);
+
+-- ============================================================================
+-- 2. BRIX CHART (BrixChart)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[BrixChart] WHERE Brix = 10.0)
+    INSERT INTO [GAIMisc].[dbo].[BrixChart] (RefractiveIndex, Brix, SpecificGravity, LbPerGallon, PoundSolid)
+    VALUES (1.3478, 10.0, 1.0403, 8.668, 0.867);
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[BrixChart] WHERE Brix = 15.0)
+    INSERT INTO [GAIMisc].[dbo].[BrixChart] (RefractiveIndex, Brix, SpecificGravity, LbPerGallon, PoundSolid)
+    VALUES (1.3554, 15.0, 1.0615, 8.844, 1.327);
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[BrixChart] WHERE Brix = 20.0)
+    INSERT INTO [GAIMisc].[dbo].[BrixChart] (RefractiveIndex, Brix, SpecificGravity, LbPerGallon, PoundSolid)
+    VALUES (1.3639, 20.0, 1.0835, 9.029, 1.806);
+
+-- ============================================================================
+-- 3. ALLOCATION TABLE (gai_allocate)
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[gai_allocate] WHERE all_id = 1 AND all_ordernum = 1001)
+    INSERT INTO [GAIMisc].[dbo].[gai_allocate]
+    (all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick, all_date, all_chr1, all_chr2, all_chr3,
+     all_description, all_um, all_status, all_carrier)
+    VALUES
+    (1, 1001, 'WIDGET-A', 'LOT-2025-001', 100, 100, GETDATE(), '', '', '',
+     'Premium Widget Type A', 'EA', 'ALLOCATED', 'UPS');
+
+IF NOT EXISTS (SELECT 1 FROM [GAIMisc].[dbo].[gai_allocate] WHERE all_id = 2 AND all_ordernum = 1002)
+    INSERT INTO [GAIMisc].[dbo].[gai_allocate]
+    (all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick, all_date, all_chr1, all_chr2, all_chr3,
+     all_description, all_um, all_status, all_carrier)
+    VALUES
+    (2, 1002, 'GADGET-PRO', 'LOT-2025-002', 50, 50, GETDATE(), '', '', '',
+     'Professional Gadget Series', 'EA', 'ALLOCATED', 'FedEx');
+
+-- ============================================================================
+-- DATA VERIFICATION - GAIMisc DATABASE
+-- ============================================================================
+
+PRINT '';
+PRINT '========== GAIMisc DATABASE SEED DATA SUMMARY ==========';
+SELECT 'ACID CORRECTIONS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[AcidCorrection];
+SELECT 'BRIX CHART' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[BrixChart];
+SELECT 'ALLOCATIONS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_allocate];
+PRINT '========================================================';
+
+PRINT '';
+PRINT 'All seed data loaded successfully across all databases!';

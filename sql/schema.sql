@@ -1,6 +1,5 @@
 USE [GAI]
 GO
-/****** Object:  Table [dbo].[dcbom2]    Script Date: 6/30/2025 12:49:36 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1330,7 +1329,6 @@ CREATE TABLE [dbo].[dttord](
 GO
 USE [GAIMisc]
 GO
-/****** Object:  Table [dbo].[AcidCorrection]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1345,7 +1343,6 @@ CREATE TABLE [dbo].[AcidCorrection](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[BrixChart]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1363,7 +1360,6 @@ CREATE TABLE [dbo].[BrixChart](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_allocate]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1426,7 +1422,6 @@ CREATE TABLE [dbo].[gai_allocate](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_allocateaudit]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1476,7 +1471,6 @@ CREATE TABLE [dbo].[gai_allocateaudit](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_bol]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1528,7 +1522,6 @@ CREATE TABLE [dbo].[gai_bol](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_bolapp]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1575,7 +1568,6 @@ CREATE TABLE [dbo].[gai_bolapp](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_boldetail]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1591,7 +1583,6 @@ CREATE TABLE [dbo].[gai_boldetail](
 	[gb_class] [nvarchar](50) NULL
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_bolheader]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1644,7 +1635,6 @@ CREATE TABLE [dbo].[gai_bolheader](
 	[gb_carvein] [nvarchar](50) NULL
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_combob]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1672,7 +1662,6 @@ CREATE TABLE [dbo].[gai_combob](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_dmstech]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1707,7 +1696,6 @@ CREATE TABLE [dbo].[gai_dmstech](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_lock]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1747,7 +1735,6 @@ CREATE TABLE [dbo].[gai_lock](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_paway]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1795,7 +1782,6 @@ CREATE TABLE [dbo].[gai_paway](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_putaway]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1815,7 +1801,6 @@ CREATE TABLE [dbo].[gai_putaway](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_rddetail]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1840,7 +1825,6 @@ CREATE TABLE [dbo].[gai_rddetail](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_rdheader]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1868,7 +1852,6 @@ CREATE TABLE [dbo].[gai_rdheader](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_ReservedLocations]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1885,7 +1868,6 @@ CREATE TABLE [dbo].[gai_ReservedLocations](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_scheduler]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1965,7 +1947,6 @@ CREATE TABLE [dbo].[gai_scheduler](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_scheduler_old]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2008,7 +1989,6 @@ CREATE TABLE [dbo].[gai_scheduler_old](
 	[gs_pickerin] [datetime] NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_scheduler_tmp]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2089,7 +2069,6 @@ CREATE TABLE [dbo].[gai_scheduler_tmp](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_shipping_rate]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2107,7 +2086,6 @@ CREATE TABLE [dbo].[gai_shipping_rate](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_singlestrengthconversions]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2123,7 +2101,6 @@ CREATE TABLE [dbo].[gai_singlestrengthconversions](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_singlestrengthconversions_old]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2134,7 +2111,6 @@ CREATE TABLE [dbo].[gai_singlestrengthconversions_old](
 	[Ref] [varchar](50) NULL
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_sr_destinations]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2148,7 +2124,6 @@ CREATE TABLE [dbo].[gai_sr_destinations](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_sr_sources]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2162,7 +2137,6 @@ CREATE TABLE [dbo].[gai_sr_sources](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gai_syslogs]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2183,7 +2157,6 @@ CREATE TABLE [dbo].[gai_syslogs](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gp_f011head]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2218,7 +2191,6 @@ CREATE TABLE [dbo].[gp_f011head](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gp_prodrep]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2266,7 +2238,6 @@ CREATE TABLE [dbo].[gp_prodrep](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gp_scheduler]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2314,7 +2285,6 @@ CREATE TABLE [dbo].[gp_scheduler](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[gw_prefixes]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2330,7 +2300,6 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[liberation_tariff]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2349,7 +2318,6 @@ CREATE TABLE [dbo].[liberation_tariff](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Shipping_Rate]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2367,7 +2335,6 @@ CREATE TABLE [dbo].[Shipping_Rate](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[USDABrandedFood2]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2385,7 +2352,6 @@ CREATE TABLE [dbo].[USDABrandedFood2](
 	[publication_date] [datetime] NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[USDABrandedFoodIngredients]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2403,7 +2369,6 @@ CREATE TABLE [dbo].[USDABrandedFoodIngredients](
 	[publication_date] [datetime] NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[USDABrandedFoods]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2421,7 +2386,6 @@ CREATE TABLE [dbo].[USDABrandedFoods](
 	[publication_date] [datetime] NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[acuity_appointments]    Script Date: 9/15/2025 4:39:37 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2469,42 +2433,39 @@ GO
 /* DISABLED: acuity_forms and acuity_form_values use composite primary/foreign keys
  * which are not supported by the DDL parser. See GitHub issue for enhancement.
  * Re-enable after DDL parser supports composite keys.
- *
-/****** Object:  Table [dbo].[acuity_forms]    Script Date: 9/15/2025 4:39:37 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[acuity_forms](
-	[id] [bigint] NOT NULL,
-	[appointment_id] [bigint] NOT NULL,
-	[name] [nvarchar](255) NOT NULL,
-	[created_at] [datetime2] NOT NULL DEFAULT GETDATE(),
-	[updated_at] [datetime2] NOT NULL DEFAULT GETDATE(),
- CONSTRAINT [PK_acuity_forms] PRIMARY KEY CLUSTERED ([id] ASC, [appointment_id] ASC),
- CONSTRAINT [FK_acuity_forms_appointments] FOREIGN KEY ([appointment_id])
-	REFERENCES [dbo].[acuity_appointments] ([id]) ON DELETE CASCADE
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[acuity_form_values]    Script Date: 9/15/2025 4:39:37 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[acuity_form_values](
-	[id] [bigint] NOT NULL,
-	[form_id] [bigint] NOT NULL,
-	[appointment_id] [bigint] NOT NULL,
-	[fieldID] [bigint] NOT NULL,
-	[value] [ntext] NULL,
-	[name] [nvarchar](500) NOT NULL,
-	[created_at] [datetime2] NOT NULL DEFAULT GETDATE(),
-	[updated_at] [datetime2] NOT NULL DEFAULT GETDATE(),
- CONSTRAINT [PK_acuity_form_values] PRIMARY KEY CLUSTERED ([id] ASC),
- CONSTRAINT [FK_acuity_form_values_forms] FOREIGN KEY ([form_id], [appointment_id])
-	REFERENCES [dbo].[acuity_forms] ([id], [appointment_id]) ON DELETE CASCADE,
- CONSTRAINT [FK_acuity_form_values_appointments] FOREIGN KEY ([appointment_id])
-	REFERENCES [dbo].[acuity_appointments] ([id]) ON DELETE NO ACTION
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-END DISABLED */
+ */
+-- SET ANSI_NULLS ON
+-- GO
+-- SET QUOTED_IDENTIFIER ON
+-- GO
+-- CREATE TABLE [dbo].[acuity_forms](
+-- 	[id] [bigint] NOT NULL,
+-- 	[appointment_id] [bigint] NOT NULL,
+-- 	[name] [nvarchar](255) NOT NULL,
+-- 	[created_at] [datetime2] NOT NULL DEFAULT GETDATE(),
+-- 	[updated_at] [datetime2] NOT NULL DEFAULT GETDATE(),
+--  CONSTRAINT [PK_acuity_forms] PRIMARY KEY CLUSTERED ([id] ASC, [appointment_id] ASC),
+--  CONSTRAINT [FK_acuity_forms_appointments] FOREIGN KEY ([appointment_id])
+-- 	REFERENCES [dbo].[acuity_appointments] ([id]) ON DELETE CASCADE
+-- ) ON [PRIMARY]
+-- GO
+-- SET ANSI_NULLS ON
+-- GO
+-- SET QUOTED_IDENTIFIER ON
+-- GO
+-- CREATE TABLE [dbo].[acuity_form_values](
+-- 	[id] [bigint] NOT NULL,
+-- 	[form_id] [bigint] NOT NULL,
+-- 	[appointment_id] [bigint] NOT NULL,
+-- 	[fieldID] [bigint] NOT NULL,
+-- 	[value] [ntext] NULL,
+-- 	[name] [nvarchar](500) NOT NULL,
+-- 	[created_at] [datetime2] NOT NULL DEFAULT GETDATE(),
+-- 	[updated_at] [datetime2] NOT NULL DEFAULT GETDATE(),
+--  CONSTRAINT [PK_acuity_form_values] PRIMARY KEY CLUSTERED ([id] ASC),
+--  CONSTRAINT [FK_acuity_form_values_forms] FOREIGN KEY ([form_id], [appointment_id])
+-- 	REFERENCES [dbo].[acuity_forms] ([id], [appointment_id]) ON DELETE CASCADE,
+--  CONSTRAINT [FK_acuity_form_values_appointments] FOREIGN KEY ([appointment_id])
+-- 	REFERENCES [dbo].[acuity_appointments] ([id]) ON DELETE NO ACTION
+-- ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+-- GO
