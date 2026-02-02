@@ -1,7 +1,7 @@
 # DotNetWebApp Architecture Summary
 
-**Last Updated:** 2026-01-27
-**Status:** Architecture finalized; Phase 1 & Phase 2B complete
+**Last Updated:** 2026-02-02
+**Status:** Architecture finalized; Phase 1, Phase 2B, Phase 3+4, and DMS Phase 1 MVP complete
 
 ---
 
@@ -175,6 +175,51 @@
 - `INotificationService` for toast feedback
 
 **Note:** Phase 3 (read-only patterns) and Phase 4 (editable patterns) are combined into a single PR.
+
+### ✅ DMS Phase 1 COMPLETED - Dock Management System MVP (2026-02-02)
+
+**Goal:** Implement core dock scheduling system following proven patterns from PrePick, Allocation, and ICT
+
+**Status:** ✅ COMPLETED - Full MVP with 39-column grid, status workflow, AppID grouping, and soft delete
+
+**Key Features Delivered:**
+- ✅ 39-column RadzenDataGrid with order type classification (SO, PO, ICT_NL, ICT_CPFG)
+- ✅ Status workflow state machine (NA → CheckIn → Loading → Unloading → Shipped → Received)
+- ✅ AppID batch operations (orders with same AppID move together)
+- ✅ Soft delete pattern (type + 10, reversible with undelete)
+- ✅ Personnel assignment (forklift operators filtered by warehouse)
+- ✅ Color coding by order type and status
+- ✅ Multi-warehouse support (CPFG=3, Northlake=92)
+- ✅ Comprehensive seed data (15 test orders covering all scenarios)
+
+**Architecture:**
+- Single service pattern following PrePick (DMSService + validators)
+- Hybrid EF Core (writes) + Dapper (reads) with SecondaryDbContext (GAIMisc database)
+- Keyed dependency injection: `[FromKeyedServices("Secondary")]` IDapperQueryService
+- Static classifier (DMSOrderTypeClassifier) + color service (DMSColorCodingService)
+- Two validators: StatusTransitionValidator (state machine) + DeleteValidator (security)
+
+**Files Created (13 new files):**
+1. `Services/DMS/Models/DMSModels.cs` - All models, enums, requests, responses
+2. `Services/DMS/DMSOrderTypeClassifier.cs` - Static classification helper
+3. `Services/DMS/Validators/StatusTransitionValidator.cs` - State machine validation
+4. `Services/DMS/Validators/DeleteValidator.cs` - Delete authorization
+5. `Services/DMS/DMSColorCodingService.cs` - Type and status colors
+6. `Services/DMS/IDMSService.cs` - Service interface (10 methods)
+7. `Services/DMS/DMSService.cs` - Service implementation
+8. `Controllers/DMSController.cs` - REST API (10 endpoints)
+9. `Components/Pages/DMS/Index.razor` - Main UI with 39-column grid
+10-13. Test files (4 files with 105 unit tests)
+
+**Testing:**
+- ✅ **105 DMS unit tests** (22 validator + 25 delete + 43 color + 15 service)
+- ✅ **582 total tests passing** (up from 467 = +115 new tests)
+- ✅ Clean build (0 warnings, 0 errors)
+- ✅ API integration verified with curl tests
+- ✅ UI displaying data correctly
+
+**Deferred to Production:**
+- BOL generation, Excel export, email notifications, auto-refresh timers, daily reset
 
 ### 🔄 Future: Validation Pipeline (1 day) - As Needed
 
