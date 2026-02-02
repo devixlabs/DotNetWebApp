@@ -120,6 +120,21 @@ namespace ModelGenerator
 
         private void GenerateViewModel(Template template, ViewDefinition view)
         {
+            // Auto-populate properties from SQL file if not specified
+            if ((view.Properties == null || !view.Properties.Any()) && !string.IsNullOrEmpty(view.SqlFile))
+            {
+                var sqlParser = new SqlSelectParser();
+                var sqlPath = ResolveSqlFilePath(view.SqlFile);
+                if (sqlPath != null)
+                {
+                    view.Properties = sqlParser.ParseColumns(sqlPath);
+                    if (view.Properties.Any())
+                    {
+                        Console.WriteLine($"  Parsed {view.Properties.Count} column(s) from {view.SqlFile}");
+                    }
+                }
+            }
+
             var result = template.Render(new
             {
                 View = view,
@@ -137,6 +152,38 @@ namespace ModelGenerator
             File.WriteAllText(outputFile, result);
 
             Console.WriteLine($"Generated view model: {fileName}");
+        }
+
+        /// <summary>
+        /// Resolves the SQL file path relative to the YAML file location or project root.
+        /// </summary>
+        private string? ResolveSqlFilePath(string sqlFile)
+        {
+            // Try relative to YAML file directory
+            var yamlDir = Path.GetDirectoryName(_viewsYamlPath);
+            if (!string.IsNullOrEmpty(yamlDir))
+            {
+                var relativePath = Path.Combine(yamlDir, sqlFile);
+                if (File.Exists(relativePath))
+                    return relativePath;
+            }
+
+            // Try as absolute path
+            if (File.Exists(sqlFile))
+                return sqlFile;
+
+            // Try relative to current directory (project root)
+            var currentDirPath = Path.Combine(Directory.GetCurrentDirectory(), sqlFile);
+            if (File.Exists(currentDirPath))
+                return currentDirPath;
+
+            // Try one level up (common for ModelGenerator running from its directory)
+            var parentPath = Path.Combine(Directory.GetCurrentDirectory(), "..", sqlFile);
+            if (File.Exists(parentPath))
+                return Path.GetFullPath(parentPath);
+
+            Console.WriteLine($"Warning: Could not resolve SQL file path: {sqlFile}");
+            return null;
         }
     }
 }
