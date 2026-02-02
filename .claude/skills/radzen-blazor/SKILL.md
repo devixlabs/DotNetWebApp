@@ -353,6 +353,25 @@ Powerful grid with sorting, filtering, paging, editing, selection, grouping.
 </RadzenDataGridColumn>
 ```
 
+**⚠️ TItem="object" Pitfall:**
+When using `TItem="object"` for dynamic entity grids, `Property` binding does NOT work (causes blank cells). Use `Template` with reflection instead:
+```razor
+<RadzenDataGrid Data="@objectData" TItem="object">
+    <Columns>
+        <RadzenDataGridColumn TItem="object" Title="Name">
+            <Template Context="row">@GetPropertyValue(row, "Name")</Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    object? GetPropertyValue(object? obj, string propertyName) =>
+        obj?.GetType().GetProperty(propertyName)?.GetValue(obj);
+}
+```
+
+For dynamic entities with many columns (200+), use **SmartDataGridObject** component which handles reflection and auto-limits visible columns.
+
 See [references/components-quick-ref.md](references/components-quick-ref.md) for complete DataGrid reference.
 
 ### RadzenDataList

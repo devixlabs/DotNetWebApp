@@ -20,15 +20,19 @@ public sealed class EntityMetadataService : IEntityMetadataService
 
         foreach (var entity in entityDefinitions)
         {
-            // Build namespace based on schema: DotNetWebApp.Models.Generated[.Schema].Name
-            // Schema must be Pascal-cased to match generated namespace (e.g., "initech" -> "Initech")
+            // Build namespace based on schema: DotNetWebApp.Models.Generated[.Schema].ClassName
+            // Schema uses Scriban's string.capitalize: uppercase first char, keep rest as-is
+            // E.g., "FOO" stays "FOO", "acme" becomes "Acme"
             var ns = "DotNetWebApp.Models.Generated";
             if (!string.IsNullOrWhiteSpace(entity.Schema))
             {
-                var pascalSchema = char.ToUpperInvariant(entity.Schema[0]) + entity.Schema[1..].ToLowerInvariant();
-                ns += $".{pascalSchema}";
+                var capitalizedSchema = char.ToUpperInvariant(entity.Schema[0]) + entity.Schema[1..];
+                ns += $".{capitalizedSchema}";
             }
-            var clrType = assembly.GetType($"{ns}.{entity.Name}");
+
+            // Class name also uses string.capitalize: "dmbill" -> "Dmbill"
+            var className = char.ToUpperInvariant(entity.Name[0]) + entity.Name[1..];
+            var clrType = assembly.GetType($"{ns}.{className}");
             entities.Add(new EntityMetadata(entity, clrType));
         }
 

@@ -6,11 +6,28 @@ public class CreateTableVisitor : TSqlFragmentVisitor
 {
     public List<TableMetadata> Tables { get; } = new();
 
+    // Track current database context from USE statements
+    // This becomes the schema in app.yaml (e.g., USE [acme] -> schema: acme)
+    private string _currentDatabase = string.Empty;
+
+    public override void Visit(UseStatement node)
+    {
+        // Track the current database context from USE [database] statements
+        if (node.DatabaseName != null)
+        {
+            _currentDatabase = node.DatabaseName.Value;
+        }
+        base.Visit(node);
+    }
+
     public override void Visit(CreateTableStatement node)
     {
-        // Get table name and schema from SchemaObjectName
+        // Get table name from SchemaObjectName
         var tableName = GetIdentifierValue(node.SchemaObjectName) ?? "UnknownTable";
-        var schema = GetSchemaName(node.SchemaObjectName) ?? string.Empty;
+
+        // Use the current database context as the schema (from USE [database] statement)
+        // This maps SQL Server databases to EF Core schemas
+        var schema = !string.IsNullOrEmpty(_currentDatabase) ? _currentDatabase : string.Empty;
         var table = new TableMetadata { Name = tableName, Schema = schema };
 
         // Extract columns

@@ -52,8 +52,7 @@ echo ""
 # Step 3: Drop database
 print_info "Step 3: Dropping database(s)..."
 make db-drop || print_info "Docker database drop attempted (may not exist)"
-make ms-drop || print_info "MSSQL Server database drop attempted (may not exist)"
-print_status "Database(s) dropped? ¯\_(ツ)_/¯"
+print_status "Docker database dropped"
 echo ""
 
 # Step 4: Run DDL pipeline
@@ -62,10 +61,10 @@ make run-ddl-pipeline
 print_status "DDL pipeline completed"
 echo ""
 
-# Step 5: Apply migrations
+# Step 5: Apply migrations (includes schema initialization)
 print_info "Step 5: Applying migrations (make migrate)..."
 make migrate
-print_status "Migrations applied"
+print_status "Migrations applied (includes schema initialization)"
 echo ""
 
 # Step 6: Seed data

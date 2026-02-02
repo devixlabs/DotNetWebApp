@@ -143,6 +143,38 @@ DotNetWebApp/
 
 ---
 
+## Multi-Schema Support
+
+**Schemas are derived from `USE [database]` statements in `sql/schema.sql`:**
+
+```sql
+USE [acme]                          -- Sets schema to "acme"
+CREATE TABLE [dbo].[Product](...)   -- → acme:Product
+
+USE [initech]                       -- Sets schema to "initech"
+CREATE TABLE [dbo].[Company](...)   -- → initech:Company
+```
+
+**Example schema mapping:**
+| SQL Statement | EF Schema | Result |
+|---------------|-----------|--------|
+| `USE [acme]` | `acme` | `acme:Product`, `acme:Category` |
+| `USE [initech]` | `initech` | `initech:Company`, `initech:User` |
+
+**⚠️ IMPORTANT:** When `schema.sql` changes, you MUST update:
+1. `appsettings.json` → Applications → Schema and Entities
+2. `verify.sh` → Test URLs to match new schemas/entities
+
+```json
+{
+  "Name": "admin",
+  "Schema": "acme",
+  "Entities": ["acme:Product", "acme:Category", ...]
+}
+```
+
+---
+
 ## Commands Reference
 
 | Command | Purpose |
@@ -154,8 +186,8 @@ DotNetWebApp/
 | `make build-release` | Release build for main projects |
 | `make clean` | Clean build outputs and binlog |
 | `make run-ddl-pipeline` | Parse `sql/schema.sql` → app.yaml → models → migration → build |
-| `make migrate` | Apply migration (idempotent; safe for existing tables; requires `sqlcmd` + `SA_PASSWORD`) |
-| `make migrate-ef-direct` | Apply migration via EF directly (non-idempotent; fresh databases only) |
+| `make migrate` | Apply migration via EF Core (`dotnet ef database update`) |
+| `make db-migrate` | Apply migration via Docker/sqlcmd (idempotent; safe for existing tables) |
 | `make seed` | Seed sample data from `sql/seed.sql` |
 | `make dev` | Start dev server with hot reload (https://localhost:7012 / http://localhost:5210) |
 | `make run` | Start server without hot reload |
@@ -174,19 +206,16 @@ DotNetWebApp/
 
 ## Database Migrations
 
-`make migrate` is **idempotent by default** - safe to run against databases with existing tables.
+After modifying `sql/schema.sql` or running the DDL parser:
 
 ```bash
 make db-start           # Start SQL Server (Docker)
 make run-ddl-pipeline   # Generate migration from DDL
-make migrate            # Apply migration (idempotent - won't fail on existing tables)
+make migrate            # Apply migration via EF Core
+make seed               # Seed sample data
 ```
 
-**Prerequisites:**
-- Install `sqlcmd`: `sudo apt-get install mssql-tools` (Ubuntu) or `brew install mssql-tools` (macOS)
-- Set environment variable: `export SA_PASSWORD='your-password'`
-
-**Fallback:** If you don't have `sqlcmd` installed and are working with a fresh database (no existing tables), you can use `make migrate-ef-direct` which runs `dotnet ef database update` directly. This will fail if tables already exist.
+**Alternative:** Use `make db-migrate` for idempotent migrations via Docker/sqlcmd (safe for existing tables, requires `SA_PASSWORD` env var).
 
 ---
 
