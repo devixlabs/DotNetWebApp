@@ -490,6 +490,7 @@ $RECYCLE.BIN/
 
 # Project and App Specific
 .env.local
+appsettings.Local.json
 tmp/
 specs/
 # Generated YAML files (regenerated from pipeline)

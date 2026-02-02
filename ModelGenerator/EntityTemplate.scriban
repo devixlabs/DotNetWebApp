@@ -56,8 +56,15 @@ namespace {{ namespace }}
         {{~ if property.max_length > 0 ~}}
         [MaxLength({{ property.max_length }})]
         {{~ end ~}}
+        {{~ # Handle property name conflicts with class name (e.g., AcidCorrection table with AcidCorrection column) ~}}
+        {{~ class_name = entity.name | string.capitalize ~}}
+        {{~ prop_name_capitalized = property.name | string.capitalize ~}}
+        {{~ needs_column_rename = prop_name_capitalized == class_name ~}}
+        {{~ final_prop_name = needs_column_rename ? (property.name + "Value") : property.name ~}}
         {{~ if property.type == "decimal" ~}}
-        [Column(TypeName = "decimal({{ property.precision }}, {{ property.scale }})")]
+        [Column("{{ property.name }}", TypeName = "decimal({{ property.precision }}, {{ property.scale }})")]
+        {{~ else if needs_column_rename ~}}
+        [Column("{{ property.name }}")]
         {{~ end ~}}
         {{~ # Map YAML types to CLR types (expanded for 30+ SQL Server types) ~}}
         {{~ if property.type == "datetime" ~}}
@@ -87,10 +94,6 @@ namespace {{ namespace }}
         {{~ is_reference_type = clr_type == "string" || clr_type == "byte[]" ~}}
         {{~ is_nullable = (!property.is_required) && !property.is_primary_key && !property.is_identity ~}}
         {{~ nullable_suffix = is_nullable ? "?" : "" ~}}
-        {{~ # Handle property name conflicts with class name (e.g., AcidCorrection table with AcidCorrection column) ~}}
-        {{~ class_name = entity.name | string.capitalize ~}}
-        {{~ prop_name_capitalized = property.name | string.capitalize ~}}
-        {{~ final_prop_name = prop_name_capitalized == class_name ? (property.name + "Value") : property.name ~}}
         public {{ clr_type }}{{ nullable_suffix }} {{ final_prop_name }} { get; set; }
         {{~ "\n" ~}}
         {{~ end ~}}

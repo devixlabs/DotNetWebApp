@@ -40,7 +40,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var categoryId = category.Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act - Update the category
         var updatedCategory = new Category { Id = categoryId, Name = "Updated Category" };
@@ -66,7 +66,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var categoryId = category.Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act - Delete the category
         await service.DeleteAsync(typeof(Category), categoryId);
@@ -93,7 +93,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var productId = product.Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act - Update multiple properties
         var updatedProduct = new Product
@@ -126,7 +126,7 @@ public class SmartDataGridIntegrationTests : IDisposable
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act
         var result = await service.GetAllAsync(typeof(Category));
@@ -149,7 +149,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var categoryId = category.Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act
         var result = await service.GetByIdAsync(typeof(Category), categoryId);
@@ -170,7 +170,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var category = new Category { Name = "New Category" };
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act
         var result = await service.CreateAsync(typeof(Category), category);
@@ -197,7 +197,7 @@ public class SmartDataGridIntegrationTests : IDisposable
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act
         var count = await service.GetCountAsync(typeof(Category));
@@ -214,7 +214,7 @@ public class SmartDataGridIntegrationTests : IDisposable
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var invalidId = 99999;
 
         // Act & Assert
@@ -230,7 +230,7 @@ public class SmartDataGridIntegrationTests : IDisposable
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var nonExistentCategory = new Category { Id = 99999, Name = "Non-existent" };
 
         // Act & Assert
@@ -254,7 +254,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var categoryId = category.Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act - Simulate SmartDataGrid update workflow
         var all1 = await service.GetAllAsync(typeof(Category));
@@ -294,7 +294,7 @@ public class SmartDataGridIntegrationTests : IDisposable
 
         var categoryId = categories.First().Id;
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         // Act - Simulate SmartDataGrid delete workflow
         var all1 = await service.GetAllAsync(typeof(Category));

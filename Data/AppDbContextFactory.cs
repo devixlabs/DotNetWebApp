@@ -2,6 +2,7 @@ using DotNetWebApp.Data.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace DotNetWebApp.Data
 {
@@ -16,12 +17,20 @@ namespace DotNetWebApp.Data
                 .Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            var connectionString = configuration.GetConnectionString("DefaultConnection")
+            var connectionString = configuration.GetConnectionString("PrimaryDatabase")
+                ?? configuration.GetConnectionString("DefaultConnection")
                 ?? "Server=localhost;Database=DotNetWebAppDb;Trusted_Connection=true;Encrypt=False;";
 
             optionsBuilder.UseSqlServer(connectionString);
 
-            return new AppDbContext(optionsBuilder.Options, new DesignTimeSchemaAccessor());
+            // Load DatabaseMappingOptions from configuration
+            var mappingOptions = new DatabaseMappingOptions();
+            configuration.GetSection(DatabaseMappingOptions.SectionName).Bind(mappingOptions);
+
+            return new AppDbContext(
+                optionsBuilder.Options,
+                new DesignTimeSchemaAccessor(),
+                Options.Create(mappingOptions));
         }
 
         private sealed class DesignTimeSchemaAccessor : ITenantSchemaAccessor

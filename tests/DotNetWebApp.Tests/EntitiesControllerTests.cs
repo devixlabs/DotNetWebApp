@@ -49,7 +49,7 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -77,7 +77,7 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -100,7 +100,7 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -130,7 +130,7 @@ public class EntitiesControllerTests
         await context.SaveChangesAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Product), "Product");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -151,7 +151,7 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -174,7 +174,7 @@ public class EntitiesControllerTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -207,7 +207,7 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(null, null);
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -234,7 +234,7 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 
@@ -262,7 +262,7 @@ public class EntitiesControllerTests
 
         await using var context = new TestAppDbContext(options, new TestTenantSchemaAccessor("dbo"));
         var metadataService = new TestEntityMetadataService(typeof(Category), "Category");
-        var operationService = new EntityOperationService(context, metadataService);
+        var operationService = new EntityOperationService(new TestDbContextResolver(context), metadataService);
         var appDictionary = CreateMockAppDictionary();
         var controller = new EntitiesController(operationService, metadataService, appDictionary);
 

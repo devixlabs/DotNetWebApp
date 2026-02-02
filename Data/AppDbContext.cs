@@ -1,6 +1,7 @@
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
@@ -9,11 +10,15 @@ namespace DotNetWebApp.Data
 {
     public class AppDbContext : DbContext
     {
+        private readonly DatabaseMappingOptions _mappingOptions;
+
         public AppDbContext(
             DbContextOptions<AppDbContext> options,
-            ITenantSchemaAccessor tenantSchemaAccessor) : base(options)
+            ITenantSchemaAccessor tenantSchemaAccessor,
+            IOptions<DatabaseMappingOptions> mappingOptions) : base(options)
         {
             Schema = tenantSchemaAccessor.Schema;
+            _mappingOptions = mappingOptions.Value;
         }
 
         public string Schema { get; }
@@ -47,9 +52,12 @@ namespace DotNetWebApp.Data
                 var tableSchema = tableAttr?.Schema;
 
                 // Apply table name and schema (schema takes precedence from attribute)
-                if (!string.IsNullOrWhiteSpace(tableSchema))
+                // Map database names to actual schema names via configuration
+                var effectiveSchema = _mappingOptions.GetEffectiveSchema(tableSchema);
+
+                if (!string.IsNullOrWhiteSpace(effectiveSchema))
                 {
-                    entity.ToTable(tableName, tableSchema);
+                    entity.ToTable(tableName, effectiveSchema);
                 }
                 else
                 {

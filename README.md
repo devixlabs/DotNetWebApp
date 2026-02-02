@@ -19,16 +19,24 @@ Choose Docker or native Linux installation.
 dotnet tool install --global dotnet-ef --version 8.*
 ```
 
-### 3. Build and run
+### 3. Set SA_PASSWORD environment variable
+```bash
+export SA_PASSWORD='YourStrongPassword123!'
+```
+
+### 4. Build and run
 ```bash
 make check     # Lint scripts/Makefile, restore packages, build
-make db-start  # Start SQL Server (Docker only)
+make db-create # Create SQL Server Docker container (first time only)
 make run-ddl-pipeline  # Generate app.yaml, models, and migration from SQL DDL
-make migrate   # Apply generated migration
+make migrate   # Create databases ({PRIMARY_DB}, {SECONDARY_DB}) and apply schema
+make seed      # Seed sample data
 make dev       # Start dev server (https://localhost:7012 or http://localhost:5210)
 ```
 
 **That's it!** Navigate to https://localhost:7012 (or http://localhost:5210) to see the app.
+
+> **Note:** This project uses two databases: **{PRIMARY_DB}** (primary) and **{SECONDARY_DB}** (secondary). Both are created automatically by `make migrate`.
 
 ---
 
@@ -209,27 +217,30 @@ CREATE TABLE [dbo].[Company](...)   -- → initech:Company
 After modifying `sql/schema.sql` or running the DDL parser:
 
 ```bash
+export SA_PASSWORD='YourStrongPassword123!'
 make db-start           # Start SQL Server (Docker)
 make run-ddl-pipeline   # Generate migration from DDL
-make migrate            # Apply migration via EF Core
-make seed               # Seed sample data
+make migrate            # Create {PRIMARY_DB}/{SECONDARY_DB} databases and apply schema
+make seed               # Seed sample data into both databases
 ```
 
-**Alternative:** Use `make db-migrate` for idempotent migrations via Docker/sqlcmd (safe for existing tables, requires `SA_PASSWORD` env var).
+**Note:** The `migrate` target creates both databases ({PRIMARY_DB} and {SECONDARY_DB}) and applies `sql/schema.sql`. The `seed` target runs `sql/seed.sql` which populates both databases.
 
 ---
 
 ## Sample Seed Data
 
-`sql/seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
+`sql/seed.sql` contains INSERT statements for both {PRIMARY_DB} and {SECONDARY_DB} databases, wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo data with:
 
 ```bash
 make seed
 ```
 
-Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
+This seeds data into both databases:
+- **{PRIMARY_DB}**: Products (dmprod), units (dmunit), billing (dmbill), vendors (dmvend), etc.
+- **{SECONDARY_DB}**: Acid corrections, Brix charts, allocations, etc.
 
-The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `sql/seed.sql` via the `DataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `sql/seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
+Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
 
 ---
 
@@ -250,17 +261,18 @@ docker run -d \
 
 ### SQL Server tooling + example queries
 
-Run the following commands from your host (the first must be executed as `root` inside the container) to install the SQL Server CLI tooling (`sqlcmd`) and verify the `DotNetWebAppDb` demo data:
+Run the following commands from your host to verify data in the {PRIMARY_DB} and {SECONDARY_DB} databases:
 
 ```bash
-docker exec -it --user root sqlserver-dev bash -lc "ACCEPT_EULA=Y apt-get update && \
-  ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev"
+# Query products from {PRIMARY_DB} database
 docker exec -it sqlserver-dev \
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
-  -d DotNetWebAppDb -Q "SELECT Id, Name FROM dbo.Categories;"
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
+  -d {PRIMARY_DB} -Q "SELECT TOP 5 pr_id, pr_descrip, pr_lispric FROM dbo.dmprod;"
+
+# Query acid corrections from {SECONDARY_DB} database
 docker exec -it sqlserver-dev \
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
-  -d DotNetWebAppDb -Q "SELECT Name, Price, CategoryId FROM dbo.Products;"
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
+  -d {SECONDARY_DB} -Q "SELECT * FROM dbo.AcidCorrection;"
 ```
 
 These commands let you run `sql/seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
@@ -280,19 +292,25 @@ These commands let you run `sql/seed.sql` manually or troubleshoot seed data wit
 dotnet tool install --global dotnet-ef --version 8.*
 ```
 
-### 3. Restore and build
+### 3. Set SA_PASSWORD environment variable
+```bash
+export SA_PASSWORD='YourStrongPassword123!'
+```
+
+### 4. Restore and build
 ```bash
 make check
 ```
 
-### 4. Start database and apply generated schema
+### 5. Create database container and apply schema
 ```bash
-make db-start      # Only needed for Docker
-make run-ddl-pipeline
-make migrate
+make db-create         # Create Docker container (first time only)
+make run-ddl-pipeline  # Generate models from DDL
+make migrate           # Create {PRIMARY_DB}/{SECONDARY_DB} databases and apply schema
+make seed              # Seed sample data
 ```
 
-### 5. Run development server
+### 6. Run development server
 ```bash
 make dev
 ```
@@ -427,10 +445,13 @@ make dev  # Uses ports from launchSettings.json
 
 ## Architecture
 
-- **Backend:** ASP.NET Core 8 Web API with Entity Framework Core
+- **Backend:** ASP.NET Core 8 Web API with Entity Framework Core + Dapper (hybrid)
 - **Frontend:** Blazor Server with Radzen UI components
-- **Database:** SQL Server (Docker or native)
-- **Configuration:** DDL-driven data models + JSON appsettings
+- **Database:** SQL Server (Docker or native) with **two databases**:
+  - **{PRIMARY_DB}** (primary): Main application data
+  - **{SECONDARY_DB}** (secondary): Auxiliary/metrics data
+- **Multi-Database Routing:** `IDbContextResolver` routes entities to correct database based on namespace
+- **Configuration:** DDL-driven data models + JSON appsettings with `DatabaseMapping` section
 - **Model Generation:** Automated from YAML via Scriban templates
 - **Modular Design:** Models in separate `DotNetWebApp.Models` assembly for better separation of concerns
 

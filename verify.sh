@@ -78,6 +78,8 @@ print_info "Step 7: Starting dev server (make dev)..."
 make dev > /tmp/dotnet-dev.log 2>&1 &
 SERVER_PID=$!
 print_status "Dev server started (PID: $SERVER_PID)"
+print_status "Run: tail -f /tmp/dotnet-dev.log"
+exit 0
 
 # Wait for server to be ready
 print_info "Waiting for server to be ready..."

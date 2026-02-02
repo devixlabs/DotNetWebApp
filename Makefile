@@ -6,6 +6,12 @@ DOTNET=./dotnet-build.sh
 IMAGE_NAME=dotnetwebapp
 # shellcheck disable=SC2034
 TAG=latest
+
+# Database names - configure these to match your sql/schema.sql USE statements
+# shellcheck disable=SC2034
+PRIMARY_DB=GAI
+# shellcheck disable=SC2034
+SECONDARY_DB=GAIMisc
 # shellcheck disable=SC2211,SC2276
 DOTNET_ENVIRONMENT?=Development
 # shellcheck disable=SC2211,SC2276
@@ -129,6 +135,7 @@ db-migrate: build _db-init-schema
 seed: db-seed
 
 # Seed database via Docker sqlcmd - runs sql/seed.sql against Docker SQL Server
+# Note: seed.sql contains USE [$(PRIMARY_DB)] and USE [$(SECONDARY_DB)] statements, so we connect to master
 db-seed:
 	@echo "Seeding database via Docker sqlcmd..."
 	# shellcheck disable=SC2016
@@ -149,11 +156,11 @@ db-seed:
 			echo "sqlcmd not found in container." >&2; \
 			exit 1; \
 		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d DotNetWebAppDb -C -i /dev/stdin' < sql/seed.sql
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d master -C -i /dev/stdin' < sql/seed.sql
 	@echo "✅ Database seeded successfully"
 
 # Internal helper: Initialize database schema from sql/schema.sql via Docker sqlcmd
-# Creates required databases (GAI, GAIMisc) and all tables defined in sql/schema.sql
+# Creates required databases ($(PRIMARY_DB), $(SECONDARY_DB)) and all tables defined in sql/schema.sql
 # Called automatically by db-migrate - do not call directly
 _db-init-schema:
 	@echo "Initializing database schema from sql/schema.sql..."
@@ -177,10 +184,10 @@ _db-init-schema:
 			exit 1; \
 		fi; \
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -b -Q "\
-			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''GAI'\'') \
-				CREATE DATABASE [GAI]; \
-			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''GAIMisc'\'') \
-				CREATE DATABASE [GAIMisc];"; \
+			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''$(PRIMARY_DB)'\'') \
+				CREATE DATABASE [$(PRIMARY_DB)]; \
+			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''$(SECONDARY_DB)'\'') \
+				CREATE DATABASE [$(SECONDARY_DB)];"; \
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -i /dev/stdin' < sql/schema.sql
 	@echo "✅ Database schema initialized successfully"
 
@@ -294,7 +301,8 @@ ms-logs:
 	@echo "Tailing systemd and errorlog (Ctrl+C to stop)..."
 	@sudo sh -c 'journalctl -u mssql-server -f --no-pager & tail -f /var/opt/mssql/log/errorlog; wait'
 
-# Drop the local dev database (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
+# Drop the local dev databases (uses SA_PASSWORD or container MSSQL_SA_PASSWORD)
+# Drops $(PRIMARY_DB), $(SECONDARY_DB), and DotNetWebAppDb databases
 # Also removes EF Core migrations to ensure clean slate when schema.sql changes
 db-drop:
 	# Clear old migrations to avoid conflicts when schema.sql changes
@@ -317,9 +325,11 @@ db-drop:
 			echo "sqlcmd not found in container." >&2; \
 			exit 1; \
 		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C \
-			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END" && \
-		echo "Dropped database DotNetWebAppDb (if it existed)." || echo "Failed to drop database."'
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "\
+			IF DB_ID('"'"'$(PRIMARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(PRIMARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(PRIMARY_DB)]; END; \
+			IF DB_ID('"'"'$(SECONDARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(SECONDARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(SECONDARY_DB)]; END; \
+			IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;" && \
+		echo "Dropped databases $(PRIMARY_DB), $(SECONDARY_DB), DotNetWebAppDb (if they existed)." || echo "Failed to drop databases."'
 
 # Local install of MSSQL (no Docker)
 ms-status:
@@ -355,6 +365,7 @@ ms-migrate: build
 	@echo "✅ Migration applied successfully"
 
 # Seed database via native sqlcmd - runs sql/seed.sql against native MSSQL Server
+# Note: seed.sql contains USE [$(PRIMARY_DB)] and USE [$(SECONDARY_DB)] statements, so we connect to master
 ms-seed:
 	@echo "Seeding database via native sqlcmd..."
 	# shellcheck disable=SC2016
@@ -367,10 +378,11 @@ ms-seed:
 			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
 			exit 1; \
 		fi; \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -d DotNetWebAppDb -C -i sql/seed.sql'
+		sqlcmd -S localhost -U sa -P "$$PASSWORD" -d master -C -i sql/seed.sql'
 	@echo "✅ Database seeded successfully"
 
-# Drop the database from native MSSQL instance on Linux
+# Drop the databases from native MSSQL instance on Linux
+# Drops $(PRIMARY_DB), $(SECONDARY_DB), and DotNetWebAppDb databases
 # Also removes EF Core migrations to ensure clean slate when schema.sql changes
 ms-drop:
 	# Clear old migrations to avoid conflicts when schema.sql changes
@@ -385,6 +397,8 @@ ms-drop:
 			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
 			exit 1; \
 		fi; \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C \
-			-Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END" && \
-		echo "Dropped database DotNetWebAppDb (if it existed)." || echo "Failed to drop database."'
+		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C -Q "\
+			IF DB_ID('"'"'$(PRIMARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(PRIMARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(PRIMARY_DB)]; END; \
+			IF DB_ID('"'"'$(SECONDARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(SECONDARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(SECONDARY_DB)]; END; \
+			IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;" && \
+		echo "Dropped databases $(PRIMARY_DB), $(SECONDARY_DB), DotNetWebAppDb (if they existed)." || echo "Failed to drop databases."'

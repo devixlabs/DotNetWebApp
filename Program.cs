@@ -14,6 +14,9 @@ using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load appsettings.Local.json for local developer overrides (connection strings, etc.)
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -28,6 +31,8 @@ builder.Services.Configure<DataSeederOptions>(
     builder.Configuration.GetSection(DataSeederOptions.SectionName));
 builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
+builder.Services.Configure<DatabaseMappingOptions>(
+    builder.Configuration.GetSection(DatabaseMappingOptions.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
@@ -53,8 +58,20 @@ builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
+
+// Database connections - PrimaryDatabase and SecondaryDatabase
+var primaryConnectionString = builder.Configuration.GetConnectionString("PrimaryDatabase")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var secondaryConnectionString = builder.Configuration.GetConnectionString("SecondaryDatabase")
+    ?? primaryConnectionString;
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(primaryConnectionString));
+builder.Services.AddDbContext<SecondaryDbContext>(options =>
+    options.UseSqlServer(secondaryConnectionString));
+
+// DbContext resolver routes entities to correct database based on namespace
+builder.Services.AddScoped<IDbContextResolver, DbContextResolver>();
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 builder.Services.AddScoped<DataSeeder>();
 
