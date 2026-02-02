@@ -70,6 +70,13 @@ builder.Services.AddScoped<IAcuityImportService, AcuityImportService>();
 builder.Services.AddScoped<IICTOrderNumberService, ICTOrderNumberService>();
 builder.Services.AddScoped<IICTService, ICTService>();
 
+// PrePick services (Phase 2 - Third application)
+builder.Services.AddScoped<DotNetWebApp.Services.PrePick.Validators.AuditorAssignmentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.PrePick.Validators.TimestampValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ShipValidationService>();
+builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ColorCodingService>();
+builder.Services.AddScoped<DotNetWebApp.Services.PrePick.IPrePickService, DotNetWebApp.Services.PrePick.PrePickService>();
+
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
 // If they're empty or missing, fall back to DefaultConnection

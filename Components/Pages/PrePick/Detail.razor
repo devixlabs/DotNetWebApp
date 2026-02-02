@@ -1,0 +1,575 @@
+@page "/prepick-orders/{OrderNumber}"
+@using DotNetWebApp.Services.PrePick
+@using DotNetWebApp.Services.PrePick.Models
+@inject IPrePickService PrePickService
+@inject NavigationManager Navigation
+@inject NotificationService NotificationService
+
+<PageTitle>PrePick Order - @OrderNumber</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+    @* Header *@
+    <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenColumn Size="6">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                <RadzenButton Icon="arrow_back"
+                             ButtonStyle="@ButtonStyle.Light"
+                             Click="@GoBack" />
+                <RadzenText TextStyle="TextStyle.H4">Order: @OrderNumber</RadzenText>
+            </RadzenStack>
+        </RadzenColumn>
+        <RadzenColumn Size="6" class="rz-text-align-end">
+            <RadzenButton Text="Refresh"
+                         Click="@LoadOrder"
+                         ButtonStyle="@ButtonStyle.Secondary"
+                         Icon="refresh" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+    }
+    else if (order != null)
+    {
+        @* Order Info Card *@
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Order Information</RadzenText>
+            <RadzenRow>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Due Ship Date</RadzenText>
+                        <RadzenText>@order.DueShipDate?.ToString("MM/dd/yyyy")</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Carrier</RadzenText>
+                        <RadzenText>@order.CarrierName</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Bill To</RadzenText>
+                        <RadzenText>@order.BillToName</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Ship To</RadzenText>
+                        <RadzenText>@order.ShipToName</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenRow class="rz-mt-4">
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">OK to Ship</RadzenText>
+                        @if (order.OkToShip)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Yes" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="No" />
+                        }
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Pallets</RadzenText>
+                        <RadzenText>@order.PalletCount</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Products</RadzenText>
+                        <RadzenText>@order.ProductCount</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="3">
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Caption">Status</RadzenText>
+                        <RadzenBadge Text="@order.Status" Style="@($"background-color: {ColorCodingService.GetStatusColor(order.StatusCode)}; color: black;")" />
+                    </RadzenStack>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+
+        @* Assignment Cards *@
+        <RadzenRow>
+            @* Allocator/Team Leader Card *@
+            <RadzenColumn Size="4">
+                <RadzenCard Style="height: 100%;">
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Management</RadzenText>
+                    <RadzenStack Gap="1rem">
+                        <RadzenFormField Text="Allocator">
+                            <RadzenTextBox @bind-Value="@order.Allocator" Style="width: 100%;" />
+                        </RadzenFormField>
+                        <RadzenFormField Text="Team Leader">
+                            <RadzenTextBox @bind-Value="@order.TeamLeader" Style="width: 100%;" />
+                        </RadzenFormField>
+                        <RadzenButton Text="Update"
+                                     Click="@UpdateManagement"
+                                     ButtonStyle="@ButtonStyle.Primary"
+                                     Style="width: 100%;" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            @* Picker Card *@
+            <RadzenColumn Size="4">
+                <RadzenCard Style="@($"height: 100%; {GetOperationCardStyle(order.PickerUsername, order.PickerClockIn, order.PickerClockOut)}")">
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Picker</RadzenText>
+                    <RadzenStack Gap="1rem">
+                        <RadzenFormField Text="Username">
+                            <RadzenTextBox @bind-Value="@pickerUsername" Style="width: 100%;" />
+                        </RadzenFormField>
+                        @if (string.IsNullOrEmpty(order.PickerUsername))
+                        {
+                            <RadzenButton Text="Assign Picker"
+                                         Click="@AssignPicker"
+                                         ButtonStyle="@ButtonStyle.Success"
+                                         Style="width: 100%;" />
+                        }
+                        else if (!order.PickerClockOut.HasValue)
+                        {
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.PickerClockIn?.ToString("HH:mm")</RadzenText>
+                                <RadzenButton Text="Clock Out"
+                                             Click="@ClockOutPicker"
+                                             ButtonStyle="@ButtonStyle.Warning"
+                                             Style="width: 100%;" />
+                            </RadzenStack>
+                        }
+                        else
+                        {
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.PickerClockIn?.ToString("HH:mm")</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock Out: @order.PickerClockOut?.ToString("HH:mm")</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Completed" />
+                            </RadzenStack>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            @* Auditor Card *@
+            <RadzenColumn Size="4">
+                <RadzenCard Style="@($"height: 100%; {GetAuditorCardStyle()}")">
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Auditor</RadzenText>
+                    <RadzenStack Gap="1rem">
+                        <RadzenFormField Text="Username">
+                            <RadzenTextBox @bind-Value="@auditorUsername" Style="width: 100%;" />
+                        </RadzenFormField>
+                        @if (string.IsNullOrEmpty(order.AuditorUsername))
+                        {
+                            <RadzenButton Text="Assign Auditor"
+                                         Click="@AssignAuditor"
+                                         ButtonStyle="@ButtonStyle.Success"
+                                         Style="width: 100%;" />
+                        }
+                        else if (!order.AuditorClockOut.HasValue)
+                        {
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.AuditorClockIn?.ToString("HH:mm")</RadzenText>
+                                <RadzenButton Text="Clock Out"
+                                             Click="@ClockOutAuditor"
+                                             ButtonStyle="@ButtonStyle.Warning"
+                                             Style="width: 100%;" />
+                            </RadzenStack>
+                        }
+                        else
+                        {
+                            <RadzenStack>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.AuditorClockIn?.ToString("HH:mm")</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Caption">Clock Out: @order.AuditorClockOut?.ToString("HH:mm")</RadzenText>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Completed" />
+                            </RadzenStack>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* Assembler Card *@
+        <RadzenCard Style="@GetOperationCardStyle(order.AssemblerUsername, order.AssemblerClockIn, order.AssemblerClockOut)">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Assembler</RadzenText>
+            <RadzenRow>
+                <RadzenColumn Size="4">
+                    <RadzenFormField Text="Username">
+                        <RadzenTextBox @bind-Value="@assemblerUsername" Style="width: 100%;" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="4">
+                    @if (string.IsNullOrEmpty(order.AssemblerUsername))
+                    {
+                        <RadzenButton Text="Assign Assembler"
+                                     Click="@AssignAssembler"
+                                     ButtonStyle="@ButtonStyle.Success"
+                                     Style="margin-top: 22px;" />
+                    }
+                    else if (!order.AssemblerClockOut.HasValue)
+                    {
+                        <RadzenStack>
+                            <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.AssemblerClockIn?.ToString("HH:mm")</RadzenText>
+                            <RadzenButton Text="Clock Out"
+                                         Click="@ClockOutAssembler"
+                                         ButtonStyle="@ButtonStyle.Warning" />
+                        </RadzenStack>
+                    }
+                    else
+                    {
+                        <RadzenStack>
+                            <RadzenText TextStyle="TextStyle.Caption">Clock In: @order.AssemblerClockIn?.ToString("HH:mm")</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption">Clock Out: @order.AssemblerClockOut?.ToString("HH:mm")</RadzenText>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Completed" />
+                        </RadzenStack>
+                    }
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+
+        @* Notes Card *@
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Notes</RadzenText>
+            <RadzenTextArea @bind-Value="@order.Notes" Rows="3" Style="width: 100%;" />
+            <RadzenButton Text="Save Notes"
+                         Click="@SaveNotes"
+                         ButtonStyle="@ButtonStyle.Primary"
+                         Style="margin-top: 0.5rem;" />
+        </RadzenCard>
+
+        @* Actions Card *@
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2">Actions</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                <RadzenButton Text="Pick lists coming in production"
+                             ButtonStyle="@ButtonStyle.Secondary"
+                             Disabled="true"
+                             Icon="print" />
+                @* TODO: Implement QR codes in production *@
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
+            Order not found: @OrderNumber
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public string? OrderNumber { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int warehouseId { get; set; } = 3;
+
+    private PrePickOrder? order;
+    private bool isLoading = true;
+
+    // Input fields
+    private string pickerUsername = string.Empty;
+    private string auditorUsername = string.Empty;
+    private string assemblerUsername = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrder();
+    }
+
+    private async Task LoadOrder()
+    {
+        if (string.IsNullOrEmpty(OrderNumber))
+            return;
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            order = await PrePickService.GetOrderAsync(OrderNumber, warehouseId);
+            if (order != null)
+            {
+                pickerUsername = order.PickerUsername;
+                auditorUsername = order.AuditorUsername;
+                assemblerUsername = order.AssemblerUsername;
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load order: {ex.Message}",
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/prepick-orders");
+    }
+
+    private async Task AssignPicker()
+    {
+        if (string.IsNullOrEmpty(pickerUsername))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Warning",
+                Detail = "Please enter a picker username",
+                Duration = 3000
+            });
+            return;
+        }
+
+        var result = await PrePickService.AssignPickerAsync(new AssignPickerRequest
+        {
+            OrderNumber = OrderNumber!,
+            PickerUsername = pickerUsername,
+            ClockIn = DateTime.Now
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Picker assigned successfully",
+                Duration = 3000
+            });
+            await LoadOrder();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task AssignAuditor()
+    {
+        if (string.IsNullOrEmpty(auditorUsername))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Warning",
+                Detail = "Please enter an auditor username",
+                Duration = 3000
+            });
+            return;
+        }
+
+        var result = await PrePickService.AssignAuditorAsync(new AssignAuditorRequest
+        {
+            OrderNumber = OrderNumber!,
+            AuditorUsername = auditorUsername,
+            ClockIn = DateTime.Now
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Auditor assigned successfully",
+                Duration = 3000
+            });
+            await LoadOrder();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task AssignAssembler()
+    {
+        if (string.IsNullOrEmpty(assemblerUsername))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Warning",
+                Detail = "Please enter an assembler username",
+                Duration = 3000
+            });
+            return;
+        }
+
+        var result = await PrePickService.AssignAssemblerAsync(new AssignAssemblerRequest
+        {
+            OrderNumber = OrderNumber!,
+            AssemblerUsername = assemblerUsername,
+            ClockIn = DateTime.Now
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Assembler assigned successfully",
+                Duration = 3000
+            });
+            await LoadOrder();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task ClockOutPicker()
+    {
+        await ClockOutWorker("Picker");
+    }
+
+    private async Task ClockOutAuditor()
+    {
+        await ClockOutWorker("Auditor");
+    }
+
+    private async Task ClockOutAssembler()
+    {
+        await ClockOutWorker("Assembler");
+    }
+
+    private async Task ClockOutWorker(string workerType)
+    {
+        var result = await PrePickService.ClockOutAsync(new ClockOutRequest
+        {
+            OrderNumber = OrderNumber!,
+            WorkerType = workerType,
+            ClockOut = DateTime.Now
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = $"{workerType} clocked out successfully",
+                Duration = 3000
+            });
+            await LoadOrder();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task UpdateManagement()
+    {
+        var result = await PrePickService.UpdateOrderAsync(new UpdateOrderRequest
+        {
+            OrderNumber = OrderNumber!,
+            Allocator = order!.Allocator,
+            TeamLeader = order.TeamLeader
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Management updated successfully",
+                Duration = 3000
+            });
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task SaveNotes()
+    {
+        var result = await PrePickService.UpdateOrderAsync(new UpdateOrderRequest
+        {
+            OrderNumber = OrderNumber!,
+            Notes = order!.Notes
+        }, warehouseId);
+
+        if (result.Success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Notes saved successfully",
+                Duration = 3000
+            });
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = result.ErrorMessage,
+                Duration = 5000
+            });
+        }
+    }
+
+    private string GetOperationCardStyle(string? operatorName, DateTime? clockIn, DateTime? clockOut)
+    {
+        string color = ColorCodingService.GetOperationColor(operatorName, clockIn, clockOut);
+        return $"background-color: {color};";
+    }
+
+    private string GetAuditorCardStyle()
+    {
+        if (order?.PrintStatus == 10 || order?.PrintStatus == 11)
+            return "background-color: LemonChiffon;";
+
+        return GetOperationCardStyle(order?.AuditorUsername, order?.AuditorClockIn, order?.AuditorClockOut);
+    }
+}

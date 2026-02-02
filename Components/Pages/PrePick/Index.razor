@@ -1,0 +1,250 @@
+@page "/prepick-orders"
+@using DotNetWebApp.Services.PrePick
+@using DotNetWebApp.Services.PrePick.Models
+@inject IPrePickService PrePickService
+@inject NavigationManager Navigation
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>PrePick Workflow</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+    <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenColumn Size="6">
+            <RadzenText TextStyle="TextStyle.H4">PrePick Workflow</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="6" class="rz-text-align-end">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+                <RadzenDropDown @bind-Value="@selectedWarehouseId"
+                               Data="@warehouses"
+                               TextProperty="Name"
+                               ValueProperty="Id"
+                               Change="@OnWarehouseChanged"
+                               Style="width: 200px;" />
+                <RadzenDatePicker @bind-Value="@selectedDate"
+                                 DateFormat="MM/dd/yyyy"
+                                 Change="@OnDateChanged"
+                                 Style="width: 150px;" />
+                <RadzenButton Text="Refresh"
+                             Click="@LoadOrders"
+                             ButtonStyle="@ButtonStyle.Secondary"
+                             Icon="refresh" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+    }
+    else if (orders != null && orders.Any())
+    {
+        <RadzenDataGrid @ref="ordersGrid"
+                       Data="@orders"
+                       TItem="PrePickOrder"
+                       AllowFiltering="true"
+                       AllowColumnResize="true"
+                       AllowSorting="true"
+                       AllowPaging="true"
+                       PageSize="15"
+                       SelectionMode="DataGridSelectionMode.Multiple"
+                       @bind-SelectedItems="@selectedOrders"
+                       RowRender="@OnRowRender"
+                       Style="height: calc(100vh - 250px);">
+            <Columns>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="OrderNumber" Title="Order #" Width="120px" Frozen="true">
+                    <Template Context="order">
+                        <RadzenLink Path="@($"/prepick-orders/{order.OrderNumber}?warehouseId={selectedWarehouseId}")"
+                                   Text="@order.OrderNumber" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="DueShipDate" Title="Due Ship" Width="100px" FormatString="{0:MM/dd}" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="CarrierName" Title="Carrier" Width="120px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="BillToName" Title="Bill To" Width="150px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="ShipToName" Title="Ship To" Width="150px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="Allocator" Title="Allocator" Width="100px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="TeamLeader" Title="Team Lead" Width="100px" />
+
+                @* Picker columns *@
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="PickerUsername" Title="Picker" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetOperationStyle(order.PickerUsername, order.PickerClockIn, order.PickerClockOut)">
+                            @order.PickerUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="PickerClockIn" Title="Pick In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="PickerClockOut" Title="Pick Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Auditor columns *@
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AuditorUsername" Title="Auditor" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetAuditorStyle(order)">
+                            @order.AuditorUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AuditorClockIn" Title="Aud In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AuditorClockOut" Title="Aud Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Assembler columns *@
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AssemblerUsername" Title="Assembler" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetOperationStyle(order.AssemblerUsername, order.AssemblerClockIn, order.AssemblerClockOut)">
+                            @order.AssemblerUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AssemblerClockIn" Title="Asm In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="AssemblerClockOut" Title="Asm Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Status columns *@
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="OkToShip" Title="OK Ship" Width="80px">
+                    <Template Context="order">
+                        @if (order.OkToShip)
+                        {
+                            <RadzenIcon Icon="check_circle" Style="color: green;" />
+                        }
+                        else
+                        {
+                            <RadzenIcon Icon="cancel" Style="color: red;" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="PalletCount" Title="Pallets" Width="70px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="ProductCount" Title="Products" Width="70px" />
+                <RadzenDataGridColumn TItem="PrePickOrder" Property="Notes" Title="Notes" Width="150px" />
+
+                @* Actions column *@
+                <RadzenDataGridColumn TItem="PrePickOrder" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+                    <Template Context="order">
+                        <RadzenButton Icon="visibility"
+                                     ButtonStyle="@ButtonStyle.Info"
+                                     Size="ButtonSize.Small"
+                                     Click="@(() => ViewOrder(order.OrderNumber))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        @* Batch update panel (shown when 3+ orders selected) *@
+        @if (selectedOrders != null && selectedOrders.Count >= 3)
+        {
+            <RadzenCard>
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center">
+                    <RadzenText TextStyle="TextStyle.Subtitle1">
+                        Batch Update @selectedOrders.Count Orders:
+                    </RadzenText>
+                    <RadzenButton Text="Batch update coming in production"
+                                 ButtonStyle="@ButtonStyle.Secondary"
+                                 Disabled="true"
+                                 Size="ButtonSize.Small" />
+                </RadzenStack>
+            </RadzenCard>
+        }
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
+            No orders found for the selected date and warehouse.
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+@code {
+    private RadzenDataGrid<PrePickOrder>? ordersGrid;
+    private List<PrePickOrder>? orders;
+    private IList<PrePickOrder>? selectedOrders;
+    private bool isLoading = true;
+    private int selectedWarehouseId = 3;
+    private DateTime selectedDate = DateTime.Today;
+
+    private readonly List<WarehouseOption> warehouses = new()
+    {
+        new WarehouseOption { Id = 3, Name = "CPFG" },
+        new WarehouseOption { Id = 92, Name = "Northlake" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        selectedOrders = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await PrePickService.ListOrdersAsync(
+                selectedWarehouseId,
+                selectedDate,
+                selectedDate);
+
+            orders = result.ToList();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load orders: {ex.Message}",
+                Duration = 5000
+            });
+            orders = new List<PrePickOrder>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnWarehouseChanged(object value)
+    {
+        await LoadOrders();
+    }
+
+    private async Task OnDateChanged(DateTime? value)
+    {
+        if (value.HasValue)
+        {
+            selectedDate = value.Value;
+            await LoadOrders();
+        }
+    }
+
+    private void ViewOrder(string orderNumber)
+    {
+        Navigation.NavigateTo($"/prepick-orders/{orderNumber}?warehouseId={selectedWarehouseId}");
+    }
+
+    private void OnRowRender(RowRenderEventArgs<PrePickOrder> args)
+    {
+        // Apply row color based on status code
+        args.Attributes.Add("style", $"background-color: {ColorCodingService.GetStatusColor(args.Data.StatusCode)};");
+    }
+
+    private string GetOperationStyle(string? operatorName, DateTime? clockIn, DateTime? clockOut)
+    {
+        string color = ColorCodingService.GetOperationColor(operatorName, clockIn, clockOut);
+        return $"background-color: {color}; padding: 2px 4px;";
+    }
+
+    private string GetAuditorStyle(PrePickOrder order)
+    {
+        // Check if printed (gs_num2=10 or 11)
+        if (order.PrintStatus == 10 || order.PrintStatus == 11)
+            return "background-color: LemonChiffon; padding: 2px 4px;";
+
+        return GetOperationStyle(order.AuditorUsername, order.AuditorClockIn, order.AuditorClockOut);
+    }
+
+    private class WarehouseOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

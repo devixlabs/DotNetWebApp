@@ -729,6 +729,128 @@ PRINT '  - Ready for testing at /ict-orders';
 PRINT '========================================================';
 
 -- ============================================================================
+-- PREPICK WORKFLOW - SEED DATA
+-- ============================================================================
+PRINT '';
+PRINT '========== PREPICK SEED DATA ==========';
+PRINT 'Creating sample PrePick orders for testing...';
+
+-- Clear existing test PrePick orders (regular orders, NOT ending in 99)
+DELETE FROM gai_scheduler WHERE gs_ordnum IN (20260201001, 20260201002, 20260201003, 20260201004);
+DELETE FROM gai_allocate WHERE all_ordernum IN (20260201001, 20260201002, 20260201003, 20260201004);
+
+-- Sample PrePick Order 1: CPFG - Not allocated (no picker/auditor)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_auditor, gs_assembler,
+    gs_log1, gs_pronum, gs_pallets
+) VALUES (
+    3, 20260201001, 'A1', GETDATE(), GETDATE(), '08:00:00',
+    'Acme Corporation', 'UPS', 'Driver A', 'TBD', 'Test PrePick Order 1 - Not started',
+    'C', GETDATE(), '20260201001', 'jrade', '',
+    1, '', GETDATE(), '',
+    '', '', '',
+    0, 5, 3
+);
+
+-- Sample PrePick Order 2: CPFG - Picker assigned, partially allocated
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_pickerin, gs_pickerout,
+    gs_auditor, gs_assembler,
+    gs_log1, gs_pronum, gs_pallets
+) VALUES (
+    3, 20260201002, 'B2', GETDATE(), GETDATE(), '09:30:00',
+    'Global Parts Co', 'FedEx', 'Driver B', 'TBD', 'Test PrePick Order 2 - Picker in progress',
+    'C', GETDATE(), '20260201002', 'jrade', 'admin',
+    2, '', GETDATE(), 'testuser',
+    'cpfg_user', DATEADD(HOUR, -1, GETDATE()), NULL,
+    '', '',
+    0, 8, 5
+);
+
+-- Sample PrePick Order 3: CPFG - Picker complete, auditor in progress (UPS carrier allows partial)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_pickerin, gs_pickerout,
+    gs_auditor, gs_auditorin, gs_auditorout,
+    gs_assembler,
+    gs_log1, gs_pronum, gs_pallets
+) VALUES (
+    3, 20260201003, 'C3', GETDATE(), GETDATE(), '10:00:00',
+    'Premier Materials LLC', 'UPS', 'Driver C', 'TBD', 'Test PrePick Order 3 - Auditor in progress',
+    'C', GETDATE(), '20260201003', 'jrade', 'admin',
+    3, '', GETDATE(), 'testuser',
+    'cpfg_user', DATEADD(HOUR, -2, GETDATE()), DATEADD(HOUR, -1, GETDATE()),
+    'admin', DATEADD(MINUTE, -30, GETDATE()), NULL,
+    '',
+    0, 12, 8
+);
+
+-- Sample PrePick Order 4: Northlake - Complete (all workers clocked out)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_dock, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_notes,
+    gs_status, gs_datechkin, gs_appid, gs_forkop, gs_chr1,
+    gs_num1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_pickerin, gs_pickerout,
+    gs_auditor, gs_auditorin, gs_auditorout,
+    gs_assembler, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_pronum, gs_pallets, gs_num2
+) VALUES (
+    92, 20260201004, 'D4', GETDATE(), GETDATE(), '14:00:00',
+    'Acme Corporation', 'Federal Express', 'Driver D', 'TBD', 'Test PrePick Order 4 - Complete',
+    'C', GETDATE(), '20260201004', 'northlake_user', 'admin',
+    4, '', GETDATE(), 'northlake_user',
+    'northlake_user', DATEADD(HOUR, -4, GETDATE()), DATEADD(HOUR, -3, GETDATE()),
+    'northlake_user', DATEADD(HOUR, -3, GETDATE()), DATEADD(HOUR, -2, GETDATE()),
+    'northlake_user', DATEADD(HOUR, -2, GETDATE()), DATEADD(HOUR, -1, GETDATE()),
+    1, 6, 4, 11
+);
+
+-- Add allocation records for testing auditor validation
+-- Order 20260201002: Partially allocated
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chr1, all_chr2, all_chr3, all_description, all_um
+) VALUES
+    (3, 20260201002, 'WIDGET-A', 'LOT-2026-001', 50, 0, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA'),
+    (3, 20260201002, 'GADGET-PRO', 'LOT-2026-002', 25, 0, GETDATE(), '', '', '', 'Professional Gadget Series', 'EA');
+
+-- Order 20260201003: Fully allocated (all qty > 0)
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chr1, all_chr2, all_chr3, all_description, all_um
+) VALUES
+    (3, 20260201003, 'WIDGET-A', 'LOT-2026-003', 100, 0, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA'),
+    (3, 20260201003, 'COMP-X100', 'LOT-2026-004', 200, 0, GETDATE(), '', '', '', 'Industrial Component X100', 'EA');
+
+-- Order 20260201004: Fully picked (all pick > 0)
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chr1, all_chr2, all_chr3, all_description, all_um
+) VALUES
+    (92, 20260201004, 'WIDGET-A', 'LOT-2026-005', 75, 75, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA'),
+    (92, 20260201004, 'GADGET-PRO', 'LOT-2026-006', 30, 30, GETDATE(), '', '', '', 'Professional Gadget Series', 'EA');
+
+PRINT 'PrePick Seed Data Complete:';
+PRINT '  - Order 20260201001: CPFG, not started (Status 1)';
+PRINT '  - Order 20260201002: CPFG, picker in progress, partially allocated (Status 2)';
+PRINT '  - Order 20260201003: CPFG, auditor in progress, fully allocated (Status 3)';
+PRINT '  - Order 20260201004: Northlake, complete, fully picked (Status 4)';
+PRINT '  - Ready for testing at /prepick-orders';
+PRINT '========================================================';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAIMisc DATABASE
 -- ============================================================================
 
