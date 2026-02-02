@@ -77,6 +77,13 @@ builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ShipValidationService>(
 builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ColorCodingService>();
 builder.Services.AddScoped<DotNetWebApp.Services.PrePick.IPrePickService, DotNetWebApp.Services.PrePick.PrePickService>();
 
+// Allocation services (Phase 2 - Fourth application)
+builder.Services.AddScoped<DotNetWebApp.Services.Allocation.Validators.PaymentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.Allocation.Validators.ShelfLifeValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.Allocation.ILockService, DotNetWebApp.Services.Allocation.LockService>();
+builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IFIFOAllocationEngine, DotNetWebApp.Services.Allocation.FIFOAllocationEngine>();
+builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IAllocationService, DotNetWebApp.Services.Allocation.AllocationService>();
+
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
 // If they're empty or missing, fall back to DefaultConnection

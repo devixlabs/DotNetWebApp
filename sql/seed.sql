@@ -540,6 +540,687 @@ BEGIN
 END;
 
 -- ============================================================================
+-- 8. CARRIERS/TRUCKING (dmtruk) - All NOT NULL columns required
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmtruk] WHERE tr_name = 'UPS')
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dmtruk] ON;
+    INSERT INTO [dbo].[dmtruk]
+    (tr_id, tr_name, tr_active, tr_default, tr_contact, tr_street, tr_street2, tr_city, tr_state, tr_zip,
+     tr_phone, tr_fax, tr_email, tr_maxwgt, tr_ccode, tr_svctype, tr_loadunid, tr_loadsize, tr_splitload, tr_carcode,
+     tr_veid, tr_cyid, tr_packinstreq, tr_picktime, tr_pickday, tr_shipday, tr_delday, tr_minord, tr_labor, tr_burden,
+     tr_approvalreq, tr_dsdinvsync, tr_dsdinvsyncloc, tr_svcprovider, tr_shipdays, tr_deliverydays, tr_splitloadsize,
+     tr_country, tr_deliverto, tr_dsdloid, tr_dsdchid, tr_ordtype)
+    VALUES
+    (1, 'UPS', 1, 1, 'UPS Support', '', '', '', '', '', '1-800-742-5877', '', 'support@ups.com', 150, '', 'Ground', 0, 0, 0, 'UPS',
+     0, 0, 0, 0, '', '', '', 0, 0, 0,
+     0, 0, 0, '', 1, 1, '',
+     'USA', 0, 0, 0, '');
+    SET IDENTITY_INSERT [dbo].[dmtruk] OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmtruk] WHERE tr_name = 'FedEx')
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dmtruk] ON;
+    INSERT INTO [dbo].[dmtruk]
+    (tr_id, tr_name, tr_active, tr_default, tr_contact, tr_street, tr_street2, tr_city, tr_state, tr_zip,
+     tr_phone, tr_fax, tr_email, tr_maxwgt, tr_ccode, tr_svctype, tr_loadunid, tr_loadsize, tr_splitload, tr_carcode,
+     tr_veid, tr_cyid, tr_packinstreq, tr_picktime, tr_pickday, tr_shipday, tr_delday, tr_minord, tr_labor, tr_burden,
+     tr_approvalreq, tr_dsdinvsync, tr_dsdinvsyncloc, tr_svcprovider, tr_shipdays, tr_deliverydays, tr_splitloadsize,
+     tr_country, tr_deliverto, tr_dsdloid, tr_dsdchid, tr_ordtype)
+    VALUES
+    (2, 'FedEx', 1, 0, 'FedEx Support', '', '', '', '', '', '1-800-463-3339', '', 'support@fedex.com', 150, '', 'Ground', 0, 0, 0, 'FEDEX',
+     0, 0, 0, 0, '', '', '', 0, 0, 0,
+     0, 0, 0, '', 2, 2, '',
+     'USA', 0, 0, 0, '');
+    SET IDENTITY_INSERT [dbo].[dmtruk] OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[dmtruk] WHERE tr_name = 'Local Delivery')
+BEGIN
+    SET IDENTITY_INSERT [dbo].[dmtruk] ON;
+    INSERT INTO [dbo].[dmtruk]
+    (tr_id, tr_name, tr_active, tr_default, tr_contact, tr_street, tr_street2, tr_city, tr_state, tr_zip,
+     tr_phone, tr_fax, tr_email, tr_maxwgt, tr_ccode, tr_svctype, tr_loadunid, tr_loadsize, tr_splitload, tr_carcode,
+     tr_veid, tr_cyid, tr_packinstreq, tr_picktime, tr_pickday, tr_shipday, tr_delday, tr_minord, tr_labor, tr_burden,
+     tr_approvalreq, tr_dsdinvsync, tr_dsdinvsyncloc, tr_svcprovider, tr_shipdays, tr_deliverydays, tr_splitloadsize,
+     tr_country, tr_deliverto, tr_dsdloid, tr_dsdchid, tr_ordtype)
+    VALUES
+    (3, 'Local Delivery', 1, 0, 'Local Fleet', '', '', '', '', '', '555-LOCAL', '', '', 500, '', 'Local', 0, 0, 0, 'LOCAL',
+     0, 0, 0, 0, '', '', '', 0, 0, 0,
+     0, 0, 0, '', 0, 0, '',
+     'USA', 0, 0, 0, '');
+    SET IDENTITY_INSERT [dbo].[dmtruk] OFF;
+END;
+
+-- ============================================================================
+-- 9. SALES ORDER HEADERS (dttord) - FOR ALLOCATION TESTING
+-- All NOT NULL columns must be included
+-- ============================================================================
+PRINT '';
+PRINT '========== LOADING ALLOCATION ORDER HEADERS (dttord) ==========';
+
+-- Clear existing test orders (all allocation test orders)
+DELETE FROM [dbo].[dttord] WHERE to_ordnum BETWEEN 50001 AND 50999;
+
+-- Order 50001: CPFG (waid=3) - Not allocated, ready for allocation
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50001, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-001', '', 1, 0, 1500.00, 0.00, 'Allocation Test - Not Allocated', '',
+ 3, 1, 'Test Order 50001', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-02', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '08:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- Order 50002: CPFG (waid=3) - Partially allocated (will have some gai_allocate records)
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50002, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-002', '', 2, 0, 2000.00, 0.00, 'Allocation Test - Partially Allocated', '',
+ 3, 1, 'Test Order 50002', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-02', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '09:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- Order 50003: CPFG (waid=3) - Fully allocated
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50003, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-003', '', 1, 0, 1000.00, 0.00, 'Allocation Test - Fully Allocated', '',
+ 3, 1, 'Test Order 50003', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-02', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '10:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- Order 50004: CPFG (waid=3) - Credit Hold (Terms ID 51), balance exceeds 3% tolerance
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50004, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-004', '', 1, 51, 1000.00, 500.00, 'Allocation Test - Credit Hold (50% balance > 3%)', '',
+ 3, 1, 'Test Order 50004 - CREDIT HOLD', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-02', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '11:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- Order 50005: Northlake (waid=92) - Ready for allocation
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50005, 's', 1, 2, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-005', '', 2, 0, 1800.00, 0.00, 'Allocation Test - Northlake', '',
+ 92, 1, 'Test Order 50005 - Northlake', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-02', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '12:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- Order 50006: CPFG (waid=3) - Tomorrow's order (2026-02-03)
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50006, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-ALLOC-006', '', 1, 0, 2500.00, 0.00, 'Allocation Test - Tomorrow', '',
+ 3, 1, 'Test Order 50006 - Tomorrow', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-03', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '08:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- ============================================================================
+-- HISTORICAL ORDERS (2026-01-20 to 2026-02-01) - Sample orders per day
+-- Uses full column list required by dttord NOT NULL constraints
+-- ============================================================================
+
+-- Define column list as reference (matches working order 50001 format)
+-- to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+-- to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+-- to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+-- to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+-- to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+-- to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+-- to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+-- to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+-- to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+-- to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+-- to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid
+
+-- 2026-01-27: CPFG order (Monday)
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50171, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-0127-001', '', 1, 0, 3200.00, 0.00, 'Jan 27 Order 1', '',
+ 3, 1, 'Order 50171', 0, '', 0, 0, 0, 0,
+ 0, '2026-01-27', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '07:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- 2026-01-28: Northlake order
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50182, 's', 1, 2, 0, 0, 0, 0,
+ 0, 'PO-0128-002', '', 2, 0, 2400.00, 0.00, 'Jan 28 Order - Northlake', '',
+ 92, 1, 'Order 50182 - Northlake', 0, '', 0, 0, 0, 0,
+ 0, '2026-01-28', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '09:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- 2026-01-30: CPFG order
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50201, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-0130-001', '', 1, 0, 1950.00, 0.00, 'Jan 30 Order 1', '',
+ 3, 1, 'Order 50201', 0, '', 0, 0, 0, 0,
+ 0, '2026-01-30', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '07:30:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+-- 2026-02-01: CPFG and Northlake orders
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50221, 's', 1, 1, 0, 0, 0, 0,
+ 0, 'PO-0201-001', '', 1, 0, 1800.00, 0.00, 'Feb 1 Order 1', '',
+ 3, 1, 'Order 50221', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-01', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '08:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+INSERT INTO [dbo].[dttord]
+(to_ordnum, to_ordtype, to_biid, to_shid, to_smid, to_brid, to_s1id, to_s2id,
+ to_grid, to_billpo, to_shippo, to_trid, to_teid, to_totdue, to_balance, to_notes, to_confirm,
+ to_waid, to_header, to_descrip, to_prognum, to_user1, to_linkto, to_frid, to_flush, to_trakid,
+ to_trak2id, to_dueship, to_archid, to_discoun, to_remarks, to_history, to_usid, to_trid2, to_prepay,
+ to_s3id, to_statax, to_loctax, to_sgid, to_prior, to_s4id, to_s5id, to_deltime, to_status, to_savetime,
+ to_minquan, to_tranwaid, to_fcid, to_fcrate, to_totwgt, to_pjid, to_saletax, to_cashsale, to_overcred,
+ to_tendered, to_paysched, to_distance, to_auid, to_signature, to_dgid, to_psid, to_crosswaid, to_ccauth,
+ to_authorize, to_authc3id, to_fcrate2, to_cpid, to_intransit, to_facilitypricing, to_pickuptime, to_cclast4,
+ to_doid, to_trandoid, to_tottare, to_shipfromid, to_said, to_stagcnt, to_frominvjobnum, to_coid,
+ to_recurtype, to_recurinterval, to_cardtoken, to_seasonal, to_easypostrateid, to_ccinvnum, to_masterordnum,
+ to_rgid, to_ttid, to_ruid, to_groupnum, to_lastusid)
+VALUES
+(50223, 's', 1, 2, 0, 0, 0, 0,
+ 0, 'PO-0201-003', '', 1, 0, 1650.00, 0.00, 'Feb 1 Order 3 - Northlake', '',
+ 92, 1, 'Order 50223 - Northlake', 0, '', 0, 0, 0, 0,
+ 0, '2026-02-01', 0, 0.00, '', '', 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 'C', '10:00:00',
+ 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, '', 0, 0, '', 0, 0, 0, '',
+ 0, 0, 0, 0, '', 0, 0, '',
+ 0, 0, 0, 0, 0, 0, 0, 0,
+ '', 0, '', 0, '', '', 0,
+ 0, 0, 0, 0, 0);
+
+PRINT 'Inserted orders into dttord:';
+PRINT '  - 50001-50006: Core test orders (2026-02-02 and 2026-02-03)';
+PRINT '  - 50171, 50182, 50201, 50221, 50223: Sample historical orders (2026-01-27 to 2026-02-01)';
+PRINT '  - Total: 11 orders across CPFG (waid=3) and Northlake (waid=92)';
+
+-- ============================================================================
+-- 10. SALES ORDER LINES (dtord) - FOR ALLOCATION TESTING
+-- ============================================================================
+PRINT '';
+PRINT '========== LOADING ALLOCATION ORDER LINES (dtord) ==========';
+
+-- Get the to_id values for our test orders
+DECLARE @to_id_50001 INT, @to_id_50002 INT, @to_id_50003 INT, @to_id_50004 INT, @to_id_50005 INT, @to_id_50006 INT;
+SELECT @to_id_50001 = to_id FROM dttord WHERE to_ordnum = 50001;
+SELECT @to_id_50002 = to_id FROM dttord WHERE to_ordnum = 50002;
+SELECT @to_id_50003 = to_id FROM dttord WHERE to_ordnum = 50003;
+SELECT @to_id_50004 = to_id FROM dttord WHERE to_ordnum = 50004;
+SELECT @to_id_50005 = to_id FROM dttord WHERE to_ordnum = 50005;
+SELECT @to_id_50006 = to_id FROM dttord WHERE to_ordnum = 50006;
+
+-- Clear existing test order lines
+DELETE FROM [dbo].[dtord] WHERE or_ordnum IN (50001, 50002, 50003, 50004, 50005, 50006);
+
+-- Order 50001 lines (Not allocated - 2 products)
+INSERT INTO [dbo].[dtord]
+(or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+ or_notes, or_taxable, or_stocked, or_control, or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+ or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+ or_prictyp, or_phid, or_salunid, or_salfact, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+ or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+ or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+ or_ordquant, or_shipquant, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+ or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+ or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+ or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+VALUES
+(50001, 1, 0, 0, 1, 100.0, 0.0, 29.99, 2999.00,
+ 'WIDGET-A line', 1, 1, 0, 0, '', 1, 1.0, 0.5,
+ 0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50001, 0, 0.0, '', 0,
+ 29.99, 29.99, 15.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 100.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0),
+(50001, 2, 0, 0, 2, 50.0, 0.0, 149.99, 7499.50,
+ 'GADGET-PRO line', 1, 1, 0, 0, '', 1, 1.0, 1.2,
+ 0, 75.00, 0, 0, '', 149.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50001, 0, 0.0, '', 0,
+ 149.99, 149.99, 75.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 50.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0);
+
+-- Order 50002 lines (Partially allocated - 2 products, 1 allocated)
+INSERT INTO [dbo].[dtord]
+(or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+ or_notes, or_taxable, or_stocked, or_control, or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+ or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+ or_prictyp, or_phid, or_salunid, or_salfact, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+ or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+ or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+ or_ordquant, or_shipquant, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+ or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+ or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+ or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+VALUES
+(50002, 1, 0, 0, 1, 200.0, 0.0, 29.99, 5998.00,
+ 'WIDGET-A line - allocated', 1, 1, 0, 0, '', 1, 1.0, 0.5,
+ 0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50002, 0, 0.0, '', 0,
+ 29.99, 29.99, 15.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 200.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0),
+(50002, 2, 0, 0, 2, 30.0, 0.0, 149.99, 4499.70,
+ 'GADGET-PRO line - NOT allocated', 1, 1, 0, 0, '', 1, 1.0, 1.2,
+ 0, 75.00, 0, 0, '', 149.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50002, 0, 0.0, '', 0,
+ 149.99, 149.99, 75.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 30.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0);
+
+-- Order 50003 lines (Fully allocated - 1 product)
+INSERT INTO [dbo].[dtord]
+(or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+ or_notes, or_taxable, or_stocked, or_control, or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+ or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+ or_prictyp, or_phid, or_salunid, or_salfact, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+ or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+ or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+ or_ordquant, or_shipquant, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+ or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+ or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+ or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+VALUES
+(50003, 1, 0, 0, 1, 150.0, 0.0, 29.99, 4498.50,
+ 'WIDGET-A line - fully allocated', 1, 1, 0, 0, '', 1, 1.0, 0.5,
+ 0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50003, 0, 0.0, '', 0,
+ 29.99, 29.99, 15.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 150.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0);
+
+-- Order 50005 lines (Northlake - 1 product)
+INSERT INTO [dbo].[dtord]
+(or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+ or_notes, or_taxable, or_stocked, or_control, or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+ or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+ or_prictyp, or_phid, or_salunid, or_salfact, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+ or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+ or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+ or_ordquant, or_shipquant, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+ or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+ or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+ or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+VALUES
+(50005, 1, 0, 0, 1, 80.0, 0.0, 29.99, 2399.20,
+ 'WIDGET-A line - Northlake', 1, 1, 0, 0, '', 1, 1.0, 0.5,
+ 0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50005, 0, 0.0, '', 0,
+ 29.99, 29.99, 15.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 80.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0);
+
+-- Order 50006 lines (Tomorrow's order)
+INSERT INTO [dbo].[dtord]
+(or_ordnum, or_linenum, or_chid, or_cogsid, or_prid, or_quant, or_qship, or_price, or_exten,
+ or_notes, or_taxable, or_stocked, or_control, or_jobnum, or_user1, or_prunid, or_prfact, or_unitwgt,
+ or_taid, or_unitcos, or_subtot, or_discoun, or_tally, or_lispric, or_stantot, or_purnum, or_loadcos,
+ or_prictyp, or_phid, or_salunid, or_salfact, or_toid, or_special, or_tranrecv, or_feattree, or_override,
+ or_origprice, or_dealpric, or_avgcost, or_cuid, or_linedisc, or_origprod, or_sizeprod, or_quotedcost,
+ or_catchwgt, or_blanket, or_blanketid, or_inclfeat, or_featpric, or_pmid, or_pmfact, or_p4id, or_noinv,
+ or_ordquant, or_shipquant, or_rtid, or_dockmins, or_tarewgt, or_packages, or_cogsdelta, or_frtcost,
+ or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
+ or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
+ or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+VALUES
+(50006, 1, 0, 0, 1, 250.0, 0.0, 29.99, 7497.50,
+ 'WIDGET-A line - Tomorrow', 1, 1, 0, 0, '', 1, 1.0, 0.5,
+ 0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
+ 'Standard', 0, 0, 1.0, @to_id_50006, 0, 0.0, '', 0,
+ 29.99, 29.99, 15.0, 0, 0.0, 0, 0, 0.0,
+ 0.0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0,
+ 250.0, 0.0, 0, 0.0, 0.0, '', 0.0, 0.0,
+ 0, 0.0, 0.0, 0, 0, 0, 0.0,
+ 0, 0, 0, 0, 0.0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0.0, 0,
+ 0, 0, 0, 0.0);
+
+PRINT 'Inserted order lines for allocation testing';
+
+-- ============================================================================
+-- 11. INVENTORY LOTS FOR FIFO ALLOCATION (dtfifo)
+-- ============================================================================
+PRINT '';
+PRINT '========== LOADING FIFO INVENTORY LOTS =========='
+
+-- Clear existing test lots
+DELETE FROM [dbo].[dtfifo] WHERE fi_userlot LIKE 'ALLOC-TEST-%';
+
+-- Insert inventory lots for FIFO allocation testing
+-- Lot 1: WIDGET-A, oldest receipt date (should be allocated first)
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -60, GETDATE()), DATEADD(DAY, -60, GETDATE()), 1001, 'ALLOC-TEST-001', 1, NULL,
+    500, 500, 15.00, 'PO-1001', 'RECEIVE', '01-A-01',
+    0, '', 0, 3, 0, 0,
+    7500.00, 0, '', DATEADD(DAY, 90, GETDATE()), 15.00,
+    '', '', '', 'Premium Widget Type A', 0, ''
+);
+
+-- Lot 2: WIDGET-A, newer receipt date, expiring sooner
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -30, GETDATE()), DATEADD(DAY, -30, GETDATE()), 1002, 'ALLOC-TEST-002', 1, NULL,
+    300, 300, 15.50, 'PO-1002', 'RECEIVE', '01-A-02',
+    0, '', 0, 3, 0, 0,
+    4650.00, 0, '', DATEADD(DAY, 45, GETDATE()), 15.50,
+    '', '', '', 'Premium Widget Type A', 0, ''
+);
+
+-- Lot 3: WIDGET-A, newest receipt, expiring later (should be allocated last)
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -10, GETDATE()), DATEADD(DAY, -10, GETDATE()), 1003, 'ALLOC-TEST-003', 1, NULL,
+    200, 200, 16.00, 'PO-1003', 'RECEIVE', '01-A-03',
+    0, '', 0, 3, 0, 0,
+    3200.00, 0, '', DATEADD(DAY, 120, GETDATE()), 16.00,
+    '', '', '', 'Premium Widget Type A', 0, ''
+);
+
+-- Lot 4: WIDGET-A, expiring within 30 days (should be excluded by shelf-life validation)
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -90, GETDATE()), DATEADD(DAY, -90, GETDATE()), 1004, 'ALLOC-TEST-004', 1, NULL,
+    100, 100, 14.00, 'PO-1004', 'RECEIVE', '01-A-04',
+    0, '', 0, 3, 0, 0,
+    1400.00, 0, '', DATEADD(DAY, 15, GETDATE()), 14.00,
+    '', '', '', 'Premium Widget Type A - EXPIRING SOON', 0, ''
+);
+
+-- Lot 5: GADGET-PRO at CPFG warehouse
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -45, GETDATE()), DATEADD(DAY, -45, GETDATE()), 2001, 'ALLOC-TEST-005', 2, NULL,
+    150, 150, 75.00, 'PO-2001', 'RECEIVE', '02-B-01',
+    0, '', 0, 3, 0, 0,
+    11250.00, 0, '', DATEADD(DAY, 180, GETDATE()), 75.00,
+    '', '', '', 'Professional Gadget Series', 0, ''
+);
+
+-- Lot 6: WIDGET-A at Northlake warehouse (WID=92)
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -20, GETDATE()), DATEADD(DAY, -20, GETDATE()), 3001, 'ALLOC-TEST-006', 1, NULL,
+    400, 400, 15.25, 'PO-3001', 'RECEIVE', '01-C-01',
+    0, '', 0, 92, 0, 0,
+    6100.00, 0, '', DATEADD(DAY, 100, GETDATE()), 15.25,
+    '', '', '', 'Premium Widget Type A - Northlake', 0, ''
+);
+
+-- Lot 7: Staging inventory (should be excluded - type = 'staging')
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -5, GETDATE()), DATEADD(DAY, -5, GETDATE()), 4001, 'ALLOC-TEST-007', 1, NULL,
+    50, 50, 15.00, 'STAGING', 'STAGE', '19-STAGE-01',
+    0, 'staging', 0, 3, 0, 0,
+    750.00, 0, '', DATEADD(DAY, 60, GETDATE()), 15.00,
+    '', '', '', 'Premium Widget Type A - STAGING', 0, ''
+);
+
+-- Lot 8: Quarantine inventory (should be excluded - type = 'quarantine')
+INSERT INTO [dbo].[dtfifo] (
+    fi_date, fi_lotdate, fi_lotnum, fi_userlot, fi_prid, fi_zeroed,
+    fi_quant, fi_balance, fi_cost, fi_postref, fi_action, fi_loc,
+    fi_allonum, fi_type, fi_group, fi_waid, fi_chid, fi_orid,
+    fi_exten, fi_catchwgt, fi_serial, fi_expires, fi_invcost,
+    fi_attrib1, fi_attrib2, fi_attrib3, fi_descrip, fi_q4group, fi_qc
+) VALUES (
+    DATEADD(DAY, -15, GETDATE()), DATEADD(DAY, -15, GETDATE()), 4002, 'ALLOC-TEST-008', 1, NULL,
+    75, 75, 15.00, 'QC-HOLD', 'QUARANTINE', '20-QC-01',
+    0, 'quarantine', 0, 3, 0, 0,
+    1125.00, 0, '', DATEADD(DAY, 80, GETDATE()), 15.00,
+    '', '', '', 'Premium Widget Type A - QUARANTINE', 0, ''
+);
+
+PRINT 'Inserted 8 test inventory lots for FIFO allocation';
+PRINT '  - Lots 1-4: WIDGET-A at CPFG (various dates/expirations)';
+PRINT '  - Lot 5: GADGET-PRO at CPFG';
+PRINT '  - Lot 6: WIDGET-A at Northlake';
+PRINT '  - Lot 7-8: Excluded types (staging, quarantine)';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAI DATABASE
 -- ============================================================================
 
@@ -552,6 +1233,7 @@ SELECT 'SHIP-TO' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmship];
 SELECT 'WAREHOUSES' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmware];
 SELECT 'BILL-TO' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dmbill];
 SELECT 'ORDERS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dtord];
+SELECT 'FIFO LOTS' AS [Category], COUNT(*) AS [Count] FROM [GAI].[dbo].[dtfifo];
 PRINT '====================================================';
 
 -- ============================================================================
@@ -851,6 +1533,70 @@ PRINT '  - Ready for testing at /prepick-orders';
 PRINT '========================================================';
 
 -- ============================================================================
+-- ALLOCATION - SEED DATA FOR FIFO ALLOCATION & LOCKING
+-- ============================================================================
+-- NOTE: Allocation orders are in GAI.dbo.dttord (order headers seeded above)
+-- This section adds allocation records (gai_allocate) and locks (gai_lock)
+-- ============================================================================
+PRINT '';
+PRINT '========== ALLOCATION SEED DATA ==========';
+PRINT 'Creating allocation records and locks for testing...';
+
+-- Clear existing test Allocation records (using dttord order numbers 50001-50999)
+DELETE FROM gai_allocate WHERE all_ordernum BETWEEN 50001 AND 50999;
+DELETE FROM gai_lock WHERE gl_ordnum BETWEEN 50001 AND 50999;
+
+-- ============================================================================
+-- Allocation Records (gai_allocate) for Allocation Testing
+-- These reference dttord orders 50001-50005 seeded in GAI database
+-- ============================================================================
+
+-- Order 50002: Partially allocated - only some products have allocations
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chr1, all_chr2, all_chr3, all_description, all_um, all_status
+) VALUES
+    (3, 50002, 'WIDGET-A', 'ALLOC-TEST-001', 100, 0, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA', 'ALLOCATED'),
+    (3, 50002, 'GADGET-PRO', '', 30, 0, GETDATE(), '', '', '', 'Professional Gadget Series - NOT ALLOCATED', 'EA', '');
+
+-- Order 50003: Fully allocated - all products have allocations (150 qty matches dtord line)
+INSERT INTO gai_allocate (
+    all_id, all_ordernum, all_codenum, all_userlot, all_qty, all_pick,
+    all_date, all_chr1, all_chr2, all_chr3, all_description, all_um, all_status
+) VALUES
+    (3, 50003, 'WIDGET-A', 'ALLOC-TEST-001', 100, 0, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA', 'ALLOCATED'),
+    (3, 50003, 'WIDGET-A', 'ALLOC-TEST-002', 50, 0, GETDATE(), '', '', '', 'Premium Widget Type A', 'EA', 'ALLOCATED');
+
+-- ============================================================================
+-- Lock Records (gai_lock) for Pessimistic Locking Testing
+-- ============================================================================
+
+-- Active lock on Order 50002 (within 10-minute timeout)
+INSERT INTO gai_lock (
+    gl_id, gl_ordnum, gl_partnum, gl_userlot, gl_username, gl_datel, gl_int1
+) VALUES (
+    1, 50002, '', '', 'testuser', DATEADD(MINUTE, -5, GETDATE()), 3
+);
+
+-- Expired lock on Order 50004 (older than 10 minutes - should be released)
+INSERT INTO gai_lock (
+    gl_id, gl_ordnum, gl_partnum, gl_userlot, gl_username, gl_datel, gl_int1
+) VALUES (
+    1, 50004, '', '', 'admin', DATEADD(MINUTE, -15, GETDATE()), 3
+);
+
+PRINT 'Allocation Seed Data Complete:';
+PRINT '  - Order 50001: CPFG, not allocated (White status)';
+PRINT '  - Order 50002: CPFG, partially allocated (Gold), locked by testuser';
+PRINT '  - Order 50003: CPFG, fully allocated (LightCoral)';
+PRINT '  - Order 50004: CPFG, credit hold (Terms 51) - EXCLUDED from list due to balance > 3%';
+PRINT '  - Order 50005: Northlake, ready for allocation';
+PRINT '  - Orders 50101-50223: Historical orders (2026-01-20 to 2026-02-01)';
+PRINT '  - 2 lock records: 1 active, 1 expired';
+PRINT '  - Ready for testing at /app/allocation';
+PRINT '========================================================';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAIMisc DATABASE
 -- ============================================================================
 
@@ -861,6 +1607,7 @@ SELECT 'BRIX CHART' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[Bri
 SELECT 'ALLOCATIONS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_allocate];
 SELECT 'USER ASSIGNMENTS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_dmstech];
 SELECT 'SCHEDULER ORDERS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_scheduler];
+SELECT 'LOCKS' AS [Category], COUNT(*) AS [Count] FROM [GAIMisc].[dbo].[gai_lock];
 PRINT '========================================================';
 
 PRINT '';
