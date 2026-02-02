@@ -1,4 +1,4 @@
-@page "/prepick-orders/{OrderNumber}"
+@page "/app/prepick-orders/{OrderNumber}"
 @using DotNetWebApp.Services.PrePick
 @using DotNetWebApp.Services.PrePick.Models
 @inject IPrePickService PrePickService
@@ -316,7 +316,7 @@
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/prepick-orders");
+        Navigation.NavigateTo("/app/prepick-orders");
     }
 
     private async Task AssignPicker()

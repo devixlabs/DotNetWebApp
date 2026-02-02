@@ -1,4 +1,4 @@
-@page "/ict-orders"
+@page "/app/ict-orders"
 @using DotNetWebApp.Services.ICT
 @using DotNetWebApp.Services.ICT.Models
 @inject IICTService ICTService
@@ -39,7 +39,7 @@
             <Columns>
                 <RadzenDataGridColumn TItem="ICTOrderSummary" Property="OrderNumber" Title="Order #" Width="150px">
                     <Template Context="order">
-                        <RadzenLink Path="@($"/ict-orders/{order.OrderNumber}")" Text="@order.OrderNumber" />
+                        <RadzenLink Path="@($"/app/ict-orders/{order.OrderNumber}")" Text="@order.OrderNumber" />
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="ICTOrderSummary" Property="CreatedDate" Title="Created" FormatString="{0:M/d/yyyy}" Width="120px" />
@@ -133,7 +133,7 @@
                 Duration = 3000
             });
 
-            Navigation.NavigateTo($"/ict-orders/{order.OrderNumber}");
+            Navigation.NavigateTo($"/app/ict-orders/{order.OrderNumber}");
         }
         catch (Exception ex)
         {
@@ -149,7 +149,7 @@
 
     private void ViewOrder(string orderNumber)
     {
-        Navigation.NavigateTo($"/ict-orders/{orderNumber}");
+        Navigation.NavigateTo($"/app/ict-orders/{orderNumber}");
     }
 
     private async Task DeleteOrder(string orderNumber)

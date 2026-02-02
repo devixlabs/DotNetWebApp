@@ -1,4 +1,4 @@
-@page "/prepick-orders"
+@page "/app/prepick-orders"
 @using DotNetWebApp.Services.PrePick
 @using DotNetWebApp.Services.PrePick.Models
 @inject IPrePickService PrePickService
@@ -54,7 +54,7 @@
             <Columns>
                 <RadzenDataGridColumn TItem="PrePickOrder" Property="OrderNumber" Title="Order #" Width="120px" Frozen="true">
                     <Template Context="order">
-                        <RadzenLink Path="@($"/prepick-orders/{order.OrderNumber}?warehouseId={selectedWarehouseId}")"
+                        <RadzenLink Path="@($"/app/prepick-orders/{order.OrderNumber}?warehouseId={selectedWarehouseId}")"
                                    Text="@order.OrderNumber" />
                     </Template>
                 </RadzenDataGridColumn>
@@ -218,7 +218,7 @@
 
     private void ViewOrder(string orderNumber)
     {
-        Navigation.NavigateTo($"/prepick-orders/{orderNumber}?warehouseId={selectedWarehouseId}");
+        Navigation.NavigateTo($"/app/prepick-orders/{orderNumber}?warehouseId={selectedWarehouseId}");
     }
 
     private void OnRowRender(RowRenderEventArgs<PrePickOrder> args)
