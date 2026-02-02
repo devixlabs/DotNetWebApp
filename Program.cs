@@ -84,6 +84,11 @@ builder.Services.AddScoped<DotNetWebApp.Services.Allocation.ILockService, DotNet
 builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IFIFOAllocationEngine, DotNetWebApp.Services.Allocation.FIFOAllocationEngine>();
 builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IAllocationService, DotNetWebApp.Services.Allocation.AllocationService>();
 
+// DMS (Dock Management System) services (Phase 2 - Fifth application)
+builder.Services.AddScoped<DotNetWebApp.Services.DMS.Validators.StatusTransitionValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.DMS.Validators.DeleteValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.DMS.IDMSService, DotNetWebApp.Services.DMS.DMSService>();
+
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
 // If they're empty or missing, fall back to DefaultConnection

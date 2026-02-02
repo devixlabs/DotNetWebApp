@@ -1607,6 +1607,359 @@ PRINT '  - Ready for testing at /app/allocation';
 PRINT '========================================================';
 
 -- ============================================================================
+-- DMS (DOCK MANAGEMENT SYSTEM) - SEED DATA
+-- ============================================================================
+-- Phase 2 - Fifth Application: DMS Phase 1 MVP
+-- Creates 15 test orders covering all scenarios:
+--   - 3 Sales Orders (Type 1)
+--   - 3 Purchase Orders (Type 2)
+--   - 3 ICT Northlake (Type 3)
+--   - 2 ICT CPFG (Type 4)
+--   - 4 Deleted Orders (Types 11-14)
+-- Tests: Order type classification, status workflow, AppID grouping, soft delete
+-- ============================================================================
+PRINT '';
+PRINT '========== DMS SEED DATA ==========';
+PRINT 'Creating DMS orders for dock scheduling testing...';
+
+-- Clear existing test DMS orders
+DELETE FROM gai_scheduler WHERE gs_ordnum IN (
+    20250000101, 20250000102, 20250000103,  -- Sales Orders
+    12345678901, 98765432109, 11111111111,  -- Purchase Orders
+    2025000199, 2025000299, 2025000399,     -- ICT Northlake
+    2025000499, 2025000599,                 -- ICT CPFG
+    20250000201, 22222222222, 2025000699, 2025000799  -- Deleted Orders
+);
+
+-- ============================================================================
+-- Type 1: Sales Orders (3 orders)
+-- Testing: Different statuses, AppID grouping (APP-DMS-001 has 2 orders)
+-- Warehouse: 2 CPFG (3), 1 Northlake (92)
+-- ============================================================================
+
+-- Order 2025-DMS-001: Status N/A, AppID APP-DMS-001, Type 1 (CPFG)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 20250000101, 'APP-DMS-001', 1, 'N/A', GETDATE(), DATEADD(HOUR, 4, GETDATE()), '08:00:00',
+    'Acme Corporation', 'UPS', 'Driver Smith', '(555) 123-4567', 'Door 1', 'Test SO - CPFG - Status N/A',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Order 2025-DMS-002: Status Check In, AppID APP-DMS-001 (same for grouping test), Type 1 (CPFG)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 20250000102, 'APP-DMS-001', 1, 'Check In', GETDATE(), DATEADD(HOUR, 4, GETDATE()), '09:00:00',
+    'Acme Corporation', 'FedEx', 'Driver Jones', '(555) 234-5678', 'Door 2', 'Test SO - Same AppID as 001',
+    GETDATE(), '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Order 2025-DMS-003: Status Loading, AppID APP-DMS-002, Type 1 (Northlake)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 20250000103, 'APP-DMS-002', 1, 'Loading', GETDATE(), DATEADD(HOUR, 5, GETDATE()), '07:30:00',
+    'Beta Industries', 'TForce', 'Driver Brown', '(555) 345-6789', 'Dock 301', 'Test SO - Northlake - Loading',
+    DATEADD(HOUR, -1, GETDATE()), 'jdoe', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- ============================================================================
+-- Type 2: Purchase Orders (3 orders)
+-- Testing: Different statuses, both warehouses
+-- Note: Middle digits NOT "00" to distinguish from SO pattern
+-- ============================================================================
+
+-- Order PO-1: Status N/A, AppID APP-DMS-003, Type 2 (CPFG)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 12345678901, 'APP-DMS-003', 2, 'N/A', GETDATE(), DATEADD(HOUR, 6, GETDATE()), '06:00:00',
+    'Supplier ABC Inc', 'XPO', 'Driver Taylor', '(555) 456-7890', 'Door 3', 'Test PO - CPFG - Receiving',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Order PO-2: Status Unloading, AppID APP-DMS-004, Type 2 (Northlake)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 98765432109, 'APP-DMS-004', 2, 'Unloading', GETDATE(), DATEADD(HOUR, 3, GETDATE()), '13:00:00',
+    'Supplier XYZ Corp', 'JB Hunt', 'Driver Wilson', '(555) 567-8901', 'Dock 310', 'Test PO - Northlake - Unloading',
+    DATEADD(HOUR, -2, GETDATE()), '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Order PO-3: Status Shipped, AppID APP-DMS-005, Type 2 (CPFG)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 11111111111, 'APP-DMS-005', 2, 'Shipped', GETDATE(), DATEADD(HOUR, 2, GETDATE()), '15:00:00',
+    'Vendor Global Ltd', 'DHL', 'Driver Davis', '(555) 678-9012', 'Door 4', 'Test PO - CPFG - Already Shipped',
+    DATEADD(HOUR, -4, GETDATE()), '', 'admin', '', GETDATE(), 'SHIP-2025-001',
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 1, 5, 1200.00, 1320.00
+);
+
+-- ============================================================================
+-- Type 3: ICT Northlake (3 orders)
+-- Testing: All at Northlake (WID=92), AppID grouping (APP-DMS-006 has 2 orders)
+-- Note: All end in 99, gs_dec3 = 99
+-- ============================================================================
+
+-- Order ICT-NL-1: Status N/A, AppID APP-DMS-006, Type 3
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 2025000199, 'APP-DMS-006', 3, 'N/A', GETDATE(), DATEADD(HOUR, 4, GETDATE()), '08:00:00',
+    'Greenwood Associates Inc', 'Internal', 'Transfer Driver A', 'Internal Transfer', 'Dock 320', 'Test ICT NL - N/A',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'Ready for dispatch', 'TBD',
+    '', 0, 0, 0
+);
+
+-- Order ICT-NL-2: Status Received, AppID APP-DMS-007, Type 3
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1, gs_chr4,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt, gs_num4, gs_num5
+) VALUES (
+    92, 2025000299, 'APP-DMS-007', 3, 'Received', GETDATE(), DATEADD(HOUR, 2, GETDATE()), '14:30:00',
+    'Greenwood Associates Inc', 'Internal', 'Transfer Driver B', 'Internal Transfer', 'Dock 325', 'Test ICT NL - Received',
+    DATEADD(HOUR, -3, GETDATE()), '', 'admin', 'JOB-2025-001', GETDATE(), 'ICT-2025-NL-001',
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    1, 0, 0, 0, 99, 'Transfer complete', 'Verified',
+    2, 3, 450.00, 495.00, 2, 10
+);
+
+-- Order ICT-NL-3: Same AppID as ICT-NL-1 for grouping test, Type 3
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 2025000399, 'APP-DMS-006', 3, 'N/A', GETDATE(), DATEADD(HOUR, 4, GETDATE()), '08:00:00',
+    'Greenwood Associates Inc', 'Internal', 'Transfer Driver C', 'Internal Transfer', 'Dock 321', 'Test ICT NL - Same AppID as 199',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'Ready for dispatch', 'TBD',
+    '', 0, 0, 0
+);
+
+-- ============================================================================
+-- Type 4: ICT CPFG (2 orders)
+-- Testing: All at CPFG (WID=3), AppID grouping (APP-DMS-008 has 2 orders)
+-- Note: All end in 99, gs_dec3 = 99
+-- ============================================================================
+
+-- Order ICT-CPFG-1: Status Check In, AppID APP-DMS-008, Type 4
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 2025000499, 'APP-DMS-008', 4, 'Check In', GETDATE(), DATEADD(HOUR, 3, GETDATE()), '10:00:00',
+    'Greenwood Associates Inc', 'Internal', 'Transfer Driver D', 'Internal Transfer', 'Door 5', 'Test ICT CPFG - Check In',
+    GETDATE(), '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'In transit from Northlake', 'TBD',
+    '', 0, 0, 0
+);
+
+-- Order ICT-CPFG-2: Same AppID as ICT-CPFG-1, Type 4
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 2025000599, 'APP-DMS-008', 4, 'Check In', GETDATE(), DATEADD(HOUR, 3, GETDATE()), '10:00:00',
+    'Greenwood Associates Inc', 'Internal', 'Transfer Driver E', 'Internal Transfer', 'Door 5', 'Test ICT CPFG - Same AppID as 499',
+    GETDATE(), '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'In transit from Northlake', 'TBD',
+    '', 0, 0, 0
+);
+
+-- ============================================================================
+-- Deleted Orders (4 orders, one of each type)
+-- Testing: Type + 10 soft delete pattern, undelete functionality
+-- Types 11-14: Deleted SO, Deleted PO, Deleted ICT NL, Deleted ICT CPFG
+-- ============================================================================
+
+-- Deleted SO: Type 11 (1 + 10)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 20250000201, 'APP-DMS-009', 11, 'N/A', GETDATE(), DATEADD(HOUR, 2, GETDATE()), '07:00:00',
+    'Deleted Customer A', 'N/A', 'N/A', 'N/A', 'Door 1', 'Deleted SO - for undelete test',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Deleted PO: Type 12 (2 + 10)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 22222222222, 'APP-DMS-010', 12, 'N/A', GETDATE(), DATEADD(HOUR, 3, GETDATE()), '11:00:00',
+    'Deleted Supplier B', 'N/A', 'N/A', 'N/A', 'Dock 300', 'Deleted PO - for undelete test',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, '', 0, 0, 0
+);
+
+-- Deleted ICT NL: Type 13 (3 + 10)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    92, 2025000699, 'APP-DMS-011', 13, 'N/A', GETDATE(), DATEADD(HOUR, 2, GETDATE()), '09:00:00',
+    'Deleted ICT NL', 'N/A', 'N/A', 'N/A', 'Dock 305', 'Deleted ICT NL - for undelete test',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'Cancelled', 'N/A',
+    '', 0, 0, 0
+);
+
+-- Deleted ICT CPFG: Type 14 (4 + 10)
+INSERT INTO gai_scheduler (
+    gs_id, gs_ordnum, gs_appid, gs_num1, gs_status, gs_datestart, gs_dateend, gs_dockm,
+    gs_company, gs_carrier, gs_driver, gs_chr2, gs_dock, gs_notes,
+    gs_datechkin, gs_forkop, gs_chr1, gs_chr3, gs_date1,
+    gs_picker, gs_auditor, gs_assembler, gs_pickerin, gs_pickerout,
+    gs_auditorin, gs_auditorout, gs_assemblerin, gs_assemblerout,
+    gs_log1, gs_num2, gs_dec1, gs_dec2, gs_dec3, gs_chr5, gs_chr6,
+    gs_pronum, gs_pallets, gs_nwt, gs_gwt
+) VALUES (
+    3, 2025000799, 'APP-DMS-012', 14, 'N/A', GETDATE(), DATEADD(HOUR, 1, GETDATE()), '16:00:00',
+    'Deleted ICT CPFG', 'N/A', 'N/A', 'N/A', 'Door 1', 'Deleted ICT CPFG - for undelete test',
+    NULL, '', 'admin', '', GETDATE(),
+    '', '', '', NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    0, 0, 0, 0, 99, 'Cancelled', 'N/A',
+    '', 0, 0, 0
+);
+
+PRINT 'DMS Seed Data Complete:';
+PRINT '  ===== ACTIVE ORDERS (11 orders) =====';
+PRINT '  Type 1 - Sales Orders:';
+PRINT '    - 20250000101: CPFG, N/A status, AppID APP-DMS-001';
+PRINT '    - 20250000102: CPFG, Check In, AppID APP-DMS-001 (grouping test)';
+PRINT '    - 20250000103: Northlake, Loading, AppID APP-DMS-002';
+PRINT '  Type 2 - Purchase Orders:';
+PRINT '    - 12345678901: CPFG, N/A status, AppID APP-DMS-003';
+PRINT '    - 98765432109: Northlake, Unloading, AppID APP-DMS-004';
+PRINT '    - 11111111111: CPFG, Shipped, AppID APP-DMS-005';
+PRINT '  Type 3 - ICT Northlake:';
+PRINT '    - 2025000199: Northlake, N/A status, AppID APP-DMS-006';
+PRINT '    - 2025000299: Northlake, Received, AppID APP-DMS-007';
+PRINT '    - 2025000399: Northlake, N/A status, AppID APP-DMS-006 (grouping test)';
+PRINT '  Type 4 - ICT CPFG:';
+PRINT '    - 2025000499: CPFG, Check In, AppID APP-DMS-008';
+PRINT '    - 2025000599: CPFG, Check In, AppID APP-DMS-008 (grouping test)';
+PRINT '  ===== DELETED ORDERS (4 orders) =====';
+PRINT '  Type 11 - Deleted SO: 20250000201 (for undelete test)';
+PRINT '  Type 12 - Deleted PO: 22222222222 (for undelete test)';
+PRINT '  Type 13 - Deleted ICT NL: 2025000699 (for undelete test)';
+PRINT '  Type 14 - Deleted ICT CPFG: 2025000799 (for undelete test)';
+PRINT '  ===== TESTING SCENARIOS =====';
+PRINT '  AppID Grouping: APP-DMS-001 (2 orders), APP-DMS-006 (2 orders), APP-DMS-008 (2 orders)';
+PRINT '  Status Coverage: N/A (5), Check In (3), Loading (1), Unloading (1), Shipped (1), Received (1)';
+PRINT '  Warehouse Split: CPFG (7), Northlake (4), Deleted (4)';
+PRINT '  Ready for testing at /app/dms';
+PRINT '========================================================';
+
+-- ============================================================================
 -- DATA VERIFICATION - GAIMisc DATABASE
 -- ============================================================================
 

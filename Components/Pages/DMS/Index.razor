@@ -1,0 +1,650 @@
+@page "/app/dms"
+@using DotNetWebApp.Services.DMS
+@using DotNetWebApp.Services.DMS.Models
+@inject IDMSService DMSService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<PageTitle>DMS - Dock Management System</PageTitle>
+
+<RadzenStack Gap="1rem">
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+                <RadzenLabel Text="Warehouse" />
+                <RadzenDropDown @bind-Value="@selectedWarehouseId"
+                                Data="@warehouses"
+                                TextProperty="Name"
+                                ValueProperty="Id"
+                                Change="@OnWarehouseChanged"
+                                Style="width: 200px;" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+                <RadzenLabel Text="Date" />
+                <RadzenDatePicker @bind-Value="@selectedDate"
+                                  DateFormat="MM/dd/yyyy"
+                                  Change="@OnDateChanged"
+                                  Style="width: 200px;" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+                <RadzenLabel Text="Status Filter" />
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.3rem" Wrap="FlexWrap.Wrap">
+                    <RadzenButton Text="All" Click="@(() => OnStatusFilterChanged(null))"
+                                  ButtonStyle="@(statusFilter == null ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="N/A" Click="@(() => OnStatusFilterChanged("N/A"))"
+                                  ButtonStyle="@(statusFilter == "N/A" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="Check In" Click="@(() => OnStatusFilterChanged("Check In"))"
+                                  ButtonStyle="@(statusFilter == "Check In" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="Loading" Click="@(() => OnStatusFilterChanged("Loading"))"
+                                  ButtonStyle="@(statusFilter == "Loading" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="Unloading" Click="@(() => OnStatusFilterChanged("Unloading"))"
+                                  ButtonStyle="@(statusFilter == "Unloading" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="Shipped" Click="@(() => OnStatusFilterChanged("Shipped"))"
+                                  ButtonStyle="@(statusFilter == "Shipped" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Text="Received" Click="@(() => OnStatusFilterChanged("Received"))"
+                                  ButtonStyle="@(statusFilter == "Received" ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Size="ButtonSize.Small" />
+                </RadzenStack>
+            </RadzenStack>
+
+            <RadzenButton Text="Refresh" Icon="refresh" Click="@LoadOrders"
+                          ButtonStyle="@ButtonStyle.Success" Style="margin-top: 1.5rem;" />
+        </RadzenStack>
+    </RadzenCard>
+
+    @if (isLoading)
+    {
+        <RadzenCard>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText>Loading orders...</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (orders == null || !orders.Any())
+    {
+        <RadzenCard>
+            <RadzenAlert AlertStyle="@AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+                No orders found for the selected date and filters.
+            </RadzenAlert>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenStack Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Body1">
+                    <strong>@orders.Count()</strong> orders found
+                </RadzenText>
+
+                <RadzenDataGrid @ref="ordersGrid"
+                                Data="@orders"
+                                TItem="DMSOrder"
+                                AllowFiltering="false"
+                                AllowSorting="true"
+                                AllowColumnResize="true"
+                                RowRender="@OnRowRender"
+                                Style="height: calc(100vh - 280px); width: 100%;"
+                                FilterMode="FilterMode.Simple">
+                    <Columns>
+                        @* Order Number with Type Color *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="OrderNumber" Title="Order #" Width="140px" Frozen="true">
+                            <Template Context="order">
+                                <span style="@DMSColorCodingService.GetOrderNumberCellStyle(order.OrderTypeEnum)">
+                                    @order.OrderNumber
+                                </span>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Dock/Door *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Dock" Title="Dock" Width="120px">
+                            <Template Context="order">
+                                <div style="@DMSColorCodingService.GetDockCellStyle(order.CheckInDate)">
+                                    <RadzenDropDown @bind-Value="@order.Dock"
+                                                    Data="@GetDockOptions()"
+                                                    Style="width: 100%;" />
+                                </div>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Start Date *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="StartDate" Title="Start Date" Width="140px" FormatString="{0:MM/dd/yyyy}" />
+
+                        @* End Date *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="EndDate" Title="End Date" Width="140px" FormatString="{0:MM/dd/yyyy}" />
+
+                        @* Company *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Company" Title="Company" Width="250px" />
+
+                        @* Carrier *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Carrier" Title="Carrier" Width="180px">
+                            <Template Context="order">
+                                <RadzenTextBox @bind-Value="@order.Carrier" Style="width: 100%;" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Driver *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Driver" Title="Driver" Width="180px">
+                            <Template Context="order">
+                                <RadzenTextBox @bind-Value="@order.Driver" Style="width: 100%;" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Phone *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Phone" Title="Phone" Width="140px">
+                            <Template Context="order">
+                                <RadzenTextBox @bind-Value="@order.Phone" Style="width: 100%;" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Notes *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Notes" Title="Notes" Width="300px">
+                            <Template Context="order">
+                                <RadzenTextBox @bind-Value="@order.Notes" Style="width: 100%;" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Status with Change Button *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Status" Title="Status" Width="150px">
+                            <Template Context="order">
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                    <RadzenBadge BadgeStyle="@GetStatusBadgeStyle(order.StatusEnum)" Text="@order.Status" />
+                                    <RadzenButton Icon="edit" Size="ButtonSize.ExtraSmall"
+                                                  ButtonStyle="@ButtonStyle.Light"
+                                                  Click="@(() => ChangeStatus(order))"
+                                                  title="Change Status" />
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Check In Date *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="CheckInDate" Title="Check In" Width="140px" FormatString="{0:MM/dd/yyyy HH:mm}">
+                            <Template Context="order">
+                                @if (order.CheckInDate.HasValue)
+                                {
+                                    <span @ondblclick="@(() => ClearCheckIn(order))" style="cursor: pointer;" title="Double-click to clear">
+                                        @order.CheckInDate.Value.ToString("MM/dd/yyyy HH:mm")
+                                    </span>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* AppID *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="AppId" Title="AppID" Width="130px" />
+
+                        @* Forklift Operator *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="ForkliftOperator" Title="Forklift Op" Width="150px">
+                            <Template Context="order">
+                                <RadzenDropDown @bind-Value="@order.ForkliftOperator"
+                                                Data="@availableOperators"
+                                                TextProperty="FullName"
+                                                ValueProperty="Username"
+                                                AllowClear="true"
+                                                Placeholder="Select operator"
+                                                Style="width: 100%;"
+                                                Change="@((args) => OnOperatorChanged(order))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        @* Allocator (from PrePick) *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="Allocator" Title="Allocator" Width="120px" />
+
+                        @* Team Leader *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Property="TeamLeader" Title="Team Leader" Width="130px" />
+
+                        @* Action Columns *@
+                        <RadzenDataGridColumn TItem="DMSOrder" Title="Actions" Width="150px" Sortable="false" Filterable="false">
+                            <Template Context="order">
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.3rem">
+                                    <RadzenButton Icon="save" Size="ButtonSize.ExtraSmall"
+                                                  ButtonStyle="@ButtonStyle.Success"
+                                                  Click="@(() => UpdateOrder(order))"
+                                                  title="Save Changes" />
+                                    <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall"
+                                                  ButtonStyle="@ButtonStyle.Danger"
+                                                  Click="@(() => DeleteOrder(order))"
+                                                  Disabled="@(order.StatusEnum != DockStatus.NA)"
+                                                  title="Delete (only if status = N/A)" />
+                                    @if (DMSOrderTypeClassifier.IsDeleted(order.OrderTypeEnum))
+                                    {
+                                        <RadzenButton Icon="undo" Size="ButtonSize.ExtraSmall"
+                                                      ButtonStyle="@ButtonStyle.Info"
+                                                      Click="@(() => UndeleteOrder(order))"
+                                                      title="Undelete" />
+                                    }
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenStack>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private RadzenDataGrid<DMSOrder>? ordersGrid;
+    private List<DMSOrder> orders = new();
+    private List<OperatorInfo> availableOperators = new();
+    private bool isLoading = false;
+
+    // Filters
+    private int selectedWarehouseId = 3; // Default to CPFG
+    private DateTime selectedDate = DateTime.Today;
+    private string? statusFilter = null;
+
+    // Warehouse options
+    private List<WarehouseOption> warehouses = new()
+    {
+        new WarehouseOption { Id = 3, Name = "CPFG" },
+        new WarehouseOption { Id = 92, Name = "Northlake" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOperators();
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            orders = (await DMSService.ListOrdersAsync(selectedWarehouseId, selectedDate, statusFilter)).ToList();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load orders: {ex.Message}",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadOperators()
+    {
+        try
+        {
+            availableOperators = (await DMSService.GetAvailableOperatorsAsync(selectedWarehouseId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load operators: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private async Task OnWarehouseChanged()
+    {
+        await LoadOperators();
+        await LoadOrders();
+    }
+
+    private async Task OnDateChanged()
+    {
+        await LoadOrders();
+    }
+
+    private async Task OnStatusFilterChanged(string? filter)
+    {
+        statusFilter = filter;
+        await LoadOrders();
+    }
+
+    private void OnRowRender(RowRenderEventArgs<DMSOrder> args)
+    {
+        args.Attributes.Add("style", DMSColorCodingService.GetRowStyle(args.Data));
+    }
+
+    private BadgeStyle GetStatusBadgeStyle(DockStatus status)
+    {
+        var styleString = DMSColorCodingService.GetStatusBadgeStyle(status);
+        return styleString switch
+        {
+            "Light" => BadgeStyle.Light,
+            "Warning" => BadgeStyle.Warning,
+            "Info" => BadgeStyle.Info,
+            "Secondary" => BadgeStyle.Secondary,
+            "Success" => BadgeStyle.Success,
+            "Primary" => BadgeStyle.Primary,
+            _ => BadgeStyle.Light
+        };
+    }
+
+    private List<string> GetDockOptions()
+    {
+        if (selectedWarehouseId == 3) // CPFG
+        {
+            return new List<string> { "Door 1", "Door 2", "Door 3", "Door 4", "Door 5" };
+        }
+        else // Northlake (92)
+        {
+            var docks = new List<string>();
+            for (int i = 300; i <= 333; i++)
+            {
+                docks.Add($"Dock {i}");
+            }
+            return docks;
+        }
+    }
+
+    private async Task ChangeStatus(DMSOrder order)
+    {
+        // For MVP, cycle through statuses in sequence
+        var nextStatus = GetNextStatus(order.StatusEnum);
+
+        if (nextStatus == order.StatusEnum)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Info,
+                Summary = "Info",
+                Detail = "No further status transitions available",
+                Duration = 3000
+            });
+            return;
+        }
+
+        var confirmed = await DialogService.Confirm(
+            $"Change status from '{order.Status}' to '{DMSColorCodingService.GetStatusDisplayName(nextStatus)}'?",
+            "Confirm Status Change",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var changeResult = await DMSService.ChangeStatusAsync(order.OrderNumber, nextStatus, selectedWarehouseId);
+
+                if (changeResult.Success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = changeResult.Message,
+                        Duration = 3000
+                    });
+                    await LoadOrders();
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = changeResult.Message,
+                        Duration = 4000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = $"Failed to change status: {ex.Message}",
+                    Duration = 4000
+                });
+            }
+        }
+    }
+
+    private DockStatus GetNextStatus(DockStatus current)
+    {
+        return current switch
+        {
+            DockStatus.NA => DockStatus.CheckIn,
+            DockStatus.CheckIn => DockStatus.Loading,
+            DockStatus.Loading => DockStatus.Unloading,
+            DockStatus.Unloading => DockStatus.Shipped,
+            DockStatus.Shipped => DockStatus.Received,
+            DockStatus.Received => DockStatus.Received, // Terminal
+            _ => DockStatus.NA
+        };
+    }
+
+    private async Task ClearCheckIn(DMSOrder order)
+    {
+        var confirmed = await DialogService.Confirm("Clear check-in date and revert status to N/A?", "Confirm",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await DMSService.ClearCheckInAsync(order.OrderNumber, selectedWarehouseId);
+
+                if (success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = "Check-in cleared",
+                        Duration = 3000
+                    });
+                    await LoadOrders();
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = "Failed to clear check-in",
+                        Duration = 4000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = $"Failed to clear check-in: {ex.Message}",
+                    Duration = 4000
+                });
+            }
+        }
+    }
+
+    private async Task OnOperatorChanged(DMSOrder order)
+    {
+        // Check if there are other orders with the same AppID
+        var ordersWithSameAppId = orders.Where(o => o.AppId == order.AppId && !string.IsNullOrWhiteSpace(o.AppId)).ToList();
+
+        if (ordersWithSameAppId.Count > 1)
+        {
+            var confirmed = await DialogService.Confirm(
+                $"Update operator for all {ordersWithSameAppId.Count} orders with AppID '{order.AppId}'?",
+                "Batch Update",
+                new ConfirmOptions { OkButtonText = "Yes, All", CancelButtonText = "No, Just This One" });
+
+            if (confirmed == true)
+            {
+                // Batch update
+                try
+                {
+                    var success = await DMSService.BatchUpdateForkliftByAppIDAsync(order.AppId!, order.ForkliftOperator!, selectedWarehouseId);
+
+                    if (success)
+                    {
+                        NotificationService.Notify(new NotificationMessage
+                        {
+                            Severity = NotificationSeverity.Success,
+                            Summary = "Success",
+                            Detail = $"Updated {ordersWithSameAppId.Count} orders",
+                            Duration = 3000
+                        });
+                        await LoadOrders();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = $"Failed to batch update: {ex.Message}",
+                        Duration = 4000
+                    });
+                }
+            }
+        }
+    }
+
+    private void UpdateOrder(DMSOrder order)
+    {
+        // Note: In full implementation, this would call an update endpoint
+        // For MVP, individual field updates happen through other methods
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary = "Info",
+            Detail = "Use field-specific actions to update order (status, operator, etc.)",
+            Duration = 3000
+        });
+    }
+
+    private async Task DeleteOrder(DMSOrder order)
+    {
+        if (order.StatusEnum != DockStatus.NA)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Cannot Delete",
+                Detail = "Orders can only be deleted when status is N/A",
+                Duration = 4000
+            });
+            return;
+        }
+
+        var confirmed = await DialogService.Confirm(
+            $"Delete order {order.OrderNumber}? This will soft-delete the order (type will change to deleted).",
+            "Confirm Delete",
+            new ConfirmOptions { OkButtonText = "Yes, Delete", CancelButtonText = "Cancel" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                // Assume security level 1 (admin) for this demo
+                var success = await DMSService.DeleteOrderAsync(order.OrderNumber, 1, selectedWarehouseId);
+
+                if (success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = "Order deleted",
+                        Duration = 3000
+                    });
+                    await LoadOrders();
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = "Failed to delete order",
+                        Duration = 4000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = $"Failed to delete order: {ex.Message}",
+                    Duration = 4000
+                });
+            }
+        }
+    }
+
+    private async Task UndeleteOrder(DMSOrder order)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Restore order {order.OrderNumber}?",
+            "Confirm Undelete",
+            new ConfirmOptions { OkButtonText = "Yes, Restore", CancelButtonText = "Cancel" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await DMSService.UndeleteOrderAsync(order.OrderNumber, selectedWarehouseId);
+
+                if (success)
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = "Order restored",
+                        Duration = 3000
+                    });
+                    await LoadOrders();
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = "Failed to restore order",
+                        Duration = 4000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = $"Failed to restore order: {ex.Message}",
+                    Duration = 4000
+                });
+            }
+        }
+    }
+
+    private class WarehouseOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}
