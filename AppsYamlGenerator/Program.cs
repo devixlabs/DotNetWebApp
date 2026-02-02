@@ -39,9 +39,18 @@ try
 
     // Read appsettings.json and extract Applications section
     Console.WriteLine($"Reading appsettings.json: {appSettingsAbsPath}");
-    var config = new ConfigurationBuilder()
-        .AddJsonFile(appSettingsAbsPath)
-        .Build();
+    var configBuilder = new ConfigurationBuilder()
+        .AddJsonFile(appSettingsAbsPath);
+
+    // Also read appsettings.Local.json if it exists (for local overrides)
+    var localSettingsPath = Path.Combine(Path.GetDirectoryName(appSettingsAbsPath)!, "appsettings.Local.json");
+    if (File.Exists(localSettingsPath))
+    {
+        Console.WriteLine($"Found appsettings.Local.json, merging Applications...");
+        configBuilder.AddJsonFile(localSettingsPath);
+    }
+
+    var config = configBuilder.Build();
 
     var applicationsSection = config.GetSection("Applications");
     var applications = new List<ApplicationInfo>();
@@ -49,11 +58,11 @@ try
     if (applicationsSection.Exists())
     {
         applicationsSection.Bind(applications);
-        Console.WriteLine($"Found {applications.Count} application(s) in appsettings.json");
+        Console.WriteLine($"Found {applications.Count} application(s) in configuration");
     }
     else
     {
-        Console.WriteLine("Warning: No Applications section found in appsettings.json");
+        Console.WriteLine("Warning: No Applications section found in configuration");
     }
 
     // Read data.yaml and extract DataModel section

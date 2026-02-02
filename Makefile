@@ -7,7 +7,7 @@ IMAGE_NAME=dotnetwebapp
 # shellcheck disable=SC2034
 TAG=latest
 
-# Database names - configure these to match your sql/schema.sql USE statements
+# [FIXME:Use env vars] Database names - configure these to match your sql/schema.sql USE statements
 # shellcheck disable=SC2034
 PRIMARY_DB=GAI
 # shellcheck disable=SC2034
@@ -26,7 +26,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https migrate seed db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop ms-status ms-start ms-stop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers full-rebuild _db-init-schema
+.PHONY: clean check restore build build-release https migrate seed db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers full-rebuild _db-init-schema
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -164,7 +164,8 @@ db-seed:
 # Called automatically by db-migrate - do not call directly
 _db-init-schema:
 	@echo "Initializing database schema from sql/schema.sql..."
-	# First, create the required databases if they don't exist
+	@make db-check  # Ensure databases exist first
+	# Now apply schema to the databases
 	# shellcheck disable=SC2016
 	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
 		PASSWORD="$$SA_PASSWORD"; \
@@ -183,11 +184,7 @@ _db-init-schema:
 			echo "sqlcmd not found in container." >&2; \
 			exit 1; \
 		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -b -Q "\
-			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''$(PRIMARY_DB)'\'') \
-				CREATE DATABASE [$(PRIMARY_DB)]; \
-			IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '\''$(SECONDARY_DB)'\'') \
-				CREATE DATABASE [$(SECONDARY_DB)];"; \
+		echo "Applying schema from sql/schema.sql..."; \
 		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -i /dev/stdin' < sql/schema.sql
 	@echo "✅ Database schema initialized successfully"
 
@@ -330,6 +327,35 @@ db-drop:
 			IF DB_ID('"'"'$(SECONDARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(SECONDARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(SECONDARY_DB)]; END; \
 			IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;" && \
 		echo "Dropped databases $(PRIMARY_DB), $(SECONDARY_DB), DotNetWebAppDb (if they existed)." || echo "Failed to drop databases."'
+
+# Check and create required databases if they don't exist
+# Useful for verifying database health and recreating them without full reset
+# Can be extended in the future with more checks (backups, index verification, etc.)
+db-check:
+	@echo "Checking database health and ensuring required databases exist..."
+	# shellcheck disable=SC2016
+	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
+		PASSWORD="$$SA_PASSWORD"; \
+		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
+			PASSWORD="$$MSSQL_SA_PASSWORD"; \
+		fi; \
+		if [ -z "$$PASSWORD" ]; then \
+			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
+			exit 1; \
+		fi; \
+		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
+			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
+		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
+			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
+		else \
+			echo "sqlcmd not found in container." >&2; \
+			exit 1; \
+		fi; \
+		echo "Creating databases if they don'"'"'t exist..."; \
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "CREATE DATABASE [$(PRIMARY_DB)];" 2>/dev/null || echo "$(PRIMARY_DB) already exists"; \
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "CREATE DATABASE [$(SECONDARY_DB)];" 2>/dev/null || echo "$(SECONDARY_DB) already exists"; \
+		echo "Verifying databases..."; \
+		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "SELECT name FROM sys.databases WHERE name IN ('"'"'$(PRIMARY_DB)'"'"', '"'"'$(SECONDARY_DB)'"'"') ORDER BY name;" && echo "✅ All required databases exist"'
 
 # Local install of MSSQL (no Docker)
 ms-status:

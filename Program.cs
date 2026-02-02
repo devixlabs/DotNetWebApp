@@ -60,9 +60,19 @@ builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 
 // Database connections - PrimaryDatabase and SecondaryDatabase
-var primaryConnectionString = builder.Configuration.GetConnectionString("PrimaryDatabase")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
-var secondaryConnectionString = builder.Configuration.GetConnectionString("SecondaryDatabase")
+// Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
+// If they're empty or missing, fall back to DefaultConnection
+var primaryConnectionString =
+    (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("PrimaryDatabase"))
+        ? builder.Configuration.GetConnectionString("PrimaryDatabase")
+        : null)
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("No database connection string configured");
+
+var secondaryConnectionString =
+    (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("SecondaryDatabase"))
+        ? builder.Configuration.GetConnectionString("SecondaryDatabase")
+        : null)
     ?? primaryConnectionString;
 
 builder.Services.AddDbContext<AppDbContext>(options =>

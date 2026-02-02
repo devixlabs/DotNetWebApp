@@ -622,8 +622,10 @@ Phase 2 introduces a **hybrid data access architecture**:
 ```
 SQL View File (sql/views/ProductSalesView.sql)
     ↓ (manual: write your SELECT query)
-views.yaml (define view metadata)
-    ↓ (run: make run-view-pipeline)
+appsettings.json ViewDefinitions (define view + parameters)
+    ↓ (run: make run-ddl-pipeline)
+SqlSelectParser (auto-parses SELECT columns → property types)
+    ↓
 ViewModels/ProductSalesView.generated.cs (auto-generated C# DTO)
     ↓ (inject in Blazor component)
 IViewService.ExecuteViewAsync<ProductSalesView>()
@@ -636,7 +638,9 @@ IEnumerable<ProductSalesView> results
 | File | Purpose |
 |------|---------|
 | `sql/views/*.sql` | 📝 Your SQL SELECT queries - this is what you write |
-| `views.yaml` | 📝 View definitions with metadata - you edit this |
+| `appsettings.json` → `ViewDefinitions` | 📝 View definitions with parameters - you edit this |
+| `views.yaml` | 📝 (Optional) Legacy view definitions with explicit properties |
+| `ModelGenerator/SqlSelectParser.cs` | 🔧 Auto-parses SQL SELECT → property types |
 | `DotNetWebApp.Models/ViewModels/*.generated.cs` | 🔄 Auto-generated C# view model classes - never edit manually |
 | `Services/Views/` | 🔧 IViewService, ViewRegistry, DapperQueryService implementations |
 
@@ -672,9 +676,45 @@ ORDER BY TotalRevenue DESC
 - Aggregate functions (COUNT, SUM) are fully supported
 - Multi-table JOINs work as expected
 
-### Step 2: Define the View in views.yaml
+### Step 2: Define the View in appsettings.json
 
-**File:** `views.yaml` (project root)
+Add the view definition to the `ViewDefinitions` array in `appsettings.json`:
+
+```json
+"ViewDefinitions": [
+  {
+    "Name": "ProductSalesView",
+    "SqlFile": "sql/views/ProductSalesView.sql",
+    "Parameters": [
+      { "Name": "TopN", "Type": "int", "DefaultValue": "10" }
+    ]
+  }
+]
+```
+
+**Note:** Properties are **auto-generated** from the SQL SELECT columns. No need to manually define each property.
+
+### Auto-Generated Properties (SqlSelectParser)
+
+The ViewModelGenerator automatically parses SQL SELECT statements to extract column names and infer C# types. Type inference rules:
+
+| SQL Pattern | C# Type | Example |
+|-------------|---------|---------|
+| `*_id`, `*.id` | `int` (non-nullable) | `pr_id`, `p.Id` |
+| `price`, `pric`, `cost`, `amount`, `total`, `value` | `decimal?` | `pr_lispric`, `TotalRevenue` |
+| `COUNT(*)` | `int` (non-nullable) | `COUNT(*) AS TotalSold` |
+| `SUM()`, `AVG()` | `decimal?` | `SUM(qty)` |
+| Multiplication (`*` outside aggregates) | `decimal?` | `COUNT(id) * price` |
+| `COALESCE(..., 0)` | Non-nullable variant | `COALESCE(SUM(qty), 0)` |
+| `date`, `time`, `created`, `updated` | `datetime?` | `created_date` |
+| `is_`, `has_`, `active`, `enabled` | `bool?` | `is_active`, `enabled` |
+| Default (no pattern match) | `string?` | General fallback |
+
+**Override:** To override auto-inference, define explicit `Properties` in views.yaml (rarely needed).
+
+### Legacy: views.yaml (Optional)
+
+For explicit property control, you can still use `views.yaml`:
 
 ```yaml
 views:
@@ -683,37 +723,19 @@ views:
     sql_file: "sql/views/ProductSalesView.sql"
     generate_partial: true
 
-    # Parameters passed to SQL query
     parameters:
       - name: TopN
         type: int
         nullable: false
         default: "10"
-        validation:
-          required: true
-          range: [1, 1000]
 
-    # Properties returned from SQL (must match column names)
+    # Optional: Only needed if auto-inference is insufficient
     properties:
       - name: Id
         type: int
         nullable: false
       - name: Name
         type: string
-        nullable: false
-        max_length: 100
-      - name: Price
-        type: decimal
-        nullable: false
-      - name: CategoryName
-        type: string
-        nullable: true
-        max_length: 100
-      - name: TotalSold
-        type: int
-        nullable: false
-      - name: TotalRevenue
-        type: decimal
         nullable: false
 ```
 
@@ -724,7 +746,7 @@ views:
 Run the view pipeline to generate C# view model classes:
 
 ```bash
-make run-view-pipeline
+make run-ddl-pipeline
 ```
 
 This creates: `DotNetWebApp.Models/ViewModels/ProductSalesView.generated.cs`
@@ -1237,7 +1259,7 @@ public interface IViewService
 **Q: "Property 'X' does not exist on type 'Y'"**
 - SQL column names must match `properties:` in `views.yaml` exactly (case-sensitive)
 - Use column aliases in SQL: `SELECT c.Name AS CategoryName`
-- Regenerate view models: `make run-view-pipeline`
+- Regenerate view models: `make run-ddl-pipeline`
 
 **Q: "Type mismatch" or casting errors**
 - Ensure `type:` in `views.yaml` matches SQL column type
@@ -1272,7 +1294,7 @@ public interface IViewService
 
 ```bash
 # Generate view models from views.yaml
-make run-view-pipeline
+make run-ddl-pipeline
 
 # Generate both entities (from schema.sql) and views (from views.yaml)
 make run-all-pipelines

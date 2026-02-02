@@ -66,7 +66,7 @@ Use `.claude/skills/radzen-blazor` when working with any `.razor` files or UI re
 - ✅ **Multi-tenancy:** Finbuckle.MultiTenant with schema inheritance
 - ✅ **Scale target:** 200+ entities, multiple schemas, small team
 
-**Current Status:** 192+ tests passing; SQL-first view pipeline fully implemented
+**Current Status:** 212+ tests passing; SQL-first view pipeline fully implemented
 
 ## Important Session Notes
 
@@ -93,6 +93,30 @@ make test         # Run all tests (10-15 min)
 make run-ddl-pipeline  # sql/schema.sql + appsettings.json → app.yaml
 ./verify.sh            # End-to-end verification (build + test + pipeline + seed + integration)
 ```
+
+### View Definitions (appsettings.json)
+
+Views are defined in `appsettings.json` under `ViewDefinitions`. The ViewModelGenerator auto-parses SQL SELECT columns to generate typed properties:
+
+```json
+"ViewDefinitions": [
+  {
+    "Name": "ProductSalesView",
+    "SqlFile": "sql/views/ProductSalesView.sql",
+    "Parameters": [{ "Name": "TopN", "Type": "int", "DefaultValue": "10" }]
+  }
+]
+```
+
+**Type inference patterns** (SqlSelectParser):
+- `_id` suffix → `int` (non-nullable)
+- `price`, `pric`, `cost`, `amount`, `total`, `value` → `decimal?`
+- `COUNT(*)` → `int` (non-nullable)
+- `SUM()`, `AVG()` → `decimal?`
+- Multiplication expressions → `decimal?`
+- `date`, `time`, `created`, `updated` → `datetime?`
+- `is_`, `has_`, `active`, `enabled` → `bool?`
+- Default → `string?`
 
 ### Database
 
@@ -122,7 +146,7 @@ make shutdown-build-servers   # Kill MSBuild/Roslyn processes
 
 - **Run before commit:** `make test`
 - **Target coverage:** 80%+ on service layer and generators
-- **Current status:** 192+ tests passing
+- **Current status:** 212+ tests passing
 
 **Full Testing Guide:** See `TESTING.md` for principles, patterns, and troubleshooting
 
@@ -225,9 +249,10 @@ DotNetWebApp/
 - DDL-driven data model with full pipeline (DdlParser → app.yaml → ModelGenerator)
 - Dynamic Entity API + Generic CRUD UI (Radzen components)
 - Entity Metadata Service + compiled delegates (250x performance)
-- SQL-first view pipeline (Dapper) with 18 unit tests
+- SQL-first view pipeline (Dapper) with 38 unit tests
+- SqlSelectParser: Auto-generates view model properties from SQL SELECT columns with type inference
 - Multi-schema support with tenant isolation
-- Unit tests: 192+ passing (DataSeeder, ModelGenerator, DdlParser, Services)
+- Unit tests: 212+ passing (DataSeeder, ModelGenerator, DdlParser, SqlSelectParser, Services)
 - Build optimization (30+ min → 2-5 min)
 - Docker SQL Server support
 
@@ -274,6 +299,7 @@ DotNetWebApp/
 | `Components/Shared/GenericEntityPage.razor` | Reusable CRUD UI |
 | `DdlParser/` | SQL DDL → YAML converter |
 | `ModelGenerator/` | YAML → C# generator |
+| `ModelGenerator/SqlSelectParser.cs` | SQL SELECT → ViewProperty[] with type inference |
 | `Makefile` | Build automation |
 
 ## SDK Version Management
@@ -344,5 +370,6 @@ make test                     # Run all unit tests
 8. Documentation Expansion: SKILLS.md comprehensive guides
 9. Phase 1 (2026-01-27): IEntityOperationService with compiled delegates
 10. Phase 2 (2026-01-27): SQL-first view pipeline with Dapper
+11. Phase 3 (2026-02-01): SqlSelectParser for auto-generating view model properties from SQL SELECT columns
 
-Latest work focuses on modular architecture and comprehensive documentation.
+Latest work focuses on SQL-first view generation and type inference.
