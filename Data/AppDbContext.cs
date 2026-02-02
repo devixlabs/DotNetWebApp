@@ -83,6 +83,16 @@ namespace DotNetWebApp.Data
             {
                 modelBuilder.Entity(acuityFormValuType).Ignore("Acuity_form");
             }
+
+            // Configure gai_lock identity column (gl_index)
+            // The table has a composite primary key with an identity column, which requires explicit configuration
+            var gaiLockType = entityTypes.FirstOrDefault(t => t.Name == "Gai_lock");
+            if (gaiLockType != null)
+            {
+                modelBuilder.Entity(gaiLockType)
+                    .Property("gl_index")
+                    .ValueGeneratedOnAdd();
+            }
         }
 
     }

@@ -162,13 +162,13 @@ public class AllocationService : IAllocationService
             SELECT
                 or_id AS LineIndex,
                 CAST(to_ordnum AS VARCHAR) AS OrderNumber,
-                pr.pr_code AS ProductCode,
+                pr.pr_codenum AS ProductCode,
                 pr.pr_descrip AS ProductDescription,
                 or_quant AS OrderedQuantity,
                 ISNULL((SELECT SUM(all_qty) FROM GAIMisc.dbo.gai_allocate
-                        WHERE all_ordernum = to_ordnum AND all_codenum = pr.pr_code AND all_id = @WarehouseId AND all_pick = 0), 0) AS AllocatedQuantity,
+                        WHERE all_ordernum = to_ordnum AND all_codenum = pr.pr_codenum AND all_id = @WarehouseId AND all_pick = 0), 0) AS AllocatedQuantity,
                 ISNULL((SELECT SUM(all_qty) FROM GAIMisc.dbo.gai_allocate
-                        WHERE all_ordernum = to_ordnum AND all_codenum = pr.pr_code AND all_id = @WarehouseId AND all_pick <> 0), 0) AS PickedQuantity
+                        WHERE all_ordernum = to_ordnum AND all_codenum = pr.pr_codenum AND all_id = @WarehouseId AND all_pick <> 0), 0) AS PickedQuantity
             FROM dtord
             JOIN dttord ON or_toid = to_id
             JOIN dmprod pr ON pr.pr_id = or_prid
@@ -176,7 +176,7 @@ public class AllocationService : IAllocationService
               AND to_waid = @WarehouseId
               AND or_quant > 0
               AND pr.pr_stocked = 1
-              AND pr.pr_code NOT LIKE 'BXS%'
+              AND pr.pr_codenum NOT LIKE 'BXS%'
             ORDER BY or_id";
 
         var lines = await _primaryDapper.QueryAsync<AllocationLineItem>(sql, new

@@ -927,6 +927,16 @@ SELECT @to_id_50004 = to_id FROM dttord WHERE to_ordnum = 50004;
 SELECT @to_id_50005 = to_id FROM dttord WHERE to_ordnum = 50005;
 SELECT @to_id_50006 = to_id FROM dttord WHERE to_ordnum = 50006;
 
+-- Get the pr_id values for our test products (lookup by pr_codenum)
+DECLARE @pr_id_widget INT, @pr_id_gadget INT, @pr_id_component INT;
+SELECT @pr_id_widget = pr_id FROM dmprod WHERE pr_codenum = 'WIDGET-A';
+SELECT @pr_id_gadget = pr_id FROM dmprod WHERE pr_codenum = 'GADGET-PRO';
+SELECT @pr_id_component = pr_id FROM dmprod WHERE pr_codenum = 'COMPONENT-X';
+
+PRINT 'Product IDs: WIDGET-A=' + ISNULL(CAST(@pr_id_widget AS VARCHAR), 'NULL') +
+      ', GADGET-PRO=' + ISNULL(CAST(@pr_id_gadget AS VARCHAR), 'NULL') +
+      ', COMPONENT-X=' + ISNULL(CAST(@pr_id_component AS VARCHAR), 'NULL');
+
 -- Clear existing test order lines
 DELETE FROM [dbo].[dtord] WHERE or_ordnum IN (50001, 50002, 50003, 50004, 50005, 50006);
 
@@ -942,9 +952,9 @@ INSERT INTO [dbo].[dtord]
  or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
  or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
  or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
- or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor, or_overrideuser)
 VALUES
-(50001, 1, 0, 0, 1, 100.0, 0.0, 29.99, 2999.00,
+(50001, 1, 0, 0, @pr_id_widget, 100.0, 0.0, 29.99, 2999.00,
  'WIDGET-A line', 1, 1, 0, 0, '', 1, 1.0, 0.5,
  0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50001, 0, 0.0, '', 0,
@@ -954,8 +964,8 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0),
-(50001, 2, 0, 0, 2, 50.0, 0.0, 149.99, 7499.50,
+ 0, 0, 0, 0.0, ''),
+(50001, 2, 0, 0, @pr_id_gadget, 50.0, 0.0, 149.99, 7499.50,
  'GADGET-PRO line', 1, 1, 0, 0, '', 1, 1.0, 1.2,
  0, 75.00, 0, 0, '', 149.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50001, 0, 0.0, '', 0,
@@ -965,7 +975,7 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0);
+ 0, 0, 0, 0.0, '');
 
 -- Order 50002 lines (Partially allocated - 2 products, 1 allocated)
 INSERT INTO [dbo].[dtord]
@@ -979,9 +989,9 @@ INSERT INTO [dbo].[dtord]
  or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
  or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
  or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
- or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor, or_overrideuser)
 VALUES
-(50002, 1, 0, 0, 1, 200.0, 0.0, 29.99, 5998.00,
+(50002, 1, 0, 0, @pr_id_widget, 200.0, 0.0, 29.99, 5998.00,
  'WIDGET-A line - allocated', 1, 1, 0, 0, '', 1, 1.0, 0.5,
  0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50002, 0, 0.0, '', 0,
@@ -991,8 +1001,8 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0),
-(50002, 2, 0, 0, 2, 30.0, 0.0, 149.99, 4499.70,
+ 0, 0, 0, 0.0, ''),
+(50002, 2, 0, 0, @pr_id_gadget, 30.0, 0.0, 149.99, 4499.70,
  'GADGET-PRO line - NOT allocated', 1, 1, 0, 0, '', 1, 1.0, 1.2,
  0, 75.00, 0, 0, '', 149.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50002, 0, 0.0, '', 0,
@@ -1002,7 +1012,7 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0);
+ 0, 0, 0, 0.0, '');
 
 -- Order 50003 lines (Fully allocated - 1 product)
 INSERT INTO [dbo].[dtord]
@@ -1016,9 +1026,9 @@ INSERT INTO [dbo].[dtord]
  or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
  or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
  or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
- or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor, or_overrideuser)
 VALUES
-(50003, 1, 0, 0, 1, 150.0, 0.0, 29.99, 4498.50,
+(50003, 1, 0, 0, @pr_id_widget, 150.0, 0.0, 29.99, 4498.50,
  'WIDGET-A line - fully allocated', 1, 1, 0, 0, '', 1, 1.0, 0.5,
  0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50003, 0, 0.0, '', 0,
@@ -1028,7 +1038,7 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0);
+ 0, 0, 0, 0.0, '');
 
 -- Order 50005 lines (Northlake - 1 product)
 INSERT INTO [dbo].[dtord]
@@ -1042,9 +1052,9 @@ INSERT INTO [dbo].[dtord]
  or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
  or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
  or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
- or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor, or_overrideuser)
 VALUES
-(50005, 1, 0, 0, 1, 80.0, 0.0, 29.99, 2399.20,
+(50005, 1, 0, 0, @pr_id_widget, 80.0, 0.0, 29.99, 2399.20,
  'WIDGET-A line - Northlake', 1, 1, 0, 0, '', 1, 1.0, 0.5,
  0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50005, 0, 0.0, '', 0,
@@ -1054,7 +1064,7 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0);
+ 0, 0, 0, 0.0, '');
 
 -- Order 50006 lines (Tomorrow's order)
 INSERT INTO [dbo].[dtord]
@@ -1068,9 +1078,9 @@ INSERT INTO [dbo].[dtord]
  or_priceordnum, or_planquant, or_qplan, or_totalorder, or_scid, or_siid, or_backquant,
  or_autoaddfreight, or_discountid, or_noreserve, or_commable, or_promoamt, or_poallocatable, or_pickunit,
  or_linejob, or_repack, or_shid, or_masterorid, or_trid, or_frid, or_doid, or_actualfrtcost, or_gcid,
- or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor)
+ or_vaid, or_laborcogsid, or_burdencogsid, or_pricefactor, or_overrideuser)
 VALUES
-(50006, 1, 0, 0, 1, 250.0, 0.0, 29.99, 7497.50,
+(50006, 1, 0, 0, @pr_id_widget, 250.0, 0.0, 29.99, 7497.50,
  'WIDGET-A line - Tomorrow', 1, 1, 0, 0, '', 1, 1.0, 0.5,
  0, 15.00, 0, 0, '', 29.99, 0.0, 0, 0.0,
  'Standard', 0, 0, 1.0, @to_id_50006, 0, 0.0, '', 0,
@@ -1080,7 +1090,7 @@ VALUES
  0, 0.0, 0.0, 0, 0, 0, 0.0,
  0, 0, 0, 0, 0.0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0.0, 0,
- 0, 0, 0, 0.0);
+ 0, 0, 0, 0.0, '');
 
 PRINT 'Inserted order lines for allocation testing';
 

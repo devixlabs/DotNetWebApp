@@ -179,12 +179,12 @@ public class FIFOAllocationEngine : IFIFOAllocationEngine
         string sql = $@"
             SELECT
                 fi_id AS FifoId,
-                pr.pr_code AS ProductCode,
+                pr.pr_codenum AS ProductCode,
                 fi_userlot AS LotNumber,
                 lo.lo_name AS Location,
                 fi_balance AS OnHand,
                 ISNULL((SELECT SUM(all_qty) FROM GAIMisc.dbo.gai_allocate
-                        WHERE all_codenum = pr.pr_code AND all_userlot = fi_userlot AND all_pick = 0), 0) AS Allocated,
+                        WHERE all_codenum = pr.pr_codenum AND all_userlot = fi_userlot AND all_pick = 0), 0) AS Allocated,
                 0 AS Reserved,
                 fi_expires AS ExpirationDate,
                 fi_recdate AS ReceiptDate,
@@ -194,7 +194,7 @@ public class FIFOAllocationEngine : IFIFOAllocationEngine
             JOIN dmprod pr ON pr.pr_id = fi_prid
             JOIN dmloc lo ON lo.lo_id = fi_loid
             WHERE fi_waid = @WarehouseId
-              AND pr.pr_code = @ProductCode
+              AND pr.pr_codenum = @ProductCode
               AND fi_balance > 0
               AND {excludedTypesCondition}
               AND lo.lo_name NOT LIKE '19-%'
