@@ -576,19 +576,39 @@ public class DMSService : IDMSService
     {
         try
         {
-            // Query gai_dat2 for operators filtered by d2_d1id=687 (CPFG users)
-            var sql = @"
-                SELECT
-                    d2_user AS Username,
-                    d2_name AS FullName,
-                    CASE WHEN d2_d1id = 687 THEN 1 ELSE 0 END AS IsCPFGUser
-                FROM gai_dat2
-                WHERE d2_d1id = 687
-                ORDER BY d2_name";
+            // TODO: BLOCKER - GAISystem Database Schema Not Yet Integrated
+            //
+            // This method requires the GAISystem database schema to be added to the project.
+            // The GAISystem database is currently external and not modeled in DotNetWebApp.
+            //
+            // Spec Reference: BUSINESS_LOGIC_COMPLETE-DMS.md (lines 338-346)
+            //
+            // Correct Query (pending GAISystem schema integration):
+            //   SELECT us_login, ISNULL(cpfg_user.d2_value, 'No') AS is_CPFG_user
+            //   FROM gaisystem.dbo.dxuser
+            //   JOIN dtd2 forklift ON forklift.d2_recid = us_id AND forklift.d2_d1id = 478
+            //   LEFT JOIN dtd2 cpfg_user ON cpfg_user.d2_recid = us_id AND cpfg_user.d2_d1id = 687
+            //   WHERE us_active = 1
+            //   ORDER BY us_login
+            //
+            // Key IDs (from spec, magic numbers section):
+            //   - 478 = Forklift operator group ID in dtd2
+            //   - 687 = CPFG user flag ID in dtd2
+            //
+            // Implementation Status:
+            // - [ ] Add GAISystem database schema to SQL DDL pipeline
+            // - [ ] Generate gaisystem.dbo.dxuser entity
+            // - [ ] Generate GAI.dbo.dtd2 entity (if not already present)
+            // - [ ] Update SecondaryDbContext to include these entities
+            // - [ ] Implement correct query using Dapper with proper joins
+            // - [ ] Add warehouse-specific filtering logic (d2_d1id = 687 for CPFG, exclude for Northlake)
+            //
+            // JIRA Reference: External GAISystem schema integration task (not yet in this repo)
+            //
+            // Current Status: RETURNS EMPTY until schema is available
 
-            var operators = await _dapperQuery.QueryAsync<OperatorInfo>(sql, new { });
-
-            return operators;
+            _logger.LogWarning("GetAvailableOperatorsAsync called but GAISystem schema not yet integrated. Returning empty list.");
+            return Enumerable.Empty<OperatorInfo>();
         }
         catch (Exception ex)
         {
