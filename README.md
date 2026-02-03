@@ -327,6 +327,73 @@ Visit **https://localhost:7012** (or **http://localhost:5210**) in your browser.
 
 ---
 
+## External Access (Optional)
+
+To make the application accessible from your local network or the internet (via port forwarding), set up an Nginx reverse proxy.
+
+### 1. Generate SSL Certificates
+```bash
+make https
+```
+Follow the on-screen instructions to move the generated `dotnetwebapp.crt` and `dotnetwebapp.key` files to `/etc/nginx/ssl/`.
+
+### 2. Configure Nginx
+Create or update `/etc/nginx/conf.d/dotnetwebapp.conf` with the following configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name _; 
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    # SSL Configuration using .NET Self-Signed Certs
+    ssl_certificate /etc/nginx/ssl/dotnetwebapp.crt;
+    ssl_certificate_key /etc/nginx/ssl/dotnetwebapp.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        # Proxy to the HTTPS port to avoid 307 Redirect loops from the app
+        proxy_pass https://127.0.0.1:7012;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection keep-alive;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable SSL verification for the backend (since it's localhost self-signed)
+        proxy_ssl_verify off;
+    }
+}
+```
+Then reload Nginx:
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 3. Configure Router (Port Forwarding)
+If using a typical home or small office router:
+
+1. Log in to your router (usually `http://192.168.0.1`).
+2. Go to **Forwarding** > **Virtual Servers**.
+3. Add **Rule 1**: Port `80` → Your Local IP (`hostname -I`) Port `80`.
+4. Add **Rule 2**: Port `443` → Your Local IP (`hostname -I`) Port `443`.
+5. Save settings.
+
+---
+
 ## Adding a New Data Entity from DDL
 
 ### Step 1: Update your SQL schema file

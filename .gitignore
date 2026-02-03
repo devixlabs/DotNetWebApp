@@ -493,6 +493,9 @@ $RECYCLE.BIN/
 appsettings.Local.json
 tmp/
 specs/
+dotnetwebapp.conf
+dotnetwebapp.crt
+dotnetwebapp.key
 # Generated YAML files (regenerated from pipeline)
 app.yaml
 data.yaml

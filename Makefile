@@ -65,7 +65,14 @@ shutdown-build-servers:
 	@echo "Build servers stopped."
 
 https:
-	$(DOTNET) dev-certs https
+	$(DOTNET) dev-certs https -ep ./dotnetwebapp.crt --format PEM --no-password
+	@echo "✅ Certificates exported to ./dotnetwebapp.crt and ./dotnetwebapp.key"
+	@echo ""
+	@echo "To use with Nginx, move them to /etc/nginx/ssl/:"
+	@echo "  sudo mkdir -p /etc/nginx/ssl"
+	@echo "  sudo mv dotnetwebapp.crt /etc/nginx/ssl/"
+	@echo "  sudo mv dotnetwebapp.key /etc/nginx/ssl/"
+	@echo "  sudo nginx -t && sudo systemctl reload nginx"
 
 check:
 	shellcheck setup.sh
