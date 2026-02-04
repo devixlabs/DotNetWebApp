@@ -178,9 +178,10 @@ Use after changes to schema.sql, appsettings.json, DDL pipeline, migrations, or 
 
 **Quick Connection:**
 ```bash
-export SA_PASSWORD="YourStrongPassword123!"
 docker exec -it sqlserver-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD"
 ```
+
+(SA_PASSWORD is loaded from `.envrc`)
 
 **Connection String:**
 ```
@@ -371,5 +372,6 @@ make test                     # Run all unit tests
 9. Phase 1 (2026-01-27): IEntityOperationService with compiled delegates
 10. Phase 2 (2026-01-27): SQL-first view pipeline with Dapper
 11. Phase 3 (2026-02-01): SqlSelectParser for auto-generating view model properties from SQL SELECT columns
+12. Seed Data (2026-02-04): Added Feb 4-29, 2026 test data to sql/seed.sql (78 PrePick orders)
 
-Latest work focuses on SQL-first view generation and type inference.
+Latest work focuses on SQL-first view generation, type inference, and comprehensive test data.

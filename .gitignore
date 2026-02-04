@@ -496,6 +496,7 @@ specs/
 dotnetwebapp.conf
 dotnetwebapp.crt
 dotnetwebapp.key
+dev.log
 # Generated YAML files (regenerated from pipeline)
 app.yaml
 data.yaml

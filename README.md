@@ -36,6 +36,11 @@ make dev       # Start dev server (https://localhost:7012 or http://localhost:52
 
 **That's it!** Navigate to https://localhost:7012 (or http://localhost:5210) to see the app.
 
+You can also run in the background:
+```bash
+nohup make dev > dev.log 2>&1 &
+```
+
 > **Note:** This project uses two databases: **{PRIMARY_DB}** (primary) and **{SECONDARY_DB}** (secondary). Both are created automatically by `make migrate`.
 
 ---

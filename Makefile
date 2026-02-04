@@ -79,6 +79,7 @@ check:
 	shellcheck dotnet-build.sh
 	shellcheck verify.sh
 	shellcheck Makefile
+	shellcheck scripts/seed-full-month.sh
 	$(DOTNET) format whitespace DotNetWebApp.csproj
 	$(DOTNET) format style DotNetWebApp.csproj
 	@# Regenerate if generated files are missing - check for app.yaml as indicator
