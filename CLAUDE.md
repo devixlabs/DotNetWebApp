@@ -176,6 +176,12 @@ Use after changes to schema.sql, appsettings.json, DDL pipeline, migrations, or 
 
 ## 🐳 Docker Database
 
+**Compose workflow (use this, not `docker compose up` directly):**
+```bash
+make compose-up    # SQL Server health → db-migrate → db-seed → app
+make compose-down  # Stop containers (volume/data preserved)
+```
+
 **Quick Connection:**
 ```bash
 docker exec -it sqlserver-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD"
@@ -187,6 +193,12 @@ docker exec -it sqlserver-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 
 ```
 Server=localhost,1433;Database=DotNetWebAppDb;User Id=sa;Password=<SA_PASSWORD>;TrustServerCertificate=True;
 ```
+
+**Critical Docker gotchas:**
+- `ASPNETCORE_ENVIRONMENT=Docker` → auto-loads `appsettings.Docker.json` (not Production/Development)
+- `appsettings.Local.json` is loaded AFTER env vars (`AddJsonFile` at Program.cs:19) — `.dockerignore` excludes it so `Server=localhost` never overrides docker-compose `Server=sqlserver`
+- Dockerfile restores `DotNetWebApp.csproj` not `.sln` — test projects excluded by `.dockerignore`
+- `scripts/docker.sh check` — creates GAI/GAIMisc if missing; called automatically by `db-migrate`
 
 **Full Docker Guide:** See `DOCKER.md` for setup, troubleshooting, and secrets management
 

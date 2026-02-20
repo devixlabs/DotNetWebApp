@@ -26,7 +26,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-check ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers all _ensure-pipeline _incremental-pipeline ms-init-schema
+.PHONY: clean check restore build build-release https db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-check ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers all _ensure-pipeline _incremental-pipeline ms-init-schema compose-up compose-down
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -86,6 +86,7 @@ check:
 	shellcheck scripts/seed-full-month.sh
 	shellcheck scripts/docker.sh
 	shellcheck scripts/mssql.sh
+	shellcheck docker/entrypoint.sh
 	$(DOTNET) format whitespace DotNetWebApp.csproj
 	$(DOTNET) format style DotNetWebApp.csproj
 	@# Regenerate if generated files are missing - check for app.yaml as indicator
@@ -216,6 +217,32 @@ run-ddl-pipeline: clean
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
+
+# Start the full Docker Compose stack with database initialization
+# Starts SQL Server first, waits for health check, initializes schema + migrations, seeds data, then starts app
+# Requires SA_PASSWORD environment variable (load via: source .envrc or export SA_PASSWORD=...)
+compose-up:
+	@[ -n "$$SA_PASSWORD" ] || { echo "Error: SA_PASSWORD environment variable required" >&2; echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; exit 1; }
+	@echo "Starting SQL Server and waiting for health check..."
+	@docker compose up -d --wait sqlserver
+	@echo "Initializing databases..."
+	$(MAKE) db-migrate
+	@echo "Seeding data..."
+	$(MAKE) db-seed
+	@echo "Starting application container..."
+	@docker compose up -d dotnetwebapp
+	@echo ""
+	@echo "╔════════════════════════════════════════════════════╗"
+	@echo "║      ✅ Docker stack is up                         ║"
+	@echo "╚════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "  App:  http://localhost:5210"
+	@echo "  Logs: docker compose logs -f dotnetwebapp"
+	@echo ""
+
+# Stop and remove all Docker Compose containers (preserves volumes/data)
+compose-down:
+	@docker compose down
 
 # Run in Release (production-like) mode
 run: build-release

@@ -222,6 +222,8 @@ CREATE TABLE [dbo].[Company](...)   -- → initech:Company
 | `make ms-logs` | Tail native SQL Server logs |
 | `make ms-drop` | Drop local dev database in native SQL Server |
 | `make docker-build` | Build Docker image |
+| `make compose-up` | Start full Docker stack (SQL Server health → db-migrate → db-seed → app) |
+| `make compose-down` | Stop Docker Compose containers (volume/data preserved) |
 
 ---
 
@@ -257,38 +259,105 @@ Then verify the data landed via the container's `sqlcmd` (see the Docker section
 
 ---
 
-## Docker
+## Docker (Quick Start)
 
-### Build the image
+### Prerequisites
+- Docker and Docker Compose installed
+- SA_PASSWORD environment variable set (or copy `.env.example` → `.env`)
+
+### Run Everything (Recommended)
+
 ```bash
-make docker-build
+# Set SQL Server password
+export SA_PASSWORD='YourStrongPassword123!'
+
+# Start full stack: SQL Server → init databases → seed → app
+make compose-up
 ```
 
-### Run the container
+**Then navigate to:**
+- 🌐 **HTTP:** http://localhost:5210
+
+**What `make compose-up` does:**
+- ✅ Starts SQL Server and waits for health check
+- ✅ Runs `make db-migrate` (creates GAI/GAIMisc databases, applies schema + EF migrations)
+- ✅ Runs `make db-seed` (populates sample data)
+- ✅ Starts app container — databases are guaranteed to exist
+
+**Note on HTTPS:** The container runs on HTTP only. In production, HTTPS/TLS termination is handled by the nginx reverse proxy (see "External Access" section below). For local development with HTTPS, see "HTTPS Certificate Options" section.
+
+### Stop Everything
 ```bash
-docker run -d \
-  -p 8080:80 \
-  --name dotnetwebapp \
-  dotnetwebapp:latest
+make compose-down
 ```
 
-### SQL Server tooling + example queries
-
-Run the following commands from your host to verify data in the {PRIMARY_DB} and {SECONDARY_DB} databases:
-
+### Build the Image Manually
 ```bash
-# Query products from {PRIMARY_DB} database
+docker build -t dotnetwebapp.local .
+```
+
+### HTTPS Certificate Options
+
+The default Docker setup uses **HTTP only** (port 5210), with HTTPS/TLS handled by the nginx reverse proxy in production. If you need HTTPS inside the container for local development, choose one of these approaches:
+
+#### Option 2: Generate Dev Certificate in Container
+Add to `Dockerfile` before `ENTRYPOINT`:
+```dockerfile
+RUN dotnet dev-certs https --check --trust 2>/dev/null || \
+    dotnet dev-certs https -ep /app/cert.pfx -p YourCertPassword123! && \
+    dotnet dev-certs https --trust 2>/dev/null || true
+```
+
+Then update `docker-compose.yml` environment:
+```yaml
+environment:
+  ASPNETCORE_URLS: 'https://+:7012;http://+:5210'
+  ASPNETCORE_Kestrel__Certificates__Default__Path: '/app/cert.pfx'
+  ASPNETCORE_Kestrel__Certificates__Default__Password: 'YourCertPassword123!'
+```
+
+**Pros:** Self-contained; works in isolated environments
+**Cons:** Certificate regenerates on each build; adds ~2-3 min to build time
+
+#### Option 3: Mount Certificate from Host
+Generate a certificate on the host:
+```bash
+dotnet dev-certs https -ep ./dev-certs/certificate.pfx -p YourCertPassword123!
+```
+
+Update `docker-compose.yml`:
+```yaml
+dotnetwebapp:
+  volumes:
+    - ./dev-certs:/app/certs:ro
+  environment:
+    ASPNETCORE_URLS: 'https://+:7012;http://+:5210'
+    ASPNETCORE_Kestrel__Certificates__Default__Path: '/app/certs/certificate.pfx'
+    ASPNETCORE_Kestrel__Certificates__Default__Password: 'YourCertPassword123!'
+```
+
+**Pros:** Faster builds; certificate persists across rebuilds
+**Cons:** Requires certificate management on host; certificate expires after 1 year
+
+---
+
+### Files Included
+- `Dockerfile` — Multi-stage build (SDK → aspnet runtime)
+- `docker-compose.yml` — Orchestrates app + SQL Server with networking
+- `.env.example` — Template for environment variables (copy to `.env` to customize)
+
+### Verify Data in SQL Server
+```bash
+# Query {PRIMARY_DB} (GAI)
 docker exec -it sqlserver-dev \
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
-  -d {PRIMARY_DB} -Q "SELECT TOP 5 pr_id, pr_descrip, pr_lispric FROM dbo.dmprod;"
+  -d GAI -Q "SELECT TOP 5 * FROM dbo.dmprod;"
 
-# Query acid corrections from {SECONDARY_DB} database
+# Query {SECONDARY_DB} (GAIMisc)
 docker exec -it sqlserver-dev \
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
-  -d {SECONDARY_DB} -Q "SELECT * FROM dbo.AcidCorrection;"
+  -d GAIMisc -Q "SELECT * FROM dbo.AcidCorrection;"
 ```
-
-These commands let you run `sql/seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
 
 ---
 
