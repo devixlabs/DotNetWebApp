@@ -46,7 +46,7 @@ case "$COMMAND" in
         PASSWORD=$(resolve_password)
 
         /bin/sh -c "
-            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"IF DB_ID('DotNetWebAppDb') IS NULL CREATE DATABASE [DotNetWebAppDb]\" && \
+            sqlcmd -S localhost -U sa -P \"$PASSWORD\" -C -Q \"IF DB_ID('DotNetWebAppDb') IS NULL CREATE DATABASE [DotNetWebAppDb]\" && \
             sqlcmd -S localhost -U sa -P \"$PASSWORD\" -d DotNetWebAppDb -C -i sql/idempotent-migration.sql
         "
         echo "✅ Migration applied successfully"

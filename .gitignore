@@ -463,8 +463,9 @@ Thumbs.db
 ehthumbs.db
 ehthumbs_vista.db
 
-# Dump file
+# Dump type files
 *.stackdump
+*.patch
 
 # Folder config file
 [Dd]esktop.ini

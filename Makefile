@@ -53,6 +53,9 @@ all: clean db-drop run-ddl-pipeline test db-migrate db-seed
 	@echo "   ./verify.sh           - Run end-to-end integration tests"
 	@echo ""
 
+ms-all: clean ms-drop run-ddl-pipeline test ms-migrate ms-seed
+	@echo "MSSQL all completed!"
+
 # Internal helper: Remove nested project directories created by MSBuild during build/test
 # Prevents inotify watch exhaustion on Linux (limit: 65,536)
 cleanup-nested-dirs:
@@ -333,6 +336,7 @@ ms-check:
 # Creates required databases ($(PRIMARY_DB), $(SECONDARY_DB)) and all tables defined in sql/schema.sql
 # Called automatically by ms-migrate - do not call directly
 ms-init-schema:
+	@bash scripts/mssql.sh check > /dev/null
 	@echo "Initializing database schema from sql/schema.sql..."
 	# shellcheck disable=SC2016
 	@/bin/sh -c '\
