@@ -226,6 +226,8 @@ docker-build:
 # Requires SA_PASSWORD environment variable (load via: source .envrc or export SA_PASSWORD=...)
 compose-up:
 	@[ -n "$$SA_PASSWORD" ] || { echo "Error: SA_PASSWORD environment variable required" >&2; echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; exit 1; }
+	@echo "Removing any pre-existing standalone sqlserver-dev container..."
+	@docker rm -f sqlserver-dev 2>/dev/null || true
 	@echo "Starting SQL Server and waiting for health check..."
 	@docker compose up -d --wait sqlserver
 	@echo "Initializing databases..."
