@@ -26,7 +26,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https migrate seed db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers full-rebuild _db-init-schema
+.PHONY: clean check restore build build-release https db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-check ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers all _ensure-pipeline _incremental-pipeline ms-init-schema
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -40,14 +40,18 @@ clean:
 	rm -f data.yaml
 	rm -f sql/idempotent-migration.sql
 
-# Full rebuild from scratch: clean, regenerate all code, check, build, and test
-full-rebuild:
-	@echo "=== FULL REBUILD FROM SCRATCH ==="
-	$(MAKE) clean
-	$(MAKE) run-ddl-pipeline
-	$(MAKE) check
-	$(MAKE) test
-	@echo "=== FULL REBUILD SUCCESSFUL ==="
+# Full rebuild from scratch: clean, drop databases, regenerate models, build, test, migrate, and seed
+# This is the definitive target for a complete fresh start
+all: clean db-drop run-ddl-pipeline test db-migrate db-seed
+	@echo ""
+	@echo "╔════════════════════════════════════════════════════╗"
+	@echo "║      ✅ FULL PIPELINE RUN SUCCESSFUL               ║"
+	@echo "╚════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "🚀 Next steps:"
+	@echo "   make dev              - Start dev server with hot reload"
+	@echo "   ./verify.sh           - Run end-to-end integration tests"
+	@echo ""
 
 # Internal helper: Remove nested project directories created by MSBuild during build/test
 # Prevents inotify watch exhaustion on Linux (limit: 65,536)
@@ -80,6 +84,8 @@ check:
 	shellcheck verify.sh
 	shellcheck Makefile
 	shellcheck scripts/seed-full-month.sh
+	shellcheck scripts/docker.sh
+	shellcheck scripts/mssql.sh
 	$(DOTNET) format whitespace DotNetWebApp.csproj
 	$(DOTNET) format style DotNetWebApp.csproj
 	@# Regenerate if generated files are missing - check for app.yaml as indicator
@@ -90,116 +96,80 @@ check:
 restore:
 	$(DOTNET) restore DotNetWebApp.sln
 
+# Internal helper: Ensure generated files exist without full clean
+# Checks for app.yaml as indicator - if missing, regenerate everything
+_ensure-pipeline:
+	@if [ ! -f app.yaml ] || [ ! -d DotNetWebApp.Models/Generated ] || [ ! -d Migrations ] || [ -z "$$(find Migrations -name '*InitialCreate*.cs' 2>/dev/null)" ]; then \
+		echo "Generated files missing, running incremental regeneration..."; \
+		$(MAKE) _incremental-pipeline; \
+	fi
+
+# Internal helper: Incremental pipeline without full clean
+# Only deletes generated models, not build artifacts
+# Steps 1-7 from run-ddl-pipeline but without clean dependency or final build call
+_incremental-pipeline:
+	@echo "Starting incremental DDL pipeline..."
+	@echo " -- Step 1: Parsing DDL to data.yaml (intermediate, dataModel only)..."
+	cd DdlParser && "../$(DOTNET)" run -- ../sql/schema.sql ../data.yaml
+	@echo ""
+	@echo " -- Step 2: Merging ViewDefinitions from appsettings.json into data.yaml (modifies in place; intermediate now contains dataModel + views)..."
+	cd YamlMerger && "../$(DOTNET)" run ../data.yaml ../appsettings.json
+	@echo ""
+	@echo " -- Step 3: Cleaning old Generated models and generating C# models from data.yaml..."
+	rm -rf DotNetWebApp.Models/Generated/*
+	cd ModelGenerator && "../$(DOTNET)" run ../data.yaml
+	@echo ""
+	@echo " -- Step 4: Generating view models from data.yaml..."
+	cd ModelGenerator && "../$(DOTNET)" run -- --mode=views --views-yaml=../data.yaml --output-dir=../DotNetWebApp.Models/ViewModels
+	@echo ""
+	@echo " -- Step 5: Merging appsettings.json + data.yaml → app.yaml (final)..."
+	cd AppsYamlGenerator && "../$(DOTNET)" run -- ../appsettings.json ../data.yaml ../app.yaml
+	@echo ""
+	@echo " -- Step 6: Cleaning up intermediate data.yaml..."
+	rm -f data.yaml
+	@echo ""
+	@echo " -- Step 7: Regenerating EF Core migration..."
+	rm -f Migrations/*.cs
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
+	@echo ""
+	@echo "✅ Incremental pipeline completed!"
+
 # Build with configurable configuration (Debug by default for fast dev iteration)
 # Builds entire solution including test projects with reduced parallelism
 # Note: Reduced parallelism (-maxcpucount:2) to prevent memory exhaustion
 # If error(s) contain "Run a NuGet package restore", try 'make restore'
-build:
-	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+build: _ensure-pipeline
+	$(DOTNET) build DotNetWebApp.sln --configuration "$(BUILD_CONFIGURATION)" -maxcpucount:2 --nologo
 	@$(MAKE) cleanup-nested-dirs
 
 # Build with Release configuration for production deployments
 # This target always uses Release regardless of BUILD_CONFIGURATION variable
-build-release:
-	$(DOTNET) build DotNetWebApp.sln --configuration Release --no-restore -maxcpucount:2 --nologo
+build-release: _ensure-pipeline
+	$(DOTNET) build DotNetWebApp.sln --configuration Release
 	@$(MAKE) cleanup-nested-dirs
-
-# Backwards-compatible alias: migrate → db-migrate (Docker dev environment)
-migrate: db-migrate
 
 # Idempotent migration via Docker - safe to run multiple times against existing databases
 # For databases with existing tables, marks migration as applied without re-creating tables
 # Uses container's sqlcmd (same pattern as db-drop)
 # Automatically initializes database schema from sql/schema.sql before applying EF migrations
-db-migrate: build _db-init-schema
+db-migrate: build
 	@echo "Generating idempotent migration script..."
 	$(DOTNET) ef migrations script --idempotent --output sql/idempotent-migration.sql --context AppDbContext
 	@# Remove UTF-8 BOM if present - sqlcmd does not handle it
 	@sed -i '1s/^\xEF\xBB\xBF//' sql/idempotent-migration.sql 2>/dev/null || true
-	@echo "Applying idempotent migration to database..."
-	# shellcheck disable=SC2016
-	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
-		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
-		else \
-			echo "sqlcmd not found in container." >&2; \
-			exit 1; \
-		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d master -C -Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NULL CREATE DATABASE [DotNetWebAppDb]" && \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d DotNetWebAppDb -C -i /dev/stdin' < sql/idempotent-migration.sql
-	@echo "✅ Migration applied successfully"
-
-# Backwards-compatible alias: seed → db-seed (Docker dev environment)
-seed: db-seed
+	@bash scripts/docker.sh init-schema
+	@bash scripts/docker.sh migrate
 
 # Seed database via Docker sqlcmd - runs sql/seed.sql against Docker SQL Server
 # Note: seed.sql contains USE [$(PRIMARY_DB)] and USE [$(SECONDARY_DB)] statements, so we connect to master
 db-seed:
-	@echo "Seeding database via Docker sqlcmd..."
-	# shellcheck disable=SC2016
-	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
-		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
-		else \
-			echo "sqlcmd not found in container." >&2; \
-			exit 1; \
-		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -d master -C -i /dev/stdin' < sql/seed.sql
-	@echo "✅ Database seeded successfully"
-
-# Internal helper: Initialize database schema from sql/schema.sql via Docker sqlcmd
-# Creates required databases ($(PRIMARY_DB), $(SECONDARY_DB)) and all tables defined in sql/schema.sql
-# Called automatically by db-migrate - do not call directly
-_db-init-schema:
-	@echo "Initializing database schema from sql/schema.sql..."
-	@make db-check  # Ensure databases exist first
-	# Now apply schema to the databases
-	# shellcheck disable=SC2016
-	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
-		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
-		else \
-			echo "sqlcmd not found in container." >&2; \
-			exit 1; \
-		fi; \
-		echo "Applying schema from sql/schema.sql..."; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -i /dev/stdin' < sql/schema.sql
-	@echo "✅ Database schema initialized successfully"
+	@bash scripts/docker.sh seed
 
 # Run tests with same configuration as build target for consistency
 # Builds and runs test projects sequentially to avoid memory exhaustion
 # Note: Cleans up nested project directories after build to prevent inotify exhaustion on Linux
-test:
+test: build
 	$(DOTNET) build tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
 	$(DOTNET) test tests/DotNetWebApp.Tests/DotNetWebApp.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-build --no-restore --nologo
 	$(DOTNET) build tests/ModelGenerator.Tests/ModelGenerator.Tests.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore --nologo
@@ -240,9 +210,6 @@ run-ddl-pipeline: clean
 	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
-	@echo " -- Step 8: Building project..."
-	$(MAKE) build
-	@echo ""
 	@echo "✅ DDL pipeline completed!"
 	@echo ""
 	@echo "🚀 Next: Run 'make migrate', then 'make seed', then 'make dev'"
@@ -250,9 +217,9 @@ run-ddl-pipeline: clean
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
 
-# Run the application once without hot reload (uses Debug by default unless BUILD_CONFIGURATION=Release)
-run:
-	$(DOTNET) run --project DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)"
+# Run in Release (production-like) mode
+run: build-release
+	$(DOTNET) run --project DotNetWebApp.csproj --configuration Release
 
 # Run the application with hot reload (use for active development - auto-reloads on file changes)
 # Always uses Debug configuration for fastest rebuild times during watch mode
@@ -310,60 +277,14 @@ ms-logs:
 # Drops $(PRIMARY_DB), $(SECONDARY_DB), and DotNetWebAppDb databases
 # Also removes EF Core migrations to ensure clean slate when schema.sql changes
 db-drop:
-	# Clear old migrations to avoid conflicts when schema.sql changes
 	@rm -f Migrations/*.cs && echo "Cleared old EF Core migrations."
-	# shellcheck disable=SC2016
-	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
-		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
-		else \
-			echo "sqlcmd not found in container." >&2; \
-			exit 1; \
-		fi; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "\
-			IF DB_ID('"'"'$(PRIMARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(PRIMARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(PRIMARY_DB)]; END; \
-			IF DB_ID('"'"'$(SECONDARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(SECONDARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(SECONDARY_DB)]; END; \
-			IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;" && \
-		echo "Dropped databases $(PRIMARY_DB), $(SECONDARY_DB), DotNetWebAppDb (if they existed)." || echo "Failed to drop databases."'
+	@bash scripts/docker.sh drop
 
 # Check and create required databases if they don't exist
 # Useful for verifying database health and recreating them without full reset
 # Can be extended in the future with more checks (backups, index verification, etc.)
 db-check:
-	@echo "Checking database health and ensuring required databases exist..."
-	# shellcheck disable=SC2016
-	@docker exec -i -e SA_PASSWORD="$$SA_PASSWORD" sqlserver-dev /bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		if [ -x /opt/mssql-tools/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools/bin/sqlcmd; \
-		elif [ -x /opt/mssql-tools18/bin/sqlcmd ]; then \
-			SQLCMD=/opt/mssql-tools18/bin/sqlcmd; \
-		else \
-			echo "sqlcmd not found in container." >&2; \
-			exit 1; \
-		fi; \
-		echo "Creating databases if they don'"'"'t exist..."; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "CREATE DATABASE [$(PRIMARY_DB)];" 2>/dev/null || echo "$(PRIMARY_DB) already exists"; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "CREATE DATABASE [$(SECONDARY_DB)];" 2>/dev/null || echo "$(SECONDARY_DB) already exists"; \
-		echo "Verifying databases..."; \
-		$$SQLCMD -S localhost -U sa -P "$$PASSWORD" -C -Q "SELECT name FROM sys.databases WHERE name IN ('"'"'$(PRIMARY_DB)'"'"', '"'"'$(SECONDARY_DB)'"'"') ORDER BY name;" && echo "✅ All required databases exist"'
+	@bash scripts/docker.sh check
 
 # Local install of MSSQL (no Docker)
 ms-status:
@@ -376,63 +297,47 @@ ms-start:
 ms-stop:
 	sudo systemctl stop mssql-server
 
+# Check and create required databases if they don't exist (native MSSQL)
+# Useful for verifying database health and recreating them without full reset
+ms-check:
+	@bash scripts/mssql.sh check
+
+# Internal helper: Initialize database schema from sql/schema.sql via native sqlcmd
+# Creates required databases ($(PRIMARY_DB), $(SECONDARY_DB)) and all tables defined in sql/schema.sql
+# Called automatically by ms-migrate - do not call directly
+ms-init-schema:
+	@echo "Initializing database schema from sql/schema.sql..."
+	# shellcheck disable=SC2016
+	@/bin/sh -c '\
+		PASSWORD="$$SA_PASSWORD"; \
+		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
+			PASSWORD="$$MSSQL_SA_PASSWORD"; \
+		fi; \
+		if [ -z "$$PASSWORD" ]; then \
+			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
+			exit 1; \
+		fi; \
+		echo "Applying schema from sql/schema.sql..."; \
+		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C -i sql/schema.sql'
+	@echo "✅ Database schema initialized successfully"
+
 # Idempotent migration via native sqlcmd - safe to run multiple times against existing databases
 # For production MSSQL Server environments
-ms-migrate: build
+ms-migrate: build ms-init-schema
 	@echo "Generating idempotent migration script..."
 	$(DOTNET) ef migrations script --idempotent --output sql/idempotent-migration.sql --context AppDbContext
 	@# Remove UTF-8 BOM if present - sqlcmd does not handle it
 	@sed -i '1s/^\xEF\xBB\xBF//' sql/idempotent-migration.sql 2>/dev/null || true
-	@echo "Applying idempotent migration to database..."
-	# shellcheck disable=SC2016
-	@/bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -d master -C -Q "IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NULL CREATE DATABASE [DotNetWebAppDb]" && \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -d DotNetWebAppDb -C -i sql/idempotent-migration.sql'
-	@echo "✅ Migration applied successfully"
+	@bash scripts/mssql.sh migrate
 
 # Seed database via native sqlcmd - runs sql/seed.sql against native MSSQL Server
 # Note: seed.sql contains USE [$(PRIMARY_DB)] and USE [$(SECONDARY_DB)] statements, so we connect to master
 ms-seed:
-	@echo "Seeding database via native sqlcmd..."
-	# shellcheck disable=SC2016
-	@/bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -d master -C -i sql/seed.sql'
-	@echo "✅ Database seeded successfully"
+	@bash scripts/mssql.sh seed
 
 # Drop the databases from native MSSQL instance on Linux
 # Drops $(PRIMARY_DB), $(SECONDARY_DB), and DotNetWebAppDb databases
 # Also removes EF Core migrations to ensure clean slate when schema.sql changes
 ms-drop:
-	# Clear old migrations to avoid conflicts when schema.sql changes
 	@rm -f Migrations/*.cs && echo "Cleared old EF Core migrations."
-	# shellcheck disable=SC2016
-	@/bin/sh -c '\
-		PASSWORD="$$SA_PASSWORD"; \
-		if [ -z "$$PASSWORD" ] && [ -n "$$MSSQL_SA_PASSWORD" ]; then \
-			PASSWORD="$$MSSQL_SA_PASSWORD"; \
-		fi; \
-		if [ -z "$$PASSWORD" ]; then \
-			echo "SA_PASSWORD is required (export SA_PASSWORD=...)" >&2; \
-			exit 1; \
-		fi; \
-		sqlcmd -S localhost -U sa -P "$$PASSWORD" -C -Q "\
-			IF DB_ID('"'"'$(PRIMARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(PRIMARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(PRIMARY_DB)]; END; \
-			IF DB_ID('"'"'$(SECONDARY_DB)'"'"') IS NOT NULL BEGIN ALTER DATABASE [$(SECONDARY_DB)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$(SECONDARY_DB)]; END; \
-			IF DB_ID('"'"'DotNetWebAppDb'"'"') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;" && \
-		echo "Dropped databases $(PRIMARY_DB), $(SECONDARY_DB), DotNetWebAppDb (if they existed)." || echo "Failed to drop databases."'
+	@bash scripts/mssql.sh drop
