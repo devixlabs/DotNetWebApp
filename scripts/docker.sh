@@ -141,6 +141,10 @@ case "$COMMAND" in
 
     drop)
         echo "Dropping databases..."
+        if ! docker inspect sqlserver-dev > /dev/null 2>&1; then
+            echo "Container sqlserver-dev not found, skipping database drop."
+            exit 0
+        fi
         PASSWORD=$(resolve_password)
 
         docker exec -i -e "SA_PASSWORD=$PASSWORD" sqlserver-dev /bin/sh -c "

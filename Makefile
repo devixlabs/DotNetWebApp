@@ -26,7 +26,7 @@ export SKIP_GLOBAL_JSON_HANDLING?=true
 # shellcheck disable=SC2211,SC2276
 BUILD_CONFIGURATION?=Debug
 
-.PHONY: clean check restore build build-release https db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-check ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers all _ensure-pipeline _incremental-pipeline ms-init-schema compose-up compose-down
+.PHONY: clean check restore build build-release https db-migrate db-seed ms-migrate ms-seed test run-ddl-pipeline docker-build run dev stop-dev db-start db-stop db-logs db-destroy db-create db-drop db-check ms-status ms-start ms-stop ms-check ms-logs ms-drop cleanup-nested-dirs shutdown-build-servers all _ensure-pipeline _incremental-pipeline ms-init-schema compose-up compose-down _compose-build
 
 clean:
 	$(DOTNET) clean DotNetWebApp.sln
@@ -42,7 +42,7 @@ clean:
 
 # Full rebuild from scratch: clean, drop databases, regenerate models, build, test, migrate, and seed
 # This is the definitive target for a complete fresh start
-all: clean db-drop run-ddl-pipeline test db-migrate db-seed
+all: clean db-drop run-ddl-pipeline test _compose-build db-migrate db-seed
 	@echo ""
 	@echo "╔════════════════════════════════════════════════════╗"
 	@echo "║      ✅ FULL PIPELINE RUN SUCCESSFUL               ║"
@@ -162,13 +162,20 @@ db-migrate: build
 	$(DOTNET) ef migrations script --idempotent --output sql/idempotent-migration.sql --context AppDbContext
 	@# Remove UTF-8 BOM if present - sqlcmd does not handle it
 	@sed -i '1s/^\xEF\xBB\xBF//' sql/idempotent-migration.sql 2>/dev/null || true
-	@bash scripts/docker.sh init-schema
-	@bash scripts/docker.sh migrate
+	@if docker inspect sqlserver-dev > /dev/null 2>&1; then \
+		bash scripts/docker.sh init-schema && bash scripts/docker.sh migrate; \
+	else \
+		echo "⚠️  Container sqlserver-dev not running, skipping DB migration. Run 'make db-create' or 'make compose-up'."; \
+	fi
 
 # Seed database via Docker sqlcmd - runs sql/seed.sql against Docker SQL Server
 # Note: seed.sql contains USE [$(PRIMARY_DB)] and USE [$(SECONDARY_DB)] statements, so we connect to master
 db-seed:
-	@bash scripts/docker.sh seed
+	@if docker inspect sqlserver-dev > /dev/null 2>&1; then \
+		bash scripts/docker.sh seed; \
+	else \
+		echo "⚠️  Container sqlserver-dev not running, skipping seed. Run 'make db-create' or 'make compose-up'."; \
+	fi
 
 # Run tests with same configuration as build target for consistency
 # Builds and runs test projects sequentially to avoid memory exhaustion
@@ -221,6 +228,10 @@ run-ddl-pipeline: clean
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
 
+# Build Docker Compose application image - ensures latest app.yaml and generated files are baked in
+_compose-build:
+	@docker compose build dotnetwebapp
+
 # Start the full Docker Compose stack with database initialization
 # Starts SQL Server first, waits for health check, initializes schema + migrations, seeds data, then starts app
 # Requires SA_PASSWORD environment variable (load via: source .envrc or export SA_PASSWORD=...)
@@ -235,7 +246,7 @@ compose-up:
 	@echo "Seeding data..."
 	$(MAKE) db-seed
 	@echo "Starting application container..."
-	@docker compose up -d dotnetwebapp
+	@docker compose up -d --build dotnetwebapp
 	@echo ""
 	@echo "╔════════════════════════════════════════════════════╗"
 	@echo "║      ✅ Docker stack is up                         ║"
