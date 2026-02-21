@@ -42,7 +42,7 @@ clean:
 
 # Full rebuild from scratch: clean, drop databases, regenerate models, build, test, migrate, and seed
 # This is the definitive target for a complete fresh start
-all: clean db-drop run-ddl-pipeline test _compose-build db-migrate db-seed
+all: clean db-drop run-ddl-pipeline test db-migrate db-seed
 	@echo ""
 	@echo "╔════════════════════════════════════════════════════╗"
 	@echo "║      ✅ FULL PIPELINE RUN SUCCESSFUL               ║"
@@ -223,22 +223,23 @@ run-ddl-pipeline: clean
 	@echo ""
 	@echo "✅ DDL pipeline completed!"
 	@echo ""
-	@echo "🚀 Next: Run 'make migrate', then 'make seed', then 'make dev'"
+	@echo "🚀 Next: Run 'make db-migrate', then 'make db-seed' (or MSSQL equivalents), then 'make dev'"
 
 docker-build:
 	docker build -t "$(IMAGE_NAME):$(TAG)" .
 
-# Build Docker Compose application image - ensures latest app.yaml and generated files are baked in
+# Build Docker Compose application image - always bypasses cache to ensure generated files are baked in
 _compose-build:
-	@docker compose build dotnetwebapp
+	@docker compose build --no-cache dotnetwebapp
 
 # Start the full Docker Compose stack with database initialization
 # Starts SQL Server first, waits for health check, initializes schema + migrations, seeds data, then starts app
 # Requires SA_PASSWORD environment variable (load via: source .envrc or export SA_PASSWORD=...)
-compose-up:
+compose-up: _compose-build
 	@[ -n "$$SA_PASSWORD" ] || { echo "Error: SA_PASSWORD environment variable required" >&2; echo "  export SA_PASSWORD='YourStrongPassword123!'" >&2; exit 1; }
-	@echo "Removing any pre-existing standalone sqlserver-dev container..."
+	@echo "Removing any pre-existing standalone containers..."
 	@docker rm -f sqlserver-dev 2>/dev/null || true
+	@docker rm -f dotnetwebapp 2>/dev/null || true
 	@echo "Starting SQL Server and waiting for health check..."
 	@docker compose up -d --wait sqlserver
 	@echo "Initializing databases..."
@@ -246,7 +247,7 @@ compose-up:
 	@echo "Seeding data..."
 	$(MAKE) db-seed
 	@echo "Starting application container..."
-	@docker compose up -d --build dotnetwebapp
+	@docker compose up -d dotnetwebapp
 	@echo ""
 	@echo "╔════════════════════════════════════════════════════╗"
 	@echo "║      ✅ Docker stack is up                         ║"
@@ -257,7 +258,9 @@ compose-up:
 	@echo ""
 
 # Stop and remove all Docker Compose containers (preserves volumes/data)
+# Drops databases first while container is still running to ensure clean state on next compose-up
 compose-down:
+	@bash scripts/docker.sh drop 2>/dev/null || true
 	@docker compose down
 
 # Run in Release (production-like) mode
