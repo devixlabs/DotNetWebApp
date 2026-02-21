@@ -134,7 +134,7 @@ _incremental-pipeline:
 	@echo ""
 	@echo " -- Step 7: Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
-	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
 	@echo "✅ Incremental pipeline completed!"
@@ -211,7 +211,7 @@ run-ddl-pipeline: clean
 	@echo ""
 	@echo " -- Step 7: Regenerating EF Core migration..."
 	rm -f Migrations/*.cs
-	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" --no-restore -maxcpucount:2 --nologo
+	$(DOTNET) build DotNetWebApp.csproj --configuration "$(BUILD_CONFIGURATION)" -maxcpucount:2 --nologo
 	$(DOTNET) ef migrations add InitialCreate --output-dir Migrations --context AppDbContext --no-build
 	@echo ""
 	@echo "✅ DDL pipeline completed!"
