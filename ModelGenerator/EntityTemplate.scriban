@@ -19,7 +19,9 @@ using Microsoft.EntityFrameworkCore;
 {{~ end ~}}
 
 {{~ namespace = "DotNetWebApp.Models.Generated" ~}}
-{{~ if entity.schema ~}}
+{{~ if entity.database ~}}
+{{~ namespace = namespace + "." + (entity.database | string.capitalize) ~}}
+{{~ else if entity.schema ~}}
 {{~ namespace = namespace + "." + (entity.schema | string.capitalize) ~}}
 {{~ end ~}}
 namespace {{ namespace }}

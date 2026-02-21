@@ -47,6 +47,7 @@ public class YamlGenerator
             var entity = new Entity
             {
                 Name = SingularizeName(table.Name),
+                Database = table.Database,
                 Schema = table.Schema,
                 Properties = ConvertColumnsToProperties(table.Columns),
                 Relationships = ConvertForeignKeysToRelationships(table.ForeignKeys)

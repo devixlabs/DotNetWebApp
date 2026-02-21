@@ -62,13 +62,13 @@ namespace ModelGenerator
             {
                 var result = template.Render(new { entity });
 
-                // Create schema-specific subdirectory if schema is defined
+                // Create subdirectory: prefer Database (from USE [db]), fall back to Schema
                 var entityOutputDir = outputDir;
-                if (!string.IsNullOrEmpty(entity.Schema))
+                var groupDir = !string.IsNullOrEmpty(entity.Database) ? entity.Database : entity.Schema;
+                if (!string.IsNullOrEmpty(groupDir))
                 {
-                    // Capitalize schema name for directory (e.g., "acme" -> "Acme")
-                    var schemaDir = char.ToUpper(entity.Schema[0]) + entity.Schema.Substring(1);
-                    entityOutputDir = Path.Combine(outputDir, schemaDir);
+                    var dir = char.ToUpper(groupDir[0]) + groupDir.Substring(1);
+                    entityOutputDir = Path.Combine(outputDir, dir);
                     Directory.CreateDirectory(entityOutputDir);
                 }
 

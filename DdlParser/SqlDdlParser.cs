@@ -5,6 +5,7 @@ namespace DdlParser;
 public class TableMetadata
 {
     public string Name { get; set; } = string.Empty;
+    public string Database { get; set; } = string.Empty;
     public string Schema { get; set; } = string.Empty;
     public List<ColumnMetadata> Columns { get; set; } = new();
     public List<ForeignKeyMetadata> ForeignKeys { get; set; } = new();
