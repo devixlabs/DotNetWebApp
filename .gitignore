@@ -463,8 +463,9 @@ Thumbs.db
 ehthumbs.db
 ehthumbs_vista.db
 
-# Dump file
+# Dump type files
 *.stackdump
+*.patch
 
 # Folder config file
 [Dd]esktop.ini
@@ -490,8 +491,13 @@ $RECYCLE.BIN/
 
 # Project and App Specific
 .env.local
+appsettings.Local.json
 tmp/
 specs/
+dotnetwebapp.conf
+dotnetwebapp.crt
+dotnetwebapp.key
+dev.log
 # Generated YAML files (regenerated from pipeline)
 app.yaml
 data.yaml

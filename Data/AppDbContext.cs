@@ -1,6 +1,7 @@
 using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
@@ -9,11 +10,15 @@ namespace DotNetWebApp.Data
 {
     public class AppDbContext : DbContext
     {
+        private readonly DatabaseMappingOptions _mappingOptions;
+
         public AppDbContext(
             DbContextOptions<AppDbContext> options,
-            ITenantSchemaAccessor tenantSchemaAccessor) : base(options)
+            ITenantSchemaAccessor tenantSchemaAccessor,
+            IOptions<DatabaseMappingOptions> mappingOptions) : base(options)
         {
             Schema = tenantSchemaAccessor.Schema;
+            _mappingOptions = mappingOptions.Value;
         }
 
         public string Schema { get; }
@@ -39,38 +44,46 @@ namespace DotNetWebApp.Data
 
                 // Extract schema from [Table] attribute if present
                 var tableAttr = type.GetCustomAttribute<TableAttribute>();
-                var tableName = ToPlural(type.Name);
+
+                // Use table name from [Table] attribute if available, otherwise derive from class name
+                // NOTE: The ModelGenerator generates [Table] names with PascalCase (e.g., "Dmbill"),
+                // but schema.sql uses lowercase (e.g., "dmbill"). Convert to lowercase for consistency.
+                var tableName = (tableAttr?.Name ?? type.Name).ToLower();
                 var tableSchema = tableAttr?.Schema;
 
                 // Apply table name and schema (schema takes precedence from attribute)
-                if (!string.IsNullOrWhiteSpace(tableSchema))
+                // Map database names to actual schema names via configuration
+                var effectiveSchema = _mappingOptions.GetEffectiveSchema(tableSchema);
+
+                if (!string.IsNullOrWhiteSpace(effectiveSchema))
                 {
-                    entity.ToTable(tableName, tableSchema);
+                    entity.ToTable(tableName, effectiveSchema);
                 }
                 else
                 {
                     entity.ToTable(tableName);
                 }
-            }
-        }
 
-        private static string ToPlural(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return name;
-            }
+                // Configure keyless entities (tables with no primary key defined)
+                var hasKeyProperties = type.GetProperties()
+                    .Any(p => p.GetCustomAttribute<System.ComponentModel.DataAnnotations.KeyAttribute>() != null);
 
-            if (name.EndsWith("y", StringComparison.OrdinalIgnoreCase) && name.Length > 1)
-            {
-                var beforeY = name[name.Length - 2];
-                if (!"aeiou".Contains(char.ToLowerInvariant(beforeY)))
+                if (!hasKeyProperties && type.GetCustomAttribute<Microsoft.EntityFrameworkCore.PrimaryKeyAttribute>() == null)
                 {
-                    return name[..^1] + "ies";
+                    entity.HasNoKey();
                 }
             }
 
-            return name.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? name : $"{name}s";
+            // Configure webapp_lock identity column (gl_index)
+            // The table has a composite primary key with an identity column, which requires explicit configuration
+            var webappLockType = entityTypes.FirstOrDefault(t => t.Name == "Webapp_lock");
+            if (webappLockType != null)
+            {
+                modelBuilder.Entity(webappLockType)
+                    .Property("gl_index")
+                    .ValueGeneratedOnAdd();
+            }
         }
+
     }
 }

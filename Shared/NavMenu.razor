@@ -4,6 +4,9 @@
 
 <RadzenPanelMenu class="app-nav-menu" DisplayStyle="@MenuItemDisplayStyle.IconAndText" Multiple="false">
     <RadzenPanelMenuItem Text="Home" Icon="home" Path="@GetHomePath()" />
+    <RadzenPanelMenuItem Text="Inventory Picking" Icon="inventory_2" Path="/app/inventory-picking" />
+    <RadzenPanelMenuItem Text="Inventory Allocation" Icon="assignment" Path="/app/inventory-allocation" />
+    <RadzenPanelMenuItem Text="WAMS" Icon="local_shipping" Path="/app/wams" />
 
     @foreach (var app in AppDictionary.GetAllApplications())
     {
@@ -26,7 +29,7 @@
     private string GetHomePath()
     {
         var firstApp = AppDictionary.GetAllApplications().FirstOrDefault();
-        return firstApp != null ? $"/{firstApp.Name}/dashboard" : "/";
+        return firstApp != null ? $"/app/{firstApp.Name}/dashboard" : "/app";
     }
 
     private bool IsActiveApp(string appName)
@@ -34,13 +37,13 @@
         var uri = new Uri(NavigationManager.Uri);
         var path = uri.AbsolutePath;
 
-        return path.Equals($"/{appName}", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith($"/{appName}/", StringComparison.OrdinalIgnoreCase);
+        return path.Equals($"/app/{appName}", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith($"/app/{appName}/", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetSectionPath(string appName, SpaSectionInfo section)
     {
-        return $"/{appName}/{section.RouteSegment}";
+        return $"/app/{appName}/{section.RouteSegment}";
     }
 
     private static string GetSectionIcon(SpaSection section)

@@ -14,6 +14,9 @@ using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load appsettings.Local.json for local developer overrides (connection strings, etc.)
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -28,6 +31,8 @@ builder.Services.Configure<DataSeederOptions>(
     builder.Configuration.GetSection(DataSeederOptions.SectionName));
 builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
+builder.Services.Configure<DatabaseMappingOptions>(
+    builder.Configuration.GetSection(DatabaseMappingOptions.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
@@ -53,12 +58,62 @@ builder.Services.AddSingleton<IAppDictionaryService>(sp =>
 builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
+
+// Inventory Picking services
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.Validators.AuditorAssignmentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.Validators.TimestampValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.ShipValidationService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.ColorCodingService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.IInventoryPickingService, DotNetWebApp.Services.InventoryPicking.InventoryPickingService>();
+
+// Inventory Allocation services
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.Validators.PaymentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.Validators.ShelfLifeValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.ILockService, DotNetWebApp.Services.InventoryAllocation.LockService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.IFIFOAllocationEngine, DotNetWebApp.Services.InventoryAllocation.FIFOAllocationEngine>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.IInventoryAllocationService, DotNetWebApp.Services.InventoryAllocation.InventoryAllocationService>();
+
+// WAMS (Web App Management System) services
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.Validators.StatusTransitionValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.Validators.DeleteValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.IWAMSService, DotNetWebApp.Services.WAMS.WAMSService>();
+
+// Database connections - PrimaryDatabase and SecondaryDatabase
+// Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
+// If they're empty or missing, fall back to DefaultConnection
+var primaryConnectionString =
+    (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("PrimaryDatabase"))
+        ? builder.Configuration.GetConnectionString("PrimaryDatabase")
+        : null)
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("No database connection string configured");
+
+var secondaryConnectionString =
+    (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("SecondaryDatabase"))
+        ? builder.Configuration.GetConnectionString("SecondaryDatabase")
+        : null)
+    ?? primaryConnectionString;
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(primaryConnectionString));
+builder.Services.AddDbContext<SecondaryDbContext>(options =>
+    options.UseSqlServer(secondaryConnectionString));
+
+// DbContext resolver routes entities to correct database based on namespace
+builder.Services.AddScoped<IDbContextResolver, DbContextResolver>();
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 builder.Services.AddScoped<DataSeeder>();
 
 // Dapper infrastructure (read-only, shares EF connection)
+// Primary database (WEBAPP) - for queries to products, orders, inventory, etc.
+builder.Services.AddKeyedScoped<IDapperQueryService, DapperQueryService>("Primary");
+builder.Services.AddKeyedScoped<IDapperQueryService>(
+    "Secondary",
+    (sp, key) => new SecondaryDapperQueryService(
+        sp.GetRequiredService<SecondaryDbContext>(),
+        sp.GetRequiredService<ILogger<SecondaryDapperQueryService>>()));
+
+// Default (non-keyed) registration uses Primary for backwards compatibility
 builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
 
 // View registry (singleton, loaded once at startup from app.yaml)

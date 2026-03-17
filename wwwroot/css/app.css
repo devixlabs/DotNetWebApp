@@ -70,12 +70,13 @@ html, body {
 }
 
 .app-body {
-    padding: 1.5rem;
+    padding: 1rem 0.5rem;
 }
 
 .body-content {
-    max-width: 1200px;
-    margin: 0 auto;
+    /* Full width - no max-width constraint for data-heavy grids */
+    width: 100%;
+    margin: 0;
 }
 
 .app-nav-menu {
@@ -84,7 +85,7 @@ html, body {
 
 @media (max-width: 767.98px) {
     .app-body {
-        padding: 1rem;
+        padding: 0.75rem 0.25rem;
     }
 
     .app-header-link {

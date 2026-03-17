@@ -32,4 +32,20 @@ namespace DotNetWebApp.Tests
             modelBuilder.Entity<Category>().ToTable("Categories");
         }
     }
+
+    /// <summary>
+    /// Test implementation of IDbContextResolver that always returns the same context.
+    /// Used for unit tests where we only have one test database.
+    /// </summary>
+    public class TestDbContextResolver : IDbContextResolver
+    {
+        private readonly DbContext _context;
+
+        public TestDbContextResolver(DbContext context)
+        {
+            _context = context;
+        }
+
+        public DbContext GetContextForEntity(Type entityType) => _context;
+    }
 }

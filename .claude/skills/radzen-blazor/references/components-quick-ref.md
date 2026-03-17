@@ -92,6 +92,58 @@
 
 ---
 
+## SmartDataGridObject (Project Component)
+
+Custom component for dynamic entity grids with `TItem="object"`. Handles reflection-based property access and auto-limits columns for wide tables (200+ columns).
+
+### Key Parameters
+- `Data` - IEnumerable<object> data source
+- `MaxVisibleColumns` - Max columns to display (default: 15, set to 0 for unlimited)
+- `ColumnOverrides` - Custom column configuration (IEnumerable<ColumnConfig>)
+- `AllowFiltering` - Enable filtering (default: true)
+- `AllowSorting` - Enable sorting (default: true)
+- `AllowPaging` - Enable pagination (default: true)
+- `AllowInlineEdit` - Enable inline editing (default: false)
+- `AllowEdit` - Show edit button in actions column (default: false)
+- `AllowDelete` - Show delete button in actions column (default: false)
+- `ShowActionColumn` - Show actions column (default: false)
+- `OnRowUpdate`, `OnRowCreate`, `OnRowDelete`, `OnRowEdit` - Event callbacks
+
+### Usage
+```razor
+@* Basic usage - auto-discovers columns, limits to 15 *@
+<SmartDataGridObject Data="@entityData" />
+
+@* Show more columns *@
+<SmartDataGridObject Data="@entityData"
+                     MaxVisibleColumns="25" />
+
+@* Show all columns (use with caution for wide tables) *@
+<SmartDataGridObject Data="@entityData"
+                     MaxVisibleColumns="0" />
+
+@* With editing *@
+<SmartDataGridObject Data="@entityData"
+                     AllowInlineEdit="true"
+                     OnRowUpdate="@HandleUpdate" />
+```
+
+### Column Prioritization (Automatic)
+When limiting columns, SmartDataGridObject prioritizes:
+1. ID columns (`_id`, `Id`) - shown first
+2. Code/number columns (`code`, `codenum`, `number`)
+3. Name/description columns (`name`, `descrip`, `title`)
+4. Status columns (`active`, `status`, `enabled`)
+5. All other columns alphabetically
+
+### Footer Display
+Shows row count and hidden column info:
+```
+Showing 3 records    (15 of 265 columns shown)
+```
+
+---
+
 ## RadzenStack
 
 ### Parameters

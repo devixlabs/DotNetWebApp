@@ -7,5 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.*" />
   </ItemGroup>
 </Project>

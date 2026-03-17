@@ -6,12 +6,30 @@ public class CreateTableVisitor : TSqlFragmentVisitor
 {
     public List<TableMetadata> Tables { get; } = new();
 
+    // Track current database context from USE statements
+    // This becomes the database in app.yaml (e.g., USE [acme] -> database: acme)
+    private string _currentDatabase = string.Empty;
+
+    public override void Visit(UseStatement node)
+    {
+        // Track the current database context from USE [database] statements
+        if (node.DatabaseName != null)
+        {
+            _currentDatabase = node.DatabaseName.Value;
+        }
+        base.Visit(node);
+    }
+
     public override void Visit(CreateTableStatement node)
     {
-        // Get table name and schema from SchemaObjectName
+        // Get table name from SchemaObjectName
         var tableName = GetIdentifierValue(node.SchemaObjectName) ?? "UnknownTable";
-        var schema = GetSchemaName(node.SchemaObjectName) ?? string.Empty;
-        var table = new TableMetadata { Name = tableName, Schema = schema };
+
+        // Database comes from the USE [database] statement (for namespace/DbContext routing)
+        // Schema comes from the CREATE TABLE [schema].[table] syntax (actual SQL schema for [Table] attribute)
+        var database = _currentDatabase;
+        var sqlSchema = GetSchemaName(node.SchemaObjectName) ?? string.Empty;
+        var table = new TableMetadata { Name = tableName, Database = database, Schema = sqlSchema };
 
         // Extract columns
         if (node.Definition?.ColumnDefinitions != null)

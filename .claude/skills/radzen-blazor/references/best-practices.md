@@ -113,6 +113,76 @@ Template columns disable some optimizations. Use Property when possible:
 </RadzenDataGridColumn>
 ```
 
+### Avoid TItem="object" with Property Binding
+**Critical gotcha:** Radzen's `Property` attribute uses compiled expressions that require knowing the type at compile time. When `TItem="object"`, the Property binding fails silently (blank cells):
+
+```razor
+@* BAD - Property binding doesn't work with TItem="object" *@
+<RadzenDataGrid Data="@objectData" TItem="object">
+    <Columns>
+        <RadzenDataGridColumn TItem="object" Property="Name" Title="Name" />
+    </Columns>
+</RadzenDataGrid>
+
+@* GOOD - Use Template with reflection for object-typed data *@
+<RadzenDataGrid Data="@objectData" TItem="object">
+    <Columns>
+        <RadzenDataGridColumn TItem="object" Title="Name">
+            <Template Context="row">
+                @GetPropertyValue(row, "Name")
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    object? GetPropertyValue(object? obj, string propertyName)
+    {
+        if (obj == null) return null;
+        return obj.GetType()
+            .GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)
+            ?.GetValue(obj);
+    }
+}
+
+@* BEST - Use strongly-typed generic when possible *@
+<RadzenDataGrid Data="@products" TItem="Product">
+    <Columns>
+        <RadzenDataGridColumn TItem="Product" Property="Name" Title="Name" />
+    </Columns>
+</RadzenDataGrid>
+```
+
+**When you must use `TItem="object"`** (e.g., dynamic entity grids):
+- Use `Template` instead of `Property` for column content
+- Access values via reflection in the template
+- Note: Sorting/filtering may not work without Property binding
+
+### Limit Visible Columns for Wide Tables
+Tables with many columns (50+) can overwhelm browsers and users. Use column limiting:
+
+```razor
+@* SmartDataGridObject automatically limits to 15 columns by default *@
+<SmartDataGridObject Data="@wideData"
+                     MaxVisibleColumns="20" />  @* Show 20 columns *@
+
+@* Set to 0 to show all columns (not recommended for 100+ columns) *@
+<SmartDataGridObject Data="@data"
+                     MaxVisibleColumns="0" />
+```
+
+**Column prioritization (automatic):**
+1. ID columns (e.g., `item_id`, `Id`) - shown first
+2. Code/number columns (e.g., `item_code`, `product_code`)
+3. Name/description columns (e.g., `item_name`, `description`)
+4. Status/active columns (e.g., `is_active`, `is_enabled`)
+5. All other columns alphabetically
+
+**When to override defaults:**
+- Use `ColumnOverrides` parameter for full control over which columns appear
+- Increase `MaxVisibleColumns` if users need more fields visible
+- For reporting/export, consider a separate view with all columns
+
 ### Reuse Grid References
 Store grid reference for programmatic control:
 
@@ -757,6 +827,8 @@ Use Radzen components, avoid raw HTML injection:
 - [ ] Add `<RadzenComponents />` in MainLayout
 - [ ] Use interactive render mode for components with events
 - [ ] Use server-side loading for large DataGrids
+- [ ] **Avoid `TItem="object"` with Property binding** - use Template with reflection instead
+- [ ] **Limit visible columns for wide tables** (50+ columns) - use MaxVisibleColumns
 - [ ] Validate forms before submission
 - [ ] Handle dialog results (check for null)
 - [ ] Use appropriate notification durations and severities

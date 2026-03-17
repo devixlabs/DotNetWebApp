@@ -1,0 +1,267 @@
+@page "/app/inventory-picking"
+@using DotNetWebApp.Services.InventoryPicking
+@using DotNetWebApp.Services.InventoryPicking.Models
+@inject IInventoryPickingService InventoryPickingService
+@inject NavigationManager Navigation
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>InventoryPicking Workflow</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+    <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenColumn Size="6">
+            <RadzenText TextStyle="TextStyle.H4">InventoryPicking Workflow</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="6" class="rz-text-align-end">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+                <RadzenDropDown @bind-Value="@selectedWarehouseId"
+                               Data="@warehouses"
+                               TextProperty="Name"
+                               ValueProperty="Id"
+                               Change="@OnWarehouseChanged"
+                               Style="width: 200px;" />
+                <RadzenDatePicker @bind-Value="@selectedDate"
+                                 DateFormat="MM/dd/yyyy"
+                                 Change="@OnDateChanged"
+                                 Style="width: 150px;" />
+                <RadzenButton Text="Refresh"
+                             Click="@LoadOrders"
+                             ButtonStyle="@ButtonStyle.Secondary"
+                             Icon="refresh" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+    }
+    else if (errorMessage != null)
+    {
+        <RadzenCard>
+            <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="padding: 2rem;">
+                <RadzenIcon Icon="dns" Style="font-size: 48px; color: gray;" />
+                <RadzenText TextStyle="TextStyle.H6">No ERP Data Configured</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">@errorMessage</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (orders != null && orders.Any())
+    {
+        <RadzenDataGrid @ref="ordersGrid"
+                       Data="@orders"
+                       TItem="InventoryPickingOrder"
+                       AllowFiltering="true"
+                       AllowColumnResize="true"
+                       AllowSorting="true"
+                       AllowPaging="true"
+                       PageSize="15"
+                       SelectionMode="DataGridSelectionMode.Multiple"
+                       @bind-SelectedItems="@selectedOrders"
+                       RowRender="@OnRowRender"
+                       Style="height: calc(100vh - 250px);">
+            <Columns>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="OrderNumber" Title="Order #" Width="120px" Frozen="true">
+                    <Template Context="order">
+                        <RadzenLink Path="@($"/app/inventory-picking/{order.OrderNumber}?warehouseId={selectedWarehouseId}")"
+                                   Text="@order.OrderNumber" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="DueShipDate" Title="Due Ship" Width="100px" FormatString="{0:MM/dd}" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="CarrierName" Title="Carrier" Width="120px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="BillToName" Title="Bill To" Width="150px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="ShipToName" Title="Ship To" Width="150px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="Allocator" Title="Allocator" Width="100px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="TeamLeader" Title="Team Lead" Width="100px" />
+
+                @* Picker columns *@
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="PickerUsername" Title="Picker" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetOperationStyle(order.PickerUsername, order.PickerClockIn, order.PickerClockOut)">
+                            @order.PickerUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="PickerClockIn" Title="Pick In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="PickerClockOut" Title="Pick Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Auditor columns *@
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AuditorUsername" Title="Auditor" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetAuditorStyle(order)">
+                            @order.AuditorUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AuditorClockIn" Title="Aud In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AuditorClockOut" Title="Aud Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Assembler columns *@
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AssemblerUsername" Title="Assembler" Width="100px">
+                    <Template Context="order">
+                        <span style="@GetOperationStyle(order.AssemblerUsername, order.AssemblerClockIn, order.AssemblerClockOut)">
+                            @order.AssemblerUsername
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AssemblerClockIn" Title="Asm In" Width="80px" FormatString="{0:HH:mm}" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="AssemblerClockOut" Title="Asm Out" Width="80px" FormatString="{0:HH:mm}" />
+
+                @* Status columns *@
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="OkToShip" Title="OK Ship" Width="80px">
+                    <Template Context="order">
+                        @if (order.OkToShip)
+                        {
+                            <RadzenIcon Icon="check_circle" Style="color: green;" />
+                        }
+                        else
+                        {
+                            <RadzenIcon Icon="cancel" Style="color: red;" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="PalletCount" Title="Pallets" Width="70px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="ProductCount" Title="Products" Width="70px" />
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Property="Notes" Title="Notes" Width="150px" />
+
+                @* Actions column *@
+                <RadzenDataGridColumn TItem="InventoryPickingOrder" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+                    <Template Context="order">
+                        <RadzenButton Icon="visibility"
+                                     ButtonStyle="@ButtonStyle.Info"
+                                     Size="ButtonSize.Small"
+                                     Click="@(() => ViewOrder(order.OrderNumber))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        @* Batch update panel (shown when 3+ orders selected) *@
+        @if (selectedOrders != null && selectedOrders.Count >= 3)
+        {
+            <RadzenCard>
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center">
+                    <RadzenText TextStyle="TextStyle.Subtitle1">
+                        Batch Update @selectedOrders.Count Orders:
+                    </RadzenText>
+                    <RadzenButton Text="Batch update coming in production"
+                                 ButtonStyle="@ButtonStyle.Secondary"
+                                 Disabled="true"
+                                 Size="ButtonSize.Small" />
+                </RadzenStack>
+            </RadzenCard>
+        }
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
+            No orders found for the selected date and warehouse.
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+@code {
+    private RadzenDataGrid<InventoryPickingOrder>? ordersGrid;
+    private List<InventoryPickingOrder>? orders;
+    private IList<InventoryPickingOrder>? selectedOrders;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private int selectedWarehouseId = 3;
+    private DateTime selectedDate = DateTime.Today;
+
+    private readonly List<WarehouseOption> warehouses = new()
+    {
+        new WarehouseOption { Id = 3, Name = "Chicago" },
+        new WarehouseOption { Id = 92, Name = "NYC" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        selectedOrders = null;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await InventoryPickingService.ListOrdersAsync(
+                selectedWarehouseId,
+                selectedDate,
+                selectedDate);
+
+            orders = result.ToList();
+        }
+        catch (Exception ex) when (ex.Message.Contains("Code: 208") || ex.Message.Contains("Invalid object name"))
+        {
+            errorMessage = "ERP database tables are not configured. Connect a client database via appsettings.Local.json to use this feature.";
+            orders = new List<InventoryPickingOrder>();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load orders: {ex.Message}",
+                Duration = 5000
+            });
+            orders = new List<InventoryPickingOrder>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnWarehouseChanged(object value)
+    {
+        await LoadOrders();
+    }
+
+    private async Task OnDateChanged(DateTime? value)
+    {
+        if (value.HasValue)
+        {
+            selectedDate = value.Value;
+            await LoadOrders();
+        }
+    }
+
+    private void ViewOrder(string orderNumber)
+    {
+        Navigation.NavigateTo($"/app/inventory-picking/{orderNumber}?warehouseId={selectedWarehouseId}");
+    }
+
+    private void OnRowRender(RowRenderEventArgs<InventoryPickingOrder> args)
+    {
+        // Apply row color based on status code
+        args.Attributes.Add("style", $"background-color: {ColorCodingService.GetStatusColor(args.Data.StatusCode)};");
+    }
+
+    private string GetOperationStyle(string? operatorName, DateTime? clockIn, DateTime? clockOut)
+    {
+        string color = ColorCodingService.GetOperationColor(operatorName, clockIn, clockOut);
+        return $"background-color: {color}; padding: 2px 4px;";
+    }
+
+    private string GetAuditorStyle(InventoryPickingOrder order)
+    {
+        // Check if printed (gs_num2=10 or 11)
+        if (order.PrintStatus == 10 || order.PrintStatus == 11)
+            return "background-color: LemonChiffon; padding: 2px 4px;";
+
+        return GetOperationStyle(order.AuditorUsername, order.AuditorClockIn, order.AuditorClockOut);
+    }
+
+    private class WarehouseOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

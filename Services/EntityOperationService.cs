@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using DotNetWebApp.Data;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.AppDictionary;
 
@@ -11,10 +12,11 @@ namespace DotNetWebApp.Services;
 /// <summary>
 /// Implementation of IEntityOperationService with cached compiled delegates for optimal reflection performance.
 /// Caches expression trees as compiled Func<> delegates to eliminate per-call reflection overhead.
+/// Supports multiple databases via IDbContextResolver.
 /// </summary>
 public sealed class EntityOperationService : IEntityOperationService
 {
-    private readonly DbContext _context;
+    private readonly IDbContextResolver _contextResolver;
     private readonly IEntityMetadataService _metadataService;
 
     // Cache compiled delegates for DbContext.Set() method calls
@@ -23,43 +25,47 @@ public sealed class EntityOperationService : IEntityOperationService
     // Cache primary key properties by entity type
     private static readonly ConcurrentDictionary<Type, PropertyInfo?> _primaryKeyProperties = new();
 
-    public EntityOperationService(DbContext context, IEntityMetadataService metadataService)
+    public EntityOperationService(IDbContextResolver contextResolver, IEntityMetadataService metadataService)
     {
-        _context = context;
+        _contextResolver = contextResolver;
         _metadataService = metadataService;
     }
 
     public async Task<IList> GetAllAsync(Type entityType, CancellationToken ct = default)
     {
-        var queryable = GetQueryable(entityType);
+        var context = _contextResolver.GetContextForEntity(entityType);
+        var queryable = GetQueryable(entityType, context);
         return await ExecuteToListAsync(entityType, queryable, ct);
     }
 
     public async Task<int> GetCountAsync(Type entityType, CancellationToken ct = default)
     {
-        var queryable = GetQueryable(entityType);
+        var context = _contextResolver.GetContextForEntity(entityType);
+        var queryable = GetQueryable(entityType, context);
         return await ExecuteCountAsync(entityType, queryable, ct);
     }
 
     public async Task<object> CreateAsync(Type entityType, object entity, CancellationToken ct = default)
     {
-        var queryable = GetQueryable(entityType);
+        var context = _contextResolver.GetContextForEntity(entityType);
+        var queryable = GetQueryable(entityType, context);
         var addMethod = queryable.GetType().GetMethod("Add")
             ?? throw new InvalidOperationException($"Failed to resolve Add method for type {entityType.Name}");
 
         addMethod.Invoke(queryable, new[] { entity });
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
 
         return entity;
     }
 
     public async Task<object?> GetByIdAsync(Type entityType, object id, CancellationToken ct = default)
     {
+        var context = _contextResolver.GetContextForEntity(entityType);
         var findAsyncMethod = typeof(DbContext)
             .GetMethod(nameof(DbContext.FindAsync), new[] { typeof(Type), typeof(object[]) })
             ?? throw new InvalidOperationException($"Failed to resolve FindAsync method");
 
-        var valueTask = findAsyncMethod.Invoke(_context, new object[] { entityType, new[] { id } });
+        var valueTask = findAsyncMethod.Invoke(context, new object[] { entityType, new[] { id } });
         if (valueTask == null)
         {
             return null;
@@ -107,29 +113,31 @@ public sealed class EntityOperationService : IEntityOperationService
             property.SetValue(existingEntity, value);
         }
 
-        await _context.SaveChangesAsync(ct);
+        var context = _contextResolver.GetContextForEntity(entityType);
+        await context.SaveChangesAsync(ct);
 
         return existingEntity;
     }
 
     public async Task DeleteAsync(Type entityType, object id, CancellationToken ct = default)
     {
+        var context = _contextResolver.GetContextForEntity(entityType);
         var entity = await GetByIdAsync(entityType, id, ct)
             ?? throw new InvalidOperationException($"Entity with id '{id}' not found");
 
-        var queryable = GetQueryable(entityType);
+        var queryable = GetQueryable(entityType, context);
         var removeMethod = queryable.GetType().GetMethod("Remove")
             ?? throw new InvalidOperationException($"Failed to resolve Remove method for type {entityType.Name}");
 
         removeMethod.Invoke(queryable, new[] { entity });
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
     }
 
     /// <summary>
     /// Gets a cached IQueryable<T> for the entity type using compiled delegates.
     /// First call compiles the expression tree; subsequent calls invoke the cached delegate.
     /// </summary>
-    private IQueryable GetQueryable(Type entityType)
+    private IQueryable GetQueryable(Type entityType, DbContext context)
     {
         var factory = _queryableFactories.GetOrAdd(entityType, t =>
         {
@@ -146,7 +154,7 @@ public sealed class EntityOperationService : IEntityOperationService
             return lambda.Compile();
         });
 
-        return factory(_context);
+        return factory(context);
     }
 
     /// <summary>

@@ -40,7 +40,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetAllAsync(typeof(Product));
 
@@ -55,7 +55,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetAllAsync(typeof(Product));
 
@@ -77,7 +77,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var count = await service.GetCountAsync(typeof(Product));
 
@@ -91,7 +91,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var count = await service.GetCountAsync(typeof(Product));
 
@@ -105,7 +105,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var product = new Product { Name = "New Product", Price = 15.99m };
 
@@ -129,7 +129,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var product1 = new Product { Name = "Product 1", Price = 10.99m };
         var product2 = new Product { Name = "Product 2", Price = 20.99m };
@@ -152,7 +152,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetByIdAsync(typeof(Product), product.Id);
 
@@ -170,7 +170,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetByIdAsync(typeof(Product), 999);
 
@@ -188,7 +188,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var updatedProduct = new Product { Id = product.Id, Name = "Updated Product", Price = 20.99m };
 
@@ -209,7 +209,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var product = new Product { Id = 999, Name = "Non-existent", Price = 10.99m };
 
@@ -229,7 +229,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         await service.DeleteAsync(typeof(Product), product.Id);
 
@@ -244,7 +244,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.DeleteAsync(typeof(Product), 999));
@@ -265,7 +265,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetAllAsync(typeof(Category));
 
@@ -280,7 +280,7 @@ public class EntityOperationServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var category = new Category { Name = "New Category" };
 
@@ -304,7 +304,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var result = await service.GetByIdAsync(typeof(Category), category.Id);
 
@@ -326,7 +326,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         var updatedCategory = new Category { Id = category.Id, Name = "Updated Category" };
 
@@ -349,7 +349,7 @@ public class EntityOperationServiceTests
         await context.SaveChangesAsync();
 
         var metadataService = CreateMetadataService();
-        var service = new EntityOperationService(context, metadataService);
+        var service = new EntityOperationService(new TestDbContextResolver(context), metadataService);
 
         await service.DeleteAsync(typeof(Category), category.Id);
 

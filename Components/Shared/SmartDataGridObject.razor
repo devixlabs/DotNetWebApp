@@ -45,12 +45,14 @@
                             else
                             {
                                 <RadzenDataGridColumn TItem="object"
-                                                     Property="@column.Property"
                                                      Title="@column.DisplayName"
-                                                     FormatString="@column.FormatString"
                                                      Width="@(column.Width.HasValue ? $"{column.Width}px" : null)"
                                                      Sortable="@column.Sortable"
-                                                     Filterable="@column.Filterable" />
+                                                     Filterable="@column.Filterable">
+                                                <Template Context="row">
+                                                    @GetPropertyValue(row, column.Property)
+                                                </Template>
+                                            </RadzenDataGridColumn>
                             }
                         }
                     }
@@ -102,12 +104,14 @@
                             @if (!column.Hidden)
                             {
                                 <RadzenDataGridColumn TItem="object"
-                                                     Property="@column.Property"
                                                      Title="@column.DisplayName"
-                                                     FormatString="@column.FormatString"
                                                      Width="@(column.Width.HasValue ? $"{column.Width}px" : null)"
                                                      Sortable="@column.Sortable"
-                                                     Filterable="@column.Filterable" />
+                                                     Filterable="@column.Filterable">
+                                                <Template Context="row">
+                                                    @GetPropertyValue(row, column.Property)
+                                                </Template>
+                                            </RadzenDataGridColumn>
                             }
                         }
 
@@ -147,6 +151,12 @@
             {
                 <div style="font-size: 0.9em; color: #666; margin-top: 8px;">
                     Showing @Data.Count() records
+                    @if (hiddenColumnCount > 0)
+                    {
+                        <span style="margin-left: 16px;">
+                            (@(totalColumnCount - hiddenColumnCount) of @totalColumnCount columns shown)
+                        </span>
+                    }
                 </div>
             }
         }
@@ -188,6 +198,13 @@
     [Parameter]
     public IEnumerable<ColumnConfig>? ColumnOverrides { get; set; }
 
+    /// <summary>
+    /// Maximum number of columns to display. Set to 0 for unlimited.
+    /// Default is 15 columns to ensure usable grid layout.
+    /// </summary>
+    [Parameter]
+    public int MaxVisibleColumns { get; set; } = 15;
+
     [Parameter]
     public EventCallback<object> OnRowUpdate { get; set; }
 
@@ -201,11 +218,15 @@
     public EventCallback<object> OnRowEdit { get; set; }
 
     private RadzenDataGrid<object>? grid;
+    private int hiddenColumnCount = 0;
+    private int totalColumnCount = 0;
 
     private IEnumerable<ColumnConfig> GetColumnConfig()
     {
         if (ColumnOverrides != null && ColumnOverrides.Any())
         {
+            hiddenColumnCount = 0;
+            totalColumnCount = ColumnOverrides.Count();
             return ColumnOverrides;
         }
 
@@ -219,7 +240,25 @@
                 dataType = firstItem.GetType();
             }
 
-            return dataType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            var allProperties = dataType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            totalColumnCount = allProperties.Length;
+
+            // Prioritize columns: ID first, then name/code/description, then others
+            var prioritizedProperties = allProperties
+                .OrderBy(p => GetColumnPriority(p.Name))
+                .ThenBy(p => p.Name)
+                .ToList();
+
+            // Apply column limit if MaxVisibleColumns > 0
+            var visibleProperties = MaxVisibleColumns > 0
+                ? prioritizedProperties.Take(MaxVisibleColumns)
+                : prioritizedProperties;
+
+            hiddenColumnCount = MaxVisibleColumns > 0
+                ? Math.Max(0, totalColumnCount - MaxVisibleColumns)
+                : 0;
+
+            return visibleProperties
                 .Select(p => new ColumnConfig
                 {
                     Property = p.Name,
@@ -236,6 +275,34 @@
             Logger.LogError(ex, "Failed to discover columns for object type");
             return Enumerable.Empty<ColumnConfig>();
         }
+    }
+
+    /// <summary>
+    /// Returns priority for column ordering (lower = higher priority).
+    /// ID columns first, then name/code/description, then everything else.
+    /// </summary>
+    private static int GetColumnPriority(string propertyName)
+    {
+        var lower = propertyName.ToLowerInvariant();
+
+        // Primary key columns first (usually end with _id or Id and are the first property)
+        if (lower.EndsWith("_id") || lower == "id")
+            return 0;
+
+        // Code/number columns (product codes, part numbers, etc.)
+        if (lower.Contains("code") || lower.Contains("codenum") || lower.Contains("number"))
+            return 1;
+
+        // Name columns
+        if (lower.Contains("name") || lower.Contains("descrip") || lower.Contains("title"))
+            return 2;
+
+        // Status/active columns
+        if (lower.Contains("active") || lower.Contains("status") || lower.Contains("enabled"))
+            return 3;
+
+        // Everything else
+        return 10;
     }
 
     private async Task OnRowUpdated(object row)
@@ -331,6 +398,26 @@
                 Detail = $"Failed to edit record: {ex.Message}",
                 Duration = 5000
             });
+        }
+    }
+
+    /// <summary>
+    /// Gets property value from an object using reflection.
+    /// Required because Radzen's Property binding doesn't work with TItem="object".
+    /// </summary>
+    private object? GetPropertyValue(object? obj, string propertyName)
+    {
+        if (obj == null || string.IsNullOrEmpty(propertyName))
+            return null;
+
+        try
+        {
+            var property = obj.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            return property?.GetValue(obj);
+        }
+        catch
+        {
+            return null;
         }
     }
 }

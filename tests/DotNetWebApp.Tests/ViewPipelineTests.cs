@@ -12,6 +12,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -407,9 +408,12 @@ SELECT
             // Arrange
             var mockTenantAccessor = new Mock<ITenantSchemaAccessor>();
             mockTenantAccessor.Setup(x => x.Schema).Returns("dbo");
+            var mockMappingOptions = new Mock<IOptions<DatabaseMappingOptions>>();
+            mockMappingOptions.Setup(x => x.Value).Returns(new DatabaseMappingOptions());
             var mockDbContext = new Mock<AppDbContext>(
                 new DbContextOptions<AppDbContext>(),
-                mockTenantAccessor.Object);
+                mockTenantAccessor.Object,
+                mockMappingOptions.Object);
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(

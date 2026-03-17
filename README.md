@@ -19,16 +19,29 @@ Choose Docker or native Linux installation.
 dotnet tool install --global dotnet-ef --version 8.*
 ```
 
-### 3. Build and run
+### 3. Set SA_PASSWORD environment variable
+```bash
+export SA_PASSWORD='YourStrongPassword123!'
+```
+
+### 4. Build and run
 ```bash
 make check     # Lint scripts/Makefile, restore packages, build
-make db-start  # Start SQL Server (Docker only)
+make db-create # Create SQL Server Docker container (first time only)
 make run-ddl-pipeline  # Generate app.yaml, models, and migration from SQL DDL
-make migrate   # Apply generated migration
+make migrate   # Create databases ({PRIMARY_DB}, {SECONDARY_DB}) and apply schema
+make seed      # Seed sample data
 make dev       # Start dev server (https://localhost:7012 or http://localhost:5210)
 ```
 
 **That's it!** Navigate to https://localhost:7012 (or http://localhost:5210) to see the app.
+
+You can also run in the background:
+```bash
+nohup make dev > dev.log 2>&1 &
+```
+
+> **Note:** This project uses two databases: **{PRIMARY_DB}** (primary) and **{SECONDARY_DB}** (secondary). Both are created automatically by `make migrate`.
 
 ---
 
@@ -132,6 +145,14 @@ DotNetWebApp/
   - `EntitiesController` reduced from 369 to 236 lines (36% reduction)
   - All reflection logic moved to service layer
   - Comprehensive test suite added
+- ✅ **WAMS Phase 1 MVP Complete (2026-02-02):** Web App Management System
+  - 39-column RadzenDataGrid with order type classification and color coding
+  - Status workflow state machine (NA → CheckIn → Loading → Unloading → Shipped → Received)
+  - AppID batch operations (orders with same AppID move together)
+  - Soft delete pattern (type + 10) with undelete capability
+  - Multi-warehouse support (Chicago, NYC)
+  - 105 unit tests, 15 comprehensive seed orders
+  - 10 REST API endpoints, full CRUD operations
 - ✅ `EntitiesController` provides dynamic REST endpoints
 - ✅ `GenericEntityPage.razor` + `DynamicDataGrid.razor` provide dynamic CRUD UI
 - ✅ **DdlParser** converts SQL DDL files to `app.yaml` format
@@ -140,6 +161,38 @@ DotNetWebApp/
 - ✅ Tenant schema switching via `X-Customer-Schema` header (defaults to `dbo`)
 - ✅ Dynamic API routes: `/api/entities/{entityName}` and `/api/entities/{entityName}/count`
 - ✅ SPA example routes are optional via `AppCustomization:EnableSpaExample` (default true)
+
+---
+
+## Multi-Schema Support
+
+**Schemas are derived from `USE [database]` statements in `sql/schema.sql`:**
+
+```sql
+USE [acme]                          -- Sets schema to "acme"
+CREATE TABLE [dbo].[Product](...)   -- → acme:Product
+
+USE [initech]                       -- Sets schema to "initech"
+CREATE TABLE [dbo].[Company](...)   -- → initech:Company
+```
+
+**Example schema mapping:**
+| SQL Statement | EF Schema | Result |
+|---------------|-----------|--------|
+| `USE [acme]` | `acme` | `acme:Product`, `acme:Category` |
+| `USE [initech]` | `initech` | `initech:Company`, `initech:User` |
+
+**⚠️ IMPORTANT:** When `schema.sql` changes, you MUST update:
+1. `appsettings.json` → Applications → Schema and Entities
+2. `verify.sh` → Test URLs to match new schemas/entities
+
+```json
+{
+  "Name": "admin",
+  "Schema": "acme",
+  "Entities": ["acme:Product", "acme:Category", ...]
+}
+```
 
 ---
 
@@ -154,8 +207,9 @@ DotNetWebApp/
 | `make build-release` | Release build for main projects |
 | `make clean` | Clean build outputs and binlog |
 | `make run-ddl-pipeline` | Parse `sql/schema.sql` → app.yaml → models → migration → build |
-| `make migrate` | Apply generated migration |
-| `make seed` | Apply migration and seed data |
+| `make migrate` | Apply migration via EF Core (`dotnet ef database update`) |
+| `make db-migrate` | Apply migration via Docker/sqlcmd (idempotent; safe for existing tables) |
+| `make seed` | Seed sample data from `sql/seed.sql` |
 | `make dev` | Start dev server with hot reload (https://localhost:7012 / http://localhost:5210) |
 | `make run` | Start server without hot reload |
 | `make test` | Run DotNetWebApp.Tests and ModelGenerator.Tests |
@@ -168,6 +222,8 @@ DotNetWebApp/
 | `make ms-logs` | Tail native SQL Server logs |
 | `make ms-drop` | Drop local dev database in native SQL Server |
 | `make docker-build` | Build Docker image |
+| `make compose-up` | Start full Docker stack (SQL Server health → db-migrate → db-seed → app) |
+| `make compose-down` | Stop Docker Compose containers (volume/data preserved) |
 
 ---
 
@@ -176,61 +232,132 @@ DotNetWebApp/
 After modifying `sql/schema.sql` or running the DDL parser:
 
 ```bash
-# Start SQL Server
-make db-start
-
-# Generate migration from DDL, then apply it
-make run-ddl-pipeline
-make migrate
+export SA_PASSWORD='YourStrongPassword123!'
+make db-start           # Start SQL Server (Docker)
+make run-ddl-pipeline   # Generate migration from DDL
+make migrate            # Create {PRIMARY_DB}/{SECONDARY_DB} databases and apply schema
+make seed               # Seed sample data into both databases
 ```
+
+**Note:** The `migrate` target creates both databases ({PRIMARY_DB} and {SECONDARY_DB}) and applies `sql/schema.sql`. The `seed` target runs `sql/seed.sql` which populates both databases.
 
 ---
 
 ## Sample Seed Data
 
-`sql/seed.sql` contains INSERT statements wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo catalog data with:
+`sql/seed.sql` contains INSERT statements for both {PRIMARY_DB} and {SECONDARY_DB} databases, wrapped in `IF NOT EXISTS` guards so the script can safely run multiple times without duplicating rows. After running `make run-ddl-pipeline` + `make migrate`, populate the demo data with:
 
 ```bash
 make seed
 ```
 
-Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
+This seeds data into both databases:
+- **{PRIMARY_DB}**: Products (dmprod), units (dmunit), billing (dmbill), vendors (dmvend), etc.
+- **{SECONDARY_DB}**: Acid corrections, Brix charts, allocations, etc.
 
-The new `make seed` target executes `dotnet run --project DotNetWebApp.csproj -- --seed`. That mode of the application applies the generated migration (`Database.MigrateAsync()`) and then runs `sql/seed.sql` via the `DataSeeder` service, which uses `ExecuteSqlRawAsync` under the current connection string. Ensure the migration has been generated from the DDL pipeline before seeding. You can still run `sql/seed.sql` manually (e.g., `sqlcmd`, SSMS) if you need fine-grained control.
+Then verify the data landed via the container's `sqlcmd` (see the Docker section for setup and example queries).
 
 ---
 
-## Docker
+## Docker (Quick Start)
 
-### Build the image
+### Prerequisites
+- Docker and Docker Compose installed
+- SA_PASSWORD environment variable set (or copy `.env.example` → `.env`)
+
+### Run Everything (Recommended)
+
 ```bash
-make docker-build
+# Set SQL Server password
+export SA_PASSWORD='YourStrongPassword123!'
+
+# Start full stack: SQL Server → init databases → seed → app
+make compose-up
 ```
 
-### Run the container
+**Then navigate to:**
+- 🌐 **HTTP:** http://localhost:5210
+
+**What `make compose-up` does:**
+- ✅ Starts SQL Server and waits for health check
+- ✅ Runs `make db-migrate` (creates WEBAPP/WEBAPPMisc databases, applies schema + EF migrations)
+- ✅ Runs `make db-seed` (populates sample data)
+- ✅ Starts app container — databases are guaranteed to exist
+
+**Note on HTTPS:** The container runs on HTTP only. In production, HTTPS/TLS termination is handled by the nginx reverse proxy (see "External Access" section below). For local development with HTTPS, see "HTTPS Certificate Options" section.
+
+### Stop Everything
 ```bash
-docker run -d \
-  -p 8080:80 \
-  --name dotnetwebapp \
-  dotnetwebapp:latest
+make compose-down
 ```
 
-### SQL Server tooling + example queries
-
-Run the following commands from your host (the first must be executed as `root` inside the container) to install the SQL Server CLI tooling (`sqlcmd`) and verify the `DotNetWebAppDb` demo data:
-
+### Build the Image Manually
 ```bash
-docker exec -it --user root sqlserver-dev bash -lc "ACCEPT_EULA=Y apt-get update && \
-  ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev"
+docker build -t dotnetwebapp.local .
+```
+
+### HTTPS Certificate Options
+
+The default Docker setup uses **HTTP only** (port 5210), with HTTPS/TLS handled by the nginx reverse proxy in production. If you need HTTPS inside the container for local development, choose one of these approaches:
+
+#### Option 2: Generate Dev Certificate in Container
+Add to `Dockerfile` before `ENTRYPOINT`:
+```dockerfile
+RUN dotnet dev-certs https --check --trust 2>/dev/null || \
+    dotnet dev-certs https -ep /app/cert.pfx -p YourCertPassword123! && \
+    dotnet dev-certs https --trust 2>/dev/null || true
+```
+
+Then update `docker-compose.yml` environment:
+```yaml
+environment:
+  ASPNETCORE_URLS: 'https://+:7012;http://+:5210'
+  ASPNETCORE_Kestrel__Certificates__Default__Path: '/app/cert.pfx'
+  ASPNETCORE_Kestrel__Certificates__Default__Password: 'YourCertPassword123!'
+```
+
+**Pros:** Self-contained; works in isolated environments
+**Cons:** Certificate regenerates on each build; adds ~2-3 min to build time
+
+#### Option 3: Mount Certificate from Host
+Generate a certificate on the host:
+```bash
+dotnet dev-certs https -ep ./dev-certs/certificate.pfx -p YourCertPassword123!
+```
+
+Update `docker-compose.yml`:
+```yaml
+dotnetwebapp:
+  volumes:
+    - ./dev-certs:/app/certs:ro
+  environment:
+    ASPNETCORE_URLS: 'https://+:7012;http://+:5210'
+    ASPNETCORE_Kestrel__Certificates__Default__Path: '/app/certs/certificate.pfx'
+    ASPNETCORE_Kestrel__Certificates__Default__Password: 'YourCertPassword123!'
+```
+
+**Pros:** Faster builds; certificate persists across rebuilds
+**Cons:** Requires certificate management on host; certificate expires after 1 year
+
+---
+
+### Files Included
+- `Dockerfile` — Multi-stage build (SDK → aspnet runtime)
+- `docker-compose.yml` — Orchestrates app + SQL Server with networking
+- `.env.example` — Template for environment variables (copy to `.env` to customize)
+
+### Verify Data in SQL Server
+```bash
+# Query {PRIMARY_DB} (WEBAPP)
 docker exec -it sqlserver-dev \
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
-  -d DotNetWebAppDb -Q "SELECT Id, Name FROM dbo.Categories;"
-docker exec -it sqlserver-dev \
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" \
-  -d DotNetWebAppDb -Q "SELECT Name, Price, CategoryId FROM dbo.Products;"
-```
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
+  -d WEBAPP -Q "SELECT TOP 5 * FROM dbo.dmprod;"
 
-These commands let you run `sql/seed.sql` manually or troubleshoot seed data without installing SQL tooling on the host.
+# Query {SECONDARY_DB} (WEBAPPMisc)
+docker exec -it sqlserver-dev \
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
+  -d WEBAPPMisc -Q "SELECT * FROM dbo.AcidCorrection;"
+```
 
 ---
 
@@ -247,24 +374,97 @@ These commands let you run `sql/seed.sql` manually or troubleshoot seed data wit
 dotnet tool install --global dotnet-ef --version 8.*
 ```
 
-### 3. Restore and build
+### 3. Set SA_PASSWORD environment variable
+```bash
+export SA_PASSWORD='YourStrongPassword123!'
+```
+
+### 4. Restore and build
 ```bash
 make check
 ```
 
-### 4. Start database and apply generated schema
+### 5. Create database container and apply schema
 ```bash
-make db-start      # Only needed for Docker
-make run-ddl-pipeline
-make migrate
+make db-create         # Create Docker container (first time only)
+make run-ddl-pipeline  # Generate models from DDL
+make migrate           # Create {PRIMARY_DB}/{SECONDARY_DB} databases and apply schema
+make seed              # Seed sample data
 ```
 
-### 5. Run development server
+### 6. Run development server
 ```bash
 make dev
 ```
 
 Visit **https://localhost:7012** (or **http://localhost:5210**) in your browser.
+
+---
+
+## External Access (Optional)
+
+To make the application accessible from your local network or the internet (via port forwarding), set up an Nginx reverse proxy.
+
+### 1. Generate SSL Certificates
+```bash
+make https
+```
+Follow the on-screen instructions to move the generated `dotnetwebapp.crt` and `dotnetwebapp.key` files to `/etc/nginx/ssl/`.
+
+### 2. Configure Nginx
+Create or update `/etc/nginx/conf.d/dotnetwebapp.conf` with the following configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name _; 
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    # SSL Configuration using .NET Self-Signed Certs
+    ssl_certificate /etc/nginx/ssl/dotnetwebapp.crt;
+    ssl_certificate_key /etc/nginx/ssl/dotnetwebapp.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        # Proxy to the HTTPS port to avoid 307 Redirect loops from the app
+        proxy_pass https://127.0.0.1:7012;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection keep-alive;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable SSL verification for the backend (since it's localhost self-signed)
+        proxy_ssl_verify off;
+    }
+}
+```
+Then reload Nginx:
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 3. Configure Router (Port Forwarding)
+If using a typical home or small office router:
+
+1. Log in to your router (usually `http://192.168.0.1`).
+2. Go to **Forwarding** > **Virtual Servers**.
+3. Add **Rule 1**: Port `80` → Your Local IP (`hostname -I`) Port `80`.
+4. Add **Rule 2**: Port `443` → Your Local IP (`hostname -I`) Port `443`.
+5. Save settings.
 
 ---
 
@@ -394,10 +594,13 @@ make dev  # Uses ports from launchSettings.json
 
 ## Architecture
 
-- **Backend:** ASP.NET Core 8 Web API with Entity Framework Core
+- **Backend:** ASP.NET Core 8 Web API with Entity Framework Core + Dapper (hybrid)
 - **Frontend:** Blazor Server with Radzen UI components
-- **Database:** SQL Server (Docker or native)
-- **Configuration:** DDL-driven data models + JSON appsettings
+- **Database:** SQL Server (Docker or native) with **two databases**:
+  - **{PRIMARY_DB}** (primary): Main application data
+  - **{SECONDARY_DB}** (secondary): Auxiliary/metrics data
+- **Multi-Database Routing:** `IDbContextResolver` routes entities to correct database based on namespace
+- **Configuration:** DDL-driven data models + JSON appsettings with `DatabaseMapping` section
 - **Model Generation:** Automated from YAML via Scriban templates
 - **Modular Design:** Models in separate `DotNetWebApp.Models` assembly for better separation of concerns
 

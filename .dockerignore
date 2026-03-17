@@ -1,0 +1,26 @@
+# Developer-local config files (contain localhost connection strings - must not override Docker env vars)
+appsettings.Local.json
+appsettings.*.Local.json
+.env.local
+.envrc
+.env
+
+# Secrets
+secrets.json
+*.pfx
+*.key
+
+# Build artifacts (Docker build stage handles these itself)
+**/bin/
+**/obj/
+
+# Test projects (not needed in production image)
+tests/
+
+# Documentation
+*.md
+DOCKER_SETUP_CONTEXT.md
+
+# Git
+.git/
+.gitignore

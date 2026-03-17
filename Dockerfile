@@ -1,20 +1,43 @@
-# Use the official .NET 8.0 SDK to build and publish the application
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
 WORKDIR /src
 
-# Copy project file and restore dependencies
-COPY ["DotNetWebApp.csproj", "./"]
-RUN dotnet restore "DotNetWebApp.csproj"
+# Copy solution and project files
+COPY DotNetWebApp.sln .
+COPY DotNetWebApp.csproj .
+COPY DotNetWebApp.Models/DotNetWebApp.Models.csproj ./DotNetWebApp.Models/
+COPY DdlParser/DdlParser.csproj ./DdlParser/
+COPY ModelGenerator/ModelGenerator.csproj ./ModelGenerator/
+COPY YamlMerger/YamlMerger.csproj ./YamlMerger/
+COPY AppsYamlGenerator/AppsYamlGenerator.csproj ./AppsYamlGenerator/
 
-# Copy remaining source code and publish
+# Copy source code
 COPY . .
-RUN dotnet publish "DotNetWebApp.csproj" -c Release -o /app/publish
 
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# Restore and build (solution-level restore, but exclude test projects via .dockerignore)
+RUN dotnet restore DotNetWebApp.csproj
+RUN dotnet build DotNetWebApp.csproj --configuration Release --no-restore
+
+# Publish
+RUN dotnet publish DotNetWebApp.csproj --configuration Release --no-build --output /app/publish
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# Expose port and set entrypoint
-EXPOSE 80
-ENTRYPOINT ["dotnet", "DotNetWebApp.dll"]
+# Copy published application from builder
+COPY --from=builder /app/publish .
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+# Set environment
+ENV ASPNETCORE_URLS=http://+:5210
+ENV ASPNETCORE_ENVIRONMENT=Docker
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+
+EXPOSE 7012
+
+# Run migrations on startup, then start app
+ENTRYPOINT ["/app/entrypoint.sh"]

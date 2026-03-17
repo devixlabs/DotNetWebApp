@@ -52,16 +52,38 @@ try
     Console.WriteLine($"Reading appsettings.json from: {appSettingsAbsPath}");
     var appSettingsContent = File.ReadAllText(appSettingsAbsPath);
 
-    // Deserialize appsettings.json using System.Text.Json (native JSON support)
-    // This properly handles camelCase property names in JSON (sqlFile, name, etc.)
-    var jsonOptions = new JsonSerializerOptions
+    // Also read appsettings.Local.json if it exists (for local overrides)
+    var localSettingsPath = Path.Combine(Path.GetDirectoryName(appSettingsAbsPath)!, "appsettings.Local.json");
+    var mergedAppSettingsContent = appSettingsContent;
+    if (File.Exists(localSettingsPath))
+    {
+        Console.WriteLine($"Found appsettings.Local.json, merging ViewDefinitions...");
+        var localContent = File.ReadAllText(localSettingsPath);
+        // Parse both and merge ViewDefinitions arrays
+        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
+        var baseSettings = JsonSerializer.Deserialize<AppSettingsRoot>(appSettingsContent, jsonOptions) ?? new AppSettingsRoot();
+        var localSettings = JsonSerializer.Deserialize<AppSettingsRoot>(localContent, jsonOptions) ?? new AppSettingsRoot();
+
+        // Merge ViewDefinitions from Local (Local overrides base)
+        if (localSettings.ViewDefinitions?.Count > 0)
+        {
+            baseSettings.ViewDefinitions ??= new();
+            baseSettings.ViewDefinitions.AddRange(localSettings.ViewDefinitions);
+        }
+
+        // Re-serialize merged settings
+        mergedAppSettingsContent = JsonSerializer.Serialize(baseSettings, jsonOptions);
+    }
+
+    // Deserialize merged appsettings using System.Text.Json
+    var jsonOpts = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
 
-    var appSettingsObj = JsonSerializer.Deserialize<AppSettingsRoot>(appSettingsContent, jsonOptions)
-        ?? throw new InvalidOperationException("Failed to deserialize appsettings.json");
+    var appSettingsObj = JsonSerializer.Deserialize<AppSettingsRoot>(mergedAppSettingsContent, jsonOpts)
+        ?? throw new InvalidOperationException("Failed to deserialize appsettings configuration");
 
     if (appSettingsObj?.ViewDefinitions == null || appSettingsObj.ViewDefinitions.Count == 0)
     {
