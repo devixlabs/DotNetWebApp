@@ -6,7 +6,6 @@ using DotNetWebApp.Data.Tenancy;
 using DotNetWebApp.Models;
 using DotNetWebApp.Models.Generated;
 using DotNetWebApp.Services;
-using DotNetWebApp.Services.ICT;
 using DotNetWebApp.Services.Views;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
@@ -34,8 +33,6 @@ builder.Services.Configure<TenantSchemaOptions>(
     builder.Configuration.GetSection("TenantSchema"));
 builder.Services.Configure<DatabaseMappingOptions>(
     builder.Configuration.GetSection(DatabaseMappingOptions.SectionName));
-builder.Services.Configure<DotNetWebApp.Services.Models.AcuityImportOptions>(
-    builder.Configuration.GetSection(DotNetWebApp.Services.Models.AcuityImportOptions.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp =>
 {
@@ -62,32 +59,24 @@ builder.Services.AddSingleton<IEntityMetadataService, EntityMetadataService>();
 builder.Services.AddScoped<IEntityOperationService, EntityOperationService>();
 builder.Services.AddScoped<IEntityApiService, EntityApiService>();
 
-// Acuity Import services (Phase 2 - First application)
-builder.Services.AddScoped<IDeacomService, DeacomService>();
-builder.Services.AddScoped<IAcuityImportService, AcuityImportService>();
+// Inventory Picking services
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.Validators.AuditorAssignmentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.Validators.TimestampValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.ShipValidationService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.ColorCodingService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryPicking.IInventoryPickingService, DotNetWebApp.Services.InventoryPicking.InventoryPickingService>();
 
-// ICT services (Phase 2 - Second application)
-builder.Services.AddScoped<IICTOrderNumberService, ICTOrderNumberService>();
-builder.Services.AddScoped<IICTService, ICTService>();
+// Inventory Allocation services
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.Validators.PaymentValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.Validators.ShelfLifeValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.ILockService, DotNetWebApp.Services.InventoryAllocation.LockService>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.IFIFOAllocationEngine, DotNetWebApp.Services.InventoryAllocation.FIFOAllocationEngine>();
+builder.Services.AddScoped<DotNetWebApp.Services.InventoryAllocation.IInventoryAllocationService, DotNetWebApp.Services.InventoryAllocation.InventoryAllocationService>();
 
-// PrePick services (Phase 2 - Third application)
-builder.Services.AddScoped<DotNetWebApp.Services.PrePick.Validators.AuditorAssignmentValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.PrePick.Validators.TimestampValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ShipValidationService>();
-builder.Services.AddScoped<DotNetWebApp.Services.PrePick.ColorCodingService>();
-builder.Services.AddScoped<DotNetWebApp.Services.PrePick.IPrePickService, DotNetWebApp.Services.PrePick.PrePickService>();
-
-// Allocation services (Phase 2 - Fourth application)
-builder.Services.AddScoped<DotNetWebApp.Services.Allocation.Validators.PaymentValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.Allocation.Validators.ShelfLifeValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.Allocation.ILockService, DotNetWebApp.Services.Allocation.LockService>();
-builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IFIFOAllocationEngine, DotNetWebApp.Services.Allocation.FIFOAllocationEngine>();
-builder.Services.AddScoped<DotNetWebApp.Services.Allocation.IAllocationService, DotNetWebApp.Services.Allocation.AllocationService>();
-
-// DMS (Dock Management System) services (Phase 2 - Fifth application)
-builder.Services.AddScoped<DotNetWebApp.Services.DMS.Validators.StatusTransitionValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.DMS.Validators.DeleteValidator>();
-builder.Services.AddScoped<DotNetWebApp.Services.DMS.IDMSService, DotNetWebApp.Services.DMS.DMSService>();
+// WAMS (Web App Management System) services
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.Validators.StatusTransitionValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.Validators.DeleteValidator>();
+builder.Services.AddScoped<DotNetWebApp.Services.WAMS.IWAMSService, DotNetWebApp.Services.WAMS.WAMSService>();
 
 // Database connections - PrimaryDatabase and SecondaryDatabase
 // Note: PrimaryDatabase and SecondaryDatabase are defined in appsettings.Local.json (not in base appsettings.json)
@@ -116,7 +105,7 @@ builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>(
 builder.Services.AddScoped<DataSeeder>();
 
 // Dapper infrastructure (read-only, shares EF connection)
-// Primary database (GAI) - for queries to dmprod, dtfifo, dtjob, etc.
+// Primary database (WEBAPP) - for queries to products, orders, inventory, etc.
 builder.Services.AddKeyedScoped<IDapperQueryService, DapperQueryService>("Primary");
 builder.Services.AddKeyedScoped<IDapperQueryService>(
     "Secondary",

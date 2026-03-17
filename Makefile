@@ -9,9 +9,9 @@ TAG=latest
 
 # [FIXME:Use env vars] Database names - configure these to match your sql/schema.sql USE statements
 # shellcheck disable=SC2034
-PRIMARY_DB=GAI
+PRIMARY_DB=WEBAPP
 # shellcheck disable=SC2034
-SECONDARY_DB=GAIMisc
+SECONDARY_DB=WEBAPPMisc
 # shellcheck disable=SC2211,SC2276
 DOTNET_ENVIRONMENT?=Development
 # shellcheck disable=SC2211,SC2276

@@ -69,10 +69,10 @@ case "$COMMAND" in
             fi
 
             echo 'Creating databases if they don'\''t exist...'
-            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"CREATE DATABASE [GAI];\" 2>/dev/null || echo 'GAI already exists'
-            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"CREATE DATABASE [GAIMisc];\" 2>/dev/null || echo 'GAIMisc already exists'
+            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"CREATE DATABASE [WEBAPP];\" 2>/dev/null || echo 'WEBAPP already exists'
+            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"CREATE DATABASE [WEBAPPMisc];\" 2>/dev/null || echo 'WEBAPPMisc already exists'
             echo 'Verifying databases...'
-            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"SELECT name FROM sys.databases WHERE name IN ('GAI', 'GAIMisc') ORDER BY name;\" && echo '✅ All required databases exist'
+            \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \"SELECT name FROM sys.databases WHERE name IN ('WEBAPP', 'WEBAPPMisc') ORDER BY name;\" && echo '✅ All required databases exist'
         "
         ;;
 
@@ -158,10 +158,10 @@ case "$COMMAND" in
             fi
 
             \$SQLCMD -S localhost -U sa -P \"$PASSWORD\" -C -Q \\
-                \"IF DB_ID('GAI') IS NOT NULL BEGIN ALTER DATABASE [GAI] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [GAI]; END; \\
-                IF DB_ID('GAIMisc') IS NOT NULL BEGIN ALTER DATABASE [GAIMisc] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [GAIMisc]; END; \\
+                \"IF DB_ID('WEBAPP') IS NOT NULL BEGIN ALTER DATABASE [WEBAPP] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [WEBAPP]; END; \\
+                IF DB_ID('WEBAPPMisc') IS NOT NULL BEGIN ALTER DATABASE [WEBAPPMisc] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [WEBAPPMisc]; END; \\
                 IF DB_ID('DotNetWebAppDb') IS NOT NULL BEGIN ALTER DATABASE [DotNetWebAppDb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [DotNetWebAppDb]; END;\" && \\
-            echo 'Dropped databases GAI, GAIMisc, DotNetWebAppDb (if they existed).' || echo 'Failed to drop databases.'
+            echo 'Dropped databases WEBAPP, WEBAPPMisc, DotNetWebAppDb (if they existed).' || echo 'Failed to drop databases.'
         "
         ;;
 

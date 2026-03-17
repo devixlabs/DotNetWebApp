@@ -1,0 +1,268 @@
+@page "/app/inventory-allocation"
+@using DotNetWebApp.Services.InventoryAllocation
+@using DotNetWebApp.Services.InventoryAllocation.Models
+@inject IInventoryAllocationService InventoryAllocationService
+@inject ILockService LockService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+
+<PageTitle>Inventory Allocation</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem" class="rz-p-4">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenText TextStyle="TextStyle.H4">Inventory Allocation</RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenDropDown @bind-Value="selectedWarehouseId"
+                           Data="@warehouses"
+                           TextProperty="Name"
+                           ValueProperty="Id"
+                           Style="width: 150px;"
+                           Change="@OnWarehouseChanged" />
+            <RadzenDatePicker @bind-Value="selectedDate"
+                             DateFormat="MM/dd/yyyy"
+                             Style="width: 150px;"
+                             Change="@OnDateChanged" />
+            <RadzenButton Text="Refresh" Icon="refresh" ButtonStyle="@ButtonStyle.Light"
+                         Click="@LoadOrders" />
+        </RadzenStack>
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 200px;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+            <RadzenText TextStyle="TextStyle.Body1">Loading orders...</RadzenText>
+        </RadzenStack>
+    }
+    else if (errorMessage != null)
+    {
+        <RadzenCard>
+            <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="padding: 2rem;">
+                <RadzenIcon Icon="dns" Style="font-size: 48px; color: gray;" />
+                <RadzenText TextStyle="TextStyle.H6">No ERP Data Configured</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">@errorMessage</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (orders != null && orders.Any())
+    {
+        <RadzenCard>
+            <RadzenDataGrid @ref="ordersGrid"
+                           Data="@orders"
+                           TItem="InventoryAllocationOrderSummary"
+                           AllowFiltering="true"
+                           AllowSorting="true"
+                           AllowPaging="true"
+                           PageSize="15"
+                           SelectionMode="DataGridSelectionMode.Single"
+                           @bind-Value="selectedOrders"
+                           RowRender="@OnRowRender"
+                           RowDoubleClick="@OnRowDoubleClick">
+                <Columns>
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="OrderNumber" Title="Order #" Width="120px" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="DueShipDate" Title="Ship Date" Width="100px" FormatString="{0:MM/dd}" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="CustomerName" Title="Customer" Width="200px" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="Carrier" Title="Carrier" Width="150px" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="TotalLines" Title="Lines" Width="80px" TextAlign="TextAlign.Center" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="TotalOrdered" Title="Ordered" Width="100px" FormatString="{0:N0}" TextAlign="TextAlign.Right" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="TotalAllocated" Title="Allocated" Width="100px" FormatString="{0:N0}" TextAlign="TextAlign.Right" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Title="Status" Width="130px">
+                        <Template Context="order">
+                            <RadzenBadge Text="@InventoryAllocationStatusColorService.GetStatusText(order.Status)"
+                                        BadgeStyle="@GetBadgeStyle(order.Status)" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="OkToShip" Title="OK Ship" Width="80px" TextAlign="TextAlign.Center">
+                        <Template Context="order">
+                            @if (order.OkToShip)
+                            {
+                                <RadzenIcon Icon="check_circle" Style="color: green;" />
+                            }
+                            else
+                            {
+                                <RadzenIcon Icon="cancel" Style="color: red;" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Property="LockedBy" Title="Locked By" Width="100px" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationOrderSummary" Title="Actions" Width="150px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+                        <Template Context="order">
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                                <RadzenButton Icon="visibility" ButtonStyle="@ButtonStyle.Info" Size="ButtonSize.Small"
+                                             Click="@(() => ViewOrder(order.OrderNumber))" title="View Details" />
+                                <RadzenButton Icon="play_arrow" ButtonStyle="@ButtonStyle.Success" Size="ButtonSize.Small"
+                                             Click="@(() => AllocateOrder(order))" title="Allocate"
+                                             Disabled="@(order.Status == InventoryAllocationStatus.FullyAllocated || !string.IsNullOrEmpty(order.LockedBy))" />
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.Body2">
+                Total: @orders.Count() orders |
+                Not Allocated: @orders.Count(o => o.Status == InventoryAllocationStatus.NotAllocated) |
+                Partial: @orders.Count(o => o.Status == InventoryAllocationStatus.PartiallyAllocated) |
+                Full: @orders.Count(o => o.Status == InventoryAllocationStatus.FullyAllocated)
+            </RadzenText>
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="padding: 2rem;">
+                <RadzenIcon Icon="inventory_2" Style="font-size: 48px; color: gray;" />
+                <RadzenText TextStyle="TextStyle.H6">No orders found for allocation</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">Try selecting a different date or warehouse</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private RadzenDataGrid<InventoryAllocationOrderSummary>? ordersGrid;
+    private IEnumerable<InventoryAllocationOrderSummary>? orders;
+    private IList<InventoryAllocationOrderSummary>? selectedOrders;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private int selectedWarehouseId = 3;
+    private DateTime selectedDate = DateTime.Today;
+    private string currentUsername = "testuser"; // TODO: Get from authentication
+
+    private readonly List<WarehouseOption> warehouses = new()
+    {
+        new WarehouseOption { Id = 3, Name = "Chicago" },
+        new WarehouseOption { Id = 92, Name = "NYC" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            orders = await InventoryAllocationService.GetOrdersForAllocationAsync(selectedWarehouseId, selectedDate);
+        }
+        catch (Exception ex) when (ex.Message.Contains("Code: 208") || ex.Message.Contains("Invalid object name"))
+        {
+            errorMessage = "ERP database tables are not configured. Connect a client database via appsettings.Local.json to use this feature.";
+            orders = Enumerable.Empty<InventoryAllocationOrderSummary>();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load orders: {ex.Message}",
+                Duration = 5000
+            });
+            orders = Enumerable.Empty<InventoryAllocationOrderSummary>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnWarehouseChanged(object value)
+    {
+        await LoadOrders();
+    }
+
+    private async Task OnDateChanged(DateTime? value)
+    {
+        if (value.HasValue)
+        {
+            selectedDate = value.Value;
+            await LoadOrders();
+        }
+    }
+
+    private void OnRowRender(RowRenderEventArgs<InventoryAllocationOrderSummary> args)
+    {
+        // Apply color coding based on allocation status
+        args.Attributes.Add("style", InventoryAllocationStatusColorService.GetRowStyle(args.Data.Status));
+    }
+
+    private void OnRowDoubleClick(DataGridRowMouseEventArgs<InventoryAllocationOrderSummary> args)
+    {
+        ViewOrder(args.Data.OrderNumber);
+    }
+
+    private void ViewOrder(string orderNumber)
+    {
+        NavigationManager.NavigateTo($"/app/inventory-allocation/{orderNumber}?warehouseId={selectedWarehouseId}");
+    }
+
+    private async Task AllocateOrder(InventoryAllocationOrderSummary order)
+    {
+        try
+        {
+            var result = await InventoryAllocationService.AllocateOrderAsync(
+                order.OrderNumber, currentUsername, selectedWarehouseId);
+
+            if (result.Success)
+            {
+                var message = result.QuantityShort > 0
+                    ? $"Partially allocated: {result.QuantityAllocated:N0} units, {result.QuantityShort:N0} short"
+                    : $"Fully allocated: {result.QuantityAllocated:N0} units";
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = result.QuantityShort > 0 ? NotificationSeverity.Warning : NotificationSeverity.Success,
+                    Summary = "Allocation Complete",
+                    Detail = message,
+                    Duration = 4000
+                });
+
+                await LoadOrders();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Allocation Failed",
+                    Detail = result.ErrorMessage,
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to allocate order: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private static BadgeStyle GetBadgeStyle(InventoryAllocationStatus status)
+    {
+        return status switch
+        {
+            InventoryAllocationStatus.NotAllocated => BadgeStyle.Light,
+            InventoryAllocationStatus.PartiallyAllocated => BadgeStyle.Warning,
+            InventoryAllocationStatus.FullyAllocated => BadgeStyle.Success,
+            InventoryAllocationStatus.OverAllocated => BadgeStyle.Danger,
+            _ => BadgeStyle.Light
+        };
+    }
+
+    private class WarehouseOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

@@ -2,7 +2,7 @@ namespace DotNetWebApp.Data
 {
     /// <summary>
     /// Configuration options for database and schema mappings.
-    /// Allows database names (like GAI, GAIMisc) to be mapped to actual schema names (like dbo).
+    /// Allows database names (like WEBAPP, WEBAPPMisc) to be mapped to actual schema names (like dbo).
     /// </summary>
     public class DatabaseMappingOptions
     {
@@ -10,7 +10,7 @@ namespace DotNetWebApp.Data
 
         /// <summary>
         /// Maps schema names from [Table] attributes to actual database schema names.
-        /// Key: Schema name in generated code (e.g., "GAI")
+        /// Key: Schema name in generated code (e.g., "WEBAPP")
         /// Value: Actual schema name in database (e.g., "dbo")
         /// </summary>
         public Dictionary<string, string> SchemaMappings { get; set; } = new();

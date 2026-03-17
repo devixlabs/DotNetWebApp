@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 namespace DotNetWebApp.Data.Dapper;
 
 /// <summary>
-/// Read-only Dapper service for the secondary database (GAIMisc).
-/// Uses SecondaryDbContext's connection for queries to gai_scheduler, gai_allocate, etc.
+/// Read-only Dapper service for the secondary database (WEBAPPMisc).
+/// Uses SecondaryDbContext's connection for queries to webapp_scheduler, webapp_allocate, etc.
 /// Automatically inherits tenant schema from EF Core context.
 /// </summary>
 public class SecondaryDapperQueryService : IDapperQueryService

@@ -4,8 +4,8 @@
 
 This application uses **two SQL Server databases** with a hybrid EF Core (writes) + Dapper (reads) pattern:
 
-- **GAI** (Primary Database) - Contains Deacom ERP tables (dmprod, dtfifo, dtjob, dttord, etc.)
-- **GAIMisc** (Secondary Database) - Contains shared application tables (gai_scheduler, gai_allocate, etc.)
+- **WEBAPP** (Primary Database) - Contains ERP tables (products, customers, orders, inventory, etc.)
+- **WEBAPPMisc** (Secondary Database) - Contains shared application tables (webapp_scheduler, webapp_allocate, etc.)
 
 ## Connection Configuration
 
@@ -35,153 +35,115 @@ builder.Services.AddScoped<IDapperQueryService, DapperQueryService>();
 ```json
 {
   "ConnectionStrings": {
-    "PrimaryDatabase": "Server=localhost,1433;Database=GAI;User Id=sa;Password=...;TrustServerCertificate=True;",
-    "SecondaryDatabase": "Server=localhost,1433;Database=GAIMisc;User Id=sa;Password=...;TrustServerCertificate=True;"
+    "PrimaryDatabase": "Server=localhost,1433;Database=WEBAPP;User Id=sa;Password=...;TrustServerCertificate=True;",
+    "SecondaryDatabase": "Server=localhost,1433;Database=WEBAPPMisc;User Id=sa;Password=...;TrustServerCertificate=True;"
   }
 }
 ```
 
 ## Database Mappings
 
-### GAI Database (Primary)
+### WEBAPP Database (Primary)
 
 **EF Core**: `AppDbContext`
 **Dapper**: `DapperQueryService` (keyed as "Primary")
 
-**Tables**:
-- **Products**: dmprod, dmunit
-- **Inventory**: dtfifo, dtstaging
-- **Sales Orders**: dttord, dtlord
-- **Manufacturing**: dtjob, dtljob
-- **Customers**: dmbill, dmship
-- **Attributes**: dtd1, dtd2
+**Tables**: products, customers, orders, order_lines, inventory, warehouses, vendors, units_of_measure
 
 **Used By**:
-- DeacomService (product lookups, order enrichment)
-- ICTService (product/inventory queries)
+- InventoryPickingService (product lookups, order enrichment)
+- InventoryAllocationService (product availability queries)
 
-### GAIMisc Database (Secondary)
+### WEBAPPMisc Database (Secondary)
 
 **EF Core**: `SecondaryDbContext`
 **Dapper**: `SecondaryDapperQueryService` (keyed as "Secondary")
 
 **Tables**:
-- **Order Headers**: gai_scheduler (shared by all 5 apps)
-- **Line Items**: gai_allocate (ICT, Allocation)
-- **User Config**: gai_dmstech (shared by all 5 apps)
-- **Acuity Data**: acuity_appointments, acuity_forms, acuity_form_values
+- **Order Headers**: webapp_scheduler (shared by all apps)
+- **Line Items**: webapp_allocate (Inventory Allocation)
+- **User Config**: webapp_dmstech (shared by all apps)
+- **Locks**: webapp_lock (pessimistic locking)
 
 **Used By**:
-- AcuityImportService (Acuity CSV import)
-- ICTService (ICT order management)
+- InventoryPickingService (scheduler queries)
+- InventoryAllocationService (allocation records)
+- WAMSService (dock management)
 
 ## Service Patterns
 
-### Pattern 1: Single Database Service (DeacomService)
+### Pattern 1: Single Database Service (Primary)
 
-Queries only GAI tables - uses default `IDapperQueryService`.
+Queries only WEBAPP tables - uses default `IDapperQueryService`.
 
 ```csharp
-public class DeacomService : IDeacomService
+public class MyPrimaryService : IMyPrimaryService
 {
-    private readonly IDapperQueryService _dapper;  // Connects to GAI (Primary)
+    private readonly IDapperQueryService _dapper;  // Connects to WEBAPP (Primary)
 
-    public DeacomService(IDapperQueryService dapper, ILogger<DeacomService> logger)
+    public MyPrimaryService(IDapperQueryService dapper, ILogger<MyPrimaryService> logger)
     {
         _dapper = dapper;
         _logger = logger;
     }
 
-    // Queries: dttord, dmbill, dmship (all in GAI)
+    // Queries: products, orders, inventory (all in WEBAPP)
 }
 ```
 
-### Pattern 2: Single Database Service (AcuityImportService)
-
-Uses only GAIMisc tables - uses `SecondaryDbContext` for EF Core.
-
-```csharp
-public class AcuityImportService : IAcuityImportService
-{
-    private readonly SecondaryDbContext _context;  // Connects to GAIMisc
-
-    public AcuityImportService(
-        SecondaryDbContext context,
-        IDeacomService deacomService,
-        ILogger<AcuityImportService> logger)
-    {
-        _context = context;
-        _deacomService = deacomService;
-        _logger = logger;
-    }
-
-    // Writes to: gai_scheduler, acuity_appointments (all in GAIMisc)
-}
-```
-
-### Pattern 3: Multi-Database Service (ICTService)
+### Pattern 2: Multi-Database Service
 
 Queries BOTH databases - uses keyed Dapper services.
 
 ```csharp
-public class ICTService : IICTService
+public class MultiDbService : IMultiDbService
 {
-    private readonly SecondaryDbContext _context;          // EF writes to GAIMisc
-    private readonly IDapperQueryService _primaryDapper;   // Queries to GAI
-    private readonly IDapperQueryService _secondaryDapper; // Queries to GAIMisc
+    private readonly SecondaryDbContext _context;          // EF writes to WEBAPPMisc
+    private readonly IDapperQueryService _primaryDapper;   // Queries to WEBAPP
+    private readonly IDapperQueryService _secondaryDapper; // Queries to WEBAPPMisc
 
-    public ICTService(
+    public MultiDbService(
         SecondaryDbContext context,
         [FromKeyedServices("Primary")] IDapperQueryService primaryDapper,
         [FromKeyedServices("Secondary")] IDapperQueryService secondaryDapper,
-        IICTOrderNumberService orderNumberService,
-        IDeacomService deacomService,
-        ILogger<ICTService> logger)
+        ILogger<MultiDbService> logger)
     {
         _context = context;
         _primaryDapper = primaryDapper;
         _secondaryDapper = secondaryDapper;
-        _orderNumberService = orderNumberService;
-        _deacomService = deacomService;
         _logger = logger;
     }
 
-    // PRIMARY Dapper (GAI) for:
-    // - GetAvailableProductsAsync (dmprod, dtfifo, dtd2, dmunit)
-    // - GetManufacturingJobsAsync (dtjob, dtljob, dmprod)
-    // - ValidateQuantityAsync (dtfifo, dmprod)
-    // - GetProductDetailsAsync (dmprod, dtfifo, dtd2, dmunit)
+    // PRIMARY Dapper (WEBAPP) for:
+    // - Product lookups, order details, inventory queries
 
-    // SECONDARY Dapper (GAIMisc) for:
-    // - ListOrdersAsync (gai_scheduler, gai_allocate)
+    // SECONDARY Dapper (WEBAPPMisc) for:
+    // - ListOrdersAsync (webapp_scheduler, webapp_allocate)
 
     // EF Core SecondaryDbContext for:
-    // - CreateOrderAsync (gai_scheduler)
-    // - AddLineItemAsync (gai_allocate)
-    // - GetOrderAsync (gai_scheduler, gai_allocate)
-    // - SubmitOrderAsync (gai_scheduler, gai_allocate)
-    // - DeleteOrderAsync (gai_scheduler, gai_allocate)
+    // - CreateOrderAsync (webapp_scheduler)
+    // - AddLineItemAsync (webapp_allocate)
 }
 ```
 
-### Pattern 4: Secondary Database Queries (ICTOrderNumberService)
+### Pattern 3: Secondary Database Queries
 
-Queries only GAIMisc tables - uses keyed "Secondary" Dapper service.
+Queries only WEBAPPMisc tables - uses keyed "Secondary" Dapper service.
 
 ```csharp
-public class ICTOrderNumberService : IICTOrderNumberService
+public class OrderNumberService : IOrderNumberService
 {
-    private readonly IDapperQueryService _dapperQuery;  // Connects to GAIMisc (Secondary)
+    private readonly IDapperQueryService _dapperQuery;  // Connects to WEBAPPMisc (Secondary)
 
-    public ICTOrderNumberService(
+    public OrderNumberService(
         [FromKeyedServices("Secondary")] IDapperQueryService dapperQuery,
-        ILogger<ICTOrderNumberService> logger)
+        ILogger<OrderNumberService> logger)
     {
         _dapperQuery = dapperQuery;
         _logger = logger;
     }
 
-    // Queries: gai_scheduler (in GAIMisc)
+    // Queries: webapp_scheduler (in WEBAPPMisc)
 }
 ```
 
@@ -198,12 +160,12 @@ The project uses .NET 8's **keyed services** feature to support multiple instanc
 
 ### Usage
 
-**Injecting Primary (GAI) database**:
+**Injecting Primary (WEBAPP) database**:
 ```csharp
 public MyService([FromKeyedServices("Primary")] IDapperQueryService dapper)
 ```
 
-**Injecting Secondary (GAIMisc) database**:
+**Injecting Secondary (WEBAPPMisc) database**:
 ```csharp
 public MyService([FromKeyedServices("Secondary")] IDapperQueryService dapper)
 ```
@@ -217,40 +179,39 @@ public MyService(
 
 ## Table Location Reference
 
-### GAI Database (Primary)
+### WEBAPP Database (Primary)
 
 | Schema Area | Tables | Used By |
 |------------|--------|---------|
-| Products | dmprod, dmunit | DeacomService, ICTService |
-| Inventory | dtfifo, dtstaging | DeacomService, ICTService |
-| Sales Orders | dttord, dtlord | DeacomService |
-| Manufacturing | dtjob, dtljob | ICTService |
-| Customers | dmbill, dmship | DeacomService |
-| Attributes | dtd1, dtd2 | DeacomService, ICTService |
+| Products | products | InventoryPickingService |
+| Inventory | inventory, warehouses | InventoryAllocationService |
+| Orders | orders, order_lines | InventoryPickingService |
+| Customers | customers | InventoryPickingService |
+| Vendors | vendors | InventoryPickingService |
 
-### GAIMisc Database (Secondary)
+### WEBAPPMisc Database (Secondary)
 
 | Schema Area | Tables | Used By |
 |------------|--------|---------|
-| Scheduler | gai_scheduler | AcuityImportService, ICTService |
-| Allocations | gai_allocate | ICTService |
-| User Config | gai_dmstech | All 5 apps |
-| Acuity Data | acuity_* | AcuityImportService |
+| Scheduler | webapp_scheduler | InventoryPickingService, WAMSService |
+| Allocations | webapp_allocate | InventoryAllocationService |
+| User Config | webapp_dmstech | All apps |
+| Locks | webapp_lock | LockService |
 
 ## Troubleshooting
 
-### Error: "Invalid object name 'gai_scheduler'"
+### Error: "Invalid object name 'webapp_scheduler'"
 
-**Cause**: Service is using PRIMARY Dapper (GAI database) but needs SECONDARY (GAIMisc).
+**Cause**: Service is using PRIMARY Dapper (WEBAPP database) but needs SECONDARY (WEBAPPMisc).
 
 **Fix**: Inject keyed "Secondary" service:
 ```csharp
 public MyService([FromKeyedServices("Secondary")] IDapperQueryService dapper)
 ```
 
-### Error: "Invalid object name 'dmprod'"
+### Error: "Invalid object name 'products'"
 
-**Cause**: Service is using SECONDARY Dapper (GAIMisc database) but needs PRIMARY (GAI).
+**Cause**: Service is using SECONDARY Dapper (WEBAPPMisc database) but needs PRIMARY (WEBAPP).
 
 **Fix**: Inject keyed "Primary" service:
 ```csharp
@@ -265,13 +226,13 @@ public MyService([FromKeyedServices("Primary")] IDapperQueryService dapper)
 
 **Example**:
 ```sql
-USE [GAI]
+USE [WEBAPP]
 ...
-CREATE TABLE dmprod (...);  -- This is in GAI
+CREATE TABLE products (...);  -- This is in WEBAPP
 
-USE [GAIMisc]
+USE [WEBAPPMisc]
 ...
-CREATE TABLE gai_scheduler (...);  -- This is in GAIMisc
+CREATE TABLE webapp_scheduler (...);  -- This is in WEBAPPMisc
 ```
 
 ## Migration from Single Database
@@ -279,18 +240,18 @@ CREATE TABLE gai_scheduler (...);  -- This is in GAIMisc
 If you have a service that was incorrectly using the default `IDapperQueryService` and getting table not found errors:
 
 1. Identify which database contains your tables (check schema.sql)
-2. If tables are in GAIMisc, inject keyed "Secondary" service
+2. If tables are in WEBAPPMisc, inject keyed "Secondary" service
 3. Update constructor to use `[FromKeyedServices("Secondary")]`
 4. Add `using Microsoft.Extensions.DependencyInjection;` to imports
 
 **Before**:
 ```csharp
-public MyService(IDapperQueryService dapper)  // Connects to GAI
+public MyService(IDapperQueryService dapper)  // Connects to WEBAPP
 ```
 
-**After** (for GAIMisc tables):
+**After** (for WEBAPPMisc tables):
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 
-public MyService([FromKeyedServices("Secondary")] IDapperQueryService dapper)  // Connects to GAIMisc
+public MyService([FromKeyedServices("Secondary")] IDapperQueryService dapper)  // Connects to WEBAPPMisc
 ```

@@ -7,7 +7,7 @@ sleep 15
 
 echo "✅ SQL Server ready!"
 echo "🌐 Starting application on http://+:5210..."
-echo "📝 Note: Ensure databases (GAI, GAIMisc) and schema are created before app startup"
+echo "📝 Note: Ensure databases (WEBAPP, WEBAPPMisc) and schema are created before app startup"
 echo "   Run locally: make migrate"
 echo ""
 

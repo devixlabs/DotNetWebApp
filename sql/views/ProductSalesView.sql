@@ -6,20 +6,18 @@
 --   await ViewService.ExecuteViewAsync<ProductSalesView>("ProductSalesView", new { TopN = 50 });
 --
 -- NOTE: This is a demonstration view for the Phase 2B view pipeline.
--- Uses dmprod (products), dmunit (units of measure), and dmvend (vendors)
--- from the schema to show product summary with unit factors and vendor counts.
+-- Uses products, units_of_measure, and vendors tables
+-- to show product summary with vendor counts.
 
 SELECT TOP (@TopN)
     p.pr_id AS ProductId,
-    p.pr_descrip AS ProductName,
-    p.pr_lispric AS Price,
-    u.un_name AS UnitName,
-    COALESCE(u.un_factor, 0) AS UnitFactor,
+    p.pr_name AS ProductName,
+    p.pr_price AS Price,
+    p.pr_unit AS UnitName,
     COALESCE(COUNT(DISTINCT v.ve_id), 0) AS VendorCount,
-    COALESCE(COUNT(DISTINCT v.ve_id) * p.pr_lispric, 0) AS TotalValue
-FROM dbo.dmprod p
-LEFT JOIN dbo.dmunit u ON p.pr_prunid = u.un_id
-LEFT JOIN dbo.dmvend v ON v.ve_id > 0
+    COALESCE(COUNT(DISTINCT v.ve_id) * p.pr_price, 0) AS TotalValue
+FROM dbo.products p
+LEFT JOIN dbo.vendors v ON v.ve_active = 1
 WHERE p.pr_active = 1
-GROUP BY p.pr_id, p.pr_descrip, p.pr_lispric, u.un_name, u.un_factor
+GROUP BY p.pr_id, p.pr_name, p.pr_price, p.pr_unit
 ORDER BY TotalValue DESC;

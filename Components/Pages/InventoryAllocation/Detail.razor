@@ -1,0 +1,456 @@
+@page "/app/inventory-allocation/{OrderNumber}"
+@using DotNetWebApp.Services.InventoryAllocation
+@using DotNetWebApp.Services.InventoryAllocation.Models
+@inject IInventoryAllocationService InventoryAllocationService
+@inject ILockService LockService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+
+<PageTitle>Inventory Allocation - @OrderNumber</PageTitle>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem" class="rz-p-4">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+            <RadzenButton Icon="arrow_back" ButtonStyle="@ButtonStyle.Light" Size="ButtonSize.Small"
+                         Click="@GoBack" title="Back to list" />
+            <RadzenText TextStyle="TextStyle.H4">Order @OrderNumber</RadzenText>
+            @if (order != null)
+            {
+                <RadzenBadge Text="@InventoryAllocationStatusColorService.GetStatusText(order.Status)"
+                            BadgeStyle="@GetBadgeStyle(order.Status)" />
+            }
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenButton Text="Allocate All" Icon="play_arrow" ButtonStyle="@ButtonStyle.Success"
+                         Click="@AllocateAll"
+                         Disabled="@(order == null || order.Status == InventoryAllocationStatus.FullyAllocated || isLocked)" />
+            <RadzenButton Text="Deallocate All" Icon="undo" ButtonStyle="@ButtonStyle.Danger"
+                         Click="@DeallocateAll"
+                         Disabled="@(order == null || order.Status == InventoryAllocationStatus.NotAllocated || isLocked)" />
+            <RadzenButton Text="Refresh" Icon="refresh" ButtonStyle="@ButtonStyle.Light"
+                         Click="@LoadData" />
+        </RadzenStack>
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 200px;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+            <RadzenText TextStyle="TextStyle.Body1">Loading order details...</RadzenText>
+        </RadzenStack>
+    }
+    else if (order != null)
+    {
+        <RadzenRow Gap="1rem">
+            <!-- Order Info Card -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenCard Style="@GetOrderCardStyle()">
+                    <RadzenStack Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight: bold;">Order Information</RadzenText>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Ship Date:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.DueShipDate.ToString("MM/dd/yyyy")</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Customer:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.CustomerName</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Carrier:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.Carrier</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">OK to Ship:</RadzenText>
+                            @if (order.OkToShip)
+                            {
+                                <RadzenIcon Icon="check_circle" Style="color: green;" />
+                            }
+                            else
+                            {
+                                <RadzenIcon Icon="cancel" Style="color: red;" />
+                            }
+                        </RadzenStack>
+                        @if (!string.IsNullOrEmpty(order.LockedBy))
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Light" Size="AlertSize.Small">
+                                Locked by: @order.LockedBy
+                            </RadzenAlert>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <!-- Allocation Summary Card -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenCard>
+                    <RadzenStack Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight: bold;">Allocation Summary</RadzenText>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Total Lines:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.TotalLines</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Allocated Lines:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.AllocatedLines</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Total Ordered:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.TotalOrdered.ToString("N0")</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Total Allocated:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.TotalAllocated.ToString("N0")</RadzenText>
+                        </RadzenStack>
+                        <RadzenProgressBar Value="@GetAllocationPercentage()" ShowValue="true" Style="height: 20px;" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <!-- Payment Status Card -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenCard>
+                    <RadzenStack Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight: bold;">Payment Status</RadzenText>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Terms ID:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.TermsId</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Balance Due:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.BalanceDue.ToString("C")</RadzenText>
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenText TextStyle="TextStyle.Body2">Total Due:</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@order.TotalDue.ToString("C")</RadzenText>
+                        </RadzenStack>
+                        @if (order.TermsId == 51)
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                                <RadzenText TextStyle="TextStyle.Body2">3% Tolerance:</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body2">@((order.TotalDue * 0.03m).ToString("C"))</RadzenText>
+                            </RadzenStack>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Line Items Grid -->
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight: bold; margin-bottom: 0.5rem;">Line Items</RadzenText>
+            <RadzenDataGrid Data="@lineItems"
+                           TItem="InventoryAllocationLineItem"
+                           AllowSorting="true"
+                           AllowPaging="true"
+                           PageSize="10"
+                           RowRender="@OnLineRowRender"
+                           ExpandMode="DataGridExpandMode.Single">
+                <Template Context="line">
+                    <RadzenCard Style="margin: 0.5rem;">
+                        <RadzenText TextStyle="TextStyle.Subtitle2">Allocations for @line.ProductCode</RadzenText>
+                        @if (line.Allocations.Any())
+                        {
+                            <RadzenDataGrid Data="@line.Allocations" TItem="InventoryAllocationRecord" Style="margin-top: 0.5rem;">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="InventoryAllocationRecord" Property="LotNumber" Title="Lot #" Width="150px" />
+                                    <RadzenDataGridColumn TItem="InventoryAllocationRecord" Property="Location" Title="Location" Width="150px" />
+                                    <RadzenDataGridColumn TItem="InventoryAllocationRecord" Property="Quantity" Title="Qty" Width="100px" FormatString="{0:N0}" />
+                                    <RadzenDataGridColumn TItem="InventoryAllocationRecord" Property="AllocationDate" Title="Date" Width="120px" FormatString="{0:MM/dd HH:mm}" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                        else
+                        {
+                            <RadzenText TextStyle="TextStyle.Body2" Style="color: gray;">No allocations yet</RadzenText>
+                        }
+                    </RadzenCard>
+                </Template>
+                <Columns>
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Property="ProductCode" Title="Product Code" Width="150px" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Property="ProductDescription" Title="Description" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Property="OrderedQuantity" Title="Ordered" Width="100px" FormatString="{0:N0}" TextAlign="TextAlign.Right" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Property="AllocatedQuantity" Title="Allocated" Width="100px" FormatString="{0:N0}" TextAlign="TextAlign.Right" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Property="PickedQuantity" Title="Picked" Width="100px" FormatString="{0:N0}" TextAlign="TextAlign.Right" />
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Title="Status" Width="130px">
+                        <Template Context="line">
+                            <RadzenBadge Text="@InventoryAllocationStatusColorService.GetStatusText(line.Status)"
+                                        BadgeStyle="@GetBadgeStyle(line.Status)" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="InventoryAllocationLineItem" Title="Actions" Width="120px" TextAlign="TextAlign.Center" Sortable="false">
+                        <Template Context="line">
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                                <RadzenButton Icon="play_arrow" ButtonStyle="@ButtonStyle.Success" Size="ButtonSize.Small"
+                                             Click="@(() => AllocateLine(line))" title="Allocate"
+                                             Disabled="@(line.Status == InventoryAllocationStatus.FullyAllocated || isLocked)" />
+                                <RadzenButton Icon="undo" ButtonStyle="@ButtonStyle.Danger" Size="ButtonSize.Small"
+                                             Click="@(() => DeallocateLine(line))" title="Deallocate"
+                                             Disabled="@(line.Status == InventoryAllocationStatus.NotAllocated || isLocked)" />
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">
+                Order @OrderNumber not found
+            </RadzenAlert>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public int WarehouseId { get; set; } = 3;
+
+    private InventoryAllocationOrderSummary? order;
+    private IEnumerable<InventoryAllocationLineItem>? lineItems;
+    private bool isLoading = true;
+    private bool isLocked => !string.IsNullOrEmpty(order?.LockedBy) &&
+                             !string.Equals(order.LockedBy, currentUsername, StringComparison.OrdinalIgnoreCase);
+    private string currentUsername = "testuser"; // TODO: Get from authentication
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            order = await InventoryAllocationService.GetOrderDetailAsync(OrderNumber, WarehouseId);
+            if (order != null)
+            {
+                lineItems = await InventoryAllocationService.GetOrderLineItemsAsync(OrderNumber, WarehouseId);
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load order: {ex.Message}",
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo($"/app/inventory-allocation?warehouseId={WarehouseId}");
+    }
+
+    private async Task AllocateAll()
+    {
+        try
+        {
+            var result = await InventoryAllocationService.AllocateOrderAsync(OrderNumber, currentUsername, WarehouseId);
+
+            if (result.Success)
+            {
+                var message = result.QuantityShort > 0
+                    ? $"Partially allocated: {result.QuantityAllocated:N0} units, {result.QuantityShort:N0} short"
+                    : $"Fully allocated: {result.QuantityAllocated:N0} units";
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = result.QuantityShort > 0 ? NotificationSeverity.Warning : NotificationSeverity.Success,
+                    Summary = "Allocation Complete",
+                    Detail = message,
+                    Duration = 4000
+                });
+
+                await LoadData();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Allocation Failed",
+                    Detail = result.ErrorMessage,
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to allocate: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task DeallocateAll()
+    {
+        try
+        {
+            var success = await InventoryAllocationService.DeallocateOrderAsync(OrderNumber, currentUsername, WarehouseId);
+
+            if (success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Deallocation Complete",
+                    Detail = "All allocations removed",
+                    Duration = 4000
+                });
+
+                await LoadData();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Deallocation Failed",
+                    Detail = "Failed to deallocate order",
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to deallocate: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task AllocateLine(InventoryAllocationLineItem line)
+    {
+        try
+        {
+            decimal needed = line.OrderedQuantity - line.AllocatedQuantity;
+            var result = await InventoryAllocationService.AllocateLineItemAsync(
+                OrderNumber, line.ProductCode, needed, currentUsername, WarehouseId);
+
+            if (result.Success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Line Allocated",
+                    Detail = $"Allocated {result.QuantityAllocated:N0} units of {line.ProductCode}",
+                    Duration = 3000
+                });
+
+                await LoadData();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Allocation Failed",
+                    Detail = result.ErrorMessage,
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to allocate line: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task DeallocateLine(InventoryAllocationLineItem line)
+    {
+        try
+        {
+            var success = await InventoryAllocationService.DeallocateLineItemAsync(
+                OrderNumber, line.ProductCode, currentUsername, WarehouseId);
+
+            if (success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Line Deallocated",
+                    Detail = $"Deallocated {line.ProductCode}",
+                    Duration = 3000
+                });
+
+                await LoadData();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Deallocation Failed",
+                    Detail = "Failed to deallocate line",
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to deallocate line: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private string GetOrderCardStyle()
+    {
+        if (order == null) return string.Empty;
+        return $"background-color: {InventoryAllocationStatusColorService.GetColor(order.Status)};";
+    }
+
+    private double GetAllocationPercentage()
+    {
+        if (order == null || order.TotalOrdered == 0) return 0;
+        return (double)(order.TotalAllocated / order.TotalOrdered * 100);
+    }
+
+    private void OnLineRowRender(RowRenderEventArgs<InventoryAllocationLineItem> args)
+    {
+        args.Attributes.Add("style", InventoryAllocationStatusColorService.GetRowStyle(args.Data.Status));
+    }
+
+    private static BadgeStyle GetBadgeStyle(InventoryAllocationStatus status)
+    {
+        return status switch
+        {
+            InventoryAllocationStatus.NotAllocated => BadgeStyle.Light,
+            InventoryAllocationStatus.PartiallyAllocated => BadgeStyle.Warning,
+            InventoryAllocationStatus.FullyAllocated => BadgeStyle.Success,
+            InventoryAllocationStatus.OverAllocated => BadgeStyle.Danger,
+            _ => BadgeStyle.Light
+        };
+    }
+}

@@ -145,12 +145,12 @@ DotNetWebApp/
   - `EntitiesController` reduced from 369 to 236 lines (36% reduction)
   - All reflection logic moved to service layer
   - Comprehensive test suite added
-- ✅ **DMS Phase 1 MVP Complete (2026-02-02):** Dock Management System
+- ✅ **WAMS Phase 1 MVP Complete (2026-02-02):** Web App Management System
   - 39-column RadzenDataGrid with order type classification and color coding
   - Status workflow state machine (NA → CheckIn → Loading → Unloading → Shipped → Received)
   - AppID batch operations (orders with same AppID move together)
   - Soft delete pattern (type + 10) with undelete capability
-  - Multi-warehouse support (CPFG, Northlake)
+  - Multi-warehouse support (Chicago, NYC)
   - 105 unit tests, 15 comprehensive seed orders
   - 10 REST API endpoints, full CRUD operations
 - ✅ `EntitiesController` provides dynamic REST endpoints
@@ -280,7 +280,7 @@ make compose-up
 
 **What `make compose-up` does:**
 - ✅ Starts SQL Server and waits for health check
-- ✅ Runs `make db-migrate` (creates GAI/GAIMisc databases, applies schema + EF migrations)
+- ✅ Runs `make db-migrate` (creates WEBAPP/WEBAPPMisc databases, applies schema + EF migrations)
 - ✅ Runs `make db-seed` (populates sample data)
 - ✅ Starts app container — databases are guaranteed to exist
 
@@ -348,15 +348,15 @@ dotnetwebapp:
 
 ### Verify Data in SQL Server
 ```bash
-# Query {PRIMARY_DB} (GAI)
+# Query {PRIMARY_DB} (WEBAPP)
 docker exec -it sqlserver-dev \
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
-  -d GAI -Q "SELECT TOP 5 * FROM dbo.dmprod;"
+  -d WEBAPP -Q "SELECT TOP 5 * FROM dbo.dmprod;"
 
-# Query {SECONDARY_DB} (GAIMisc)
+# Query {SECONDARY_DB} (WEBAPPMisc)
 docker exec -it sqlserver-dev \
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C \
-  -d GAIMisc -Q "SELECT * FROM dbo.AcidCorrection;"
+  -d WEBAPPMisc -Q "SELECT * FROM dbo.AcidCorrection;"
 ```
 
 ---

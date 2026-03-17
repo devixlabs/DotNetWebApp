@@ -74,22 +74,12 @@ namespace DotNetWebApp.Data
                 }
             }
 
-            // Handle DDL parser limitations with composite foreign keys
-            // The acuity_form_values table has a composite FK (form_id, appointment_id) that references
-            // acuity_forms (id, appointment_id), but the generated code only recognizes form_id.
-            // Remove the navigation property so EF Core doesn't try to enforce the incomplete FK relationship.
-            var acuityFormValuType = entityTypes.FirstOrDefault(t => t.Name == "Acuity_form_valu");
-            if (acuityFormValuType != null)
-            {
-                modelBuilder.Entity(acuityFormValuType).Ignore("Acuity_form");
-            }
-
-            // Configure gai_lock identity column (gl_index)
+            // Configure webapp_lock identity column (gl_index)
             // The table has a composite primary key with an identity column, which requires explicit configuration
-            var gaiLockType = entityTypes.FirstOrDefault(t => t.Name == "Gai_lock");
-            if (gaiLockType != null)
+            var webappLockType = entityTypes.FirstOrDefault(t => t.Name == "Webapp_lock");
+            if (webappLockType != null)
             {
-                modelBuilder.Entity(gaiLockType)
+                modelBuilder.Entity(webappLockType)
                     .Property("gl_index")
                     .ValueGeneratedOnAdd();
             }

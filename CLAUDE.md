@@ -50,6 +50,14 @@ Use `.claude/skills/radzen-blazor` when working with any `.razor` files or UI re
 - **Feedback:** RadzenAlert, RadzenText
 - **Services:** DialogService, NotificationService (inject with `@inject`)
 
+## White-Label Architecture
+
+This is a **generic skeleton** — client-specific config goes in `appsettings.Local.json` (git-ignored).
+- **Database names:** WEBAPP (primary), WEBAPPMisc (secondary) — configurable per-client
+- **Table prefix:** `webapp_*` for shared tables (webapp_scheduler, webapp_allocate, webapp_lock, webapp_dmstech)
+- **Placeholder names:** Use `acme`/`initech`/`globex` in examples — NEVER use real client names
+- **Client fork:** GreenwoodPortal at `../greenwood-staging/GreenwoodPortal/` is the reference client deployment
+
 ## 🚨 Architecture Documentation (READ FIRST)
 
 **Before refactoring or architectural work, read these in order:**
@@ -66,7 +74,7 @@ Use `.claude/skills/radzen-blazor` when working with any `.razor` files or UI re
 - ✅ **Multi-tenancy:** Finbuckle.MultiTenant with schema inheritance
 - ✅ **Scale target:** 200+ entities, multiple schemas, small team
 
-**Current Status:** 212+ tests passing; SQL-first view pipeline fully implemented
+**Current Status:** 580+ tests passing; SQL-first view pipeline fully implemented
 
 ## Important Session Notes
 
@@ -146,7 +154,7 @@ make shutdown-build-servers   # Kill MSBuild/Roslyn processes
 
 - **Run before commit:** `make test`
 - **Target coverage:** 80%+ on service layer and generators
-- **Current status:** 212+ tests passing
+- **Current status:** 580+ tests passing
 
 **Full Testing Guide:** See `TESTING.md` for principles, patterns, and troubleshooting
 
@@ -198,7 +206,7 @@ Server=localhost,1433;Database=DotNetWebAppDb;User Id=sa;Password=<SA_PASSWORD>;
 - `ASPNETCORE_ENVIRONMENT=Docker` → auto-loads `appsettings.Docker.json` (not Production/Development)
 - `appsettings.Local.json` is loaded AFTER env vars (`AddJsonFile` at Program.cs:19) — `.dockerignore` excludes it so `Server=localhost` never overrides docker-compose `Server=sqlserver`
 - Dockerfile restores `DotNetWebApp.csproj` not `.sln` — test projects excluded by `.dockerignore`
-- `scripts/docker.sh check` — creates GAI/GAIMisc if missing; called automatically by `db-migrate`
+- `scripts/docker.sh check` — creates WEBAPP/WEBAPPMisc if missing; called automatically by `db-migrate`
 
 **Full Docker Guide:** See `DOCKER.md` for setup, troubleshooting, and secrets management
 
@@ -244,6 +252,9 @@ DotNetWebApp/
 │   └── AppDictionary/          # YAML model classes
 ├── Services/                   # Business logic services
 │   ├── IEntityOperationService.cs  # EF CRUD operations
+│   ├── WAMS/                   # Web App Management System (dock/warehouse ops)
+│   ├── InventoryPicking/       # Order picking workflows
+│   ├── InventoryAllocation/    # FIFO inventory allocation
 │   └── Views/                  # Dapper view services
 ├── DdlParser/                  # SQL DDL → YAML converter
 ├── ModelGenerator/             # YAML → C# generator
@@ -265,7 +276,7 @@ DotNetWebApp/
 - SQL-first view pipeline (Dapper) with 38 unit tests
 - SqlSelectParser: Auto-generates view model properties from SQL SELECT columns with type inference
 - Multi-schema support with tenant isolation
-- Unit tests: 212+ passing (DataSeeder, ModelGenerator, DdlParser, SqlSelectParser, Services)
+- Unit tests: 580+ passing (DataSeeder, ModelGenerator, DdlParser, SqlSelectParser, Services)
 - Build optimization (30+ min → 2-5 min)
 - Docker SQL Server support
 
@@ -384,6 +395,7 @@ make test                     # Run all unit tests
 9. Phase 1 (2026-01-27): IEntityOperationService with compiled delegates
 10. Phase 2 (2026-01-27): SQL-first view pipeline with Dapper
 11. Phase 3 (2026-02-01): SqlSelectParser for auto-generating view model properties from SQL SELECT columns
-12. Seed Data (2026-02-04): Added Feb 4-29, 2026 test data to sql/seed.sql (78 PrePick orders)
+12. Seed Data (2026-02-04): Added Feb 4-29, 2026 test data to sql/seed.sql (78 Inventory Picking orders)
+13. White-Label (2026-03-17): Refactored to generic skeleton — GAI→WEBAPP, service renames (DMS→WAMS, PrePick→InventoryPicking, Allocation→InventoryAllocation), removed ICT and AppointmentImport/Deacom services, stripped proprietary SQL
 
-Latest work focuses on SQL-first view generation, type inference, and comprehensive test data.
+Latest work: white-label refactoring complete; ready for PR to master.

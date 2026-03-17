@@ -85,7 +85,7 @@ DotNetWebApp/
 3.  **Phase 1 (Refactor):** `IEntityOperationService` with compiled delegates (High Perf).
 4.  **Phase 2 (Views):** SQL-First View Pipeline (`IViewService`, `IViewRegistry`).
 5.  **Phase 3+4 (UI Patterns):** Generic `ViewSection`, `ApplicationSwitcher`, and editable grid patterns.
-6.  **DMS MVP:** Dock Management System with 39-column grid, state machine, and soft delete.
+6.  **WAMS MVP:** Web App Management System with 39-column grid, state machine, and soft delete.
 
 **Tests:** 580+ tests passing. High coverage on service layer.
 

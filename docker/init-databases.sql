@@ -1,23 +1,23 @@
--- Create GAI database if it doesn't exist
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'GAI')
+-- Create WEBAPP database if it doesn't exist
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'WEBAPP')
 BEGIN
-  CREATE DATABASE GAI;
-  PRINT 'Created database GAI';
+  CREATE DATABASE WEBAPP;
+  PRINT 'Created database WEBAPP';
 END
 ELSE
 BEGIN
-  PRINT 'Database GAI already exists';
+  PRINT 'Database WEBAPP already exists';
 END
 GO
 
--- Create GAIMisc database if it doesn't exist
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'GAIMisc')
+-- Create WEBAPPMisc database if it doesn't exist
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'WEBAPPMisc')
 BEGIN
-  CREATE DATABASE GAIMisc;
-  PRINT 'Created database GAIMisc';
+  CREATE DATABASE WEBAPPMisc;
+  PRINT 'Created database WEBAPPMisc';
 END
 ELSE
 BEGIN
-  PRINT 'Database GAIMisc already exists';
+  PRINT 'Database WEBAPPMisc already exists';
 END
 GO
